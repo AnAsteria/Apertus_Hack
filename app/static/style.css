@@ -22,3 +22,12 @@ button { padding: .5rem 1.2rem; font: inherit; cursor: pointer; }
 .evidence p { margin: .2rem 0; }
 .evidence .quote { font-style: italic; }
 .meta { font-size: .8rem; color: #55606e; word-break: break-all; }
+.inline { font-size: .85rem; color: #55606e; }
+.needs { background: #fff; border: 1px solid #d9dde3; border-radius: 8px; padding: .75rem 1rem; margin: 1rem 0; }
+.needs h3 { font-size: .95rem; margin: .75rem 0 .25rem; }
+.needlist { list-style: none; padding: 0; margin: 0; }
+.needlist li { display: flex; gap: .5rem; align-items: center; margin: .25rem 0; }
+.needlist input[type=text] { flex: 1; padding: .3rem; font: inherit; }
+.needlist.suggested li { color: #55606e; font-style: italic; }
+.needs button.small { padding: .2rem .6rem; font-size: .8rem; }
+.synthetic { background: #fff3cd; border: 1px solid #e0c36a; padding: .3rem .6rem; border-radius: 4px; font-size: .8rem; }
