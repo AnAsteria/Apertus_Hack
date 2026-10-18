@@ -1,0 +1,111 @@
+{
+  "parser": "t06-v4",
+  "records": 12,
+  "sentences": 971,
+  "provisional_anchors": 26,
+  "pdf_pages": 13,
+  "network_requests_first": 17,
+  "network_requests_reuse": 0,
+  "per_source": [
+    {
+      "source_id": "artorg",
+      "profile": "dev",
+      "started_at": "2026-10-18T14:05:38.836892+00:00",
+      "completed_at": "2026-10-18T14:05:47.232490+00:00",
+      "duration_seconds": 8.396067,
+      "counts": {
+        "discovered": 4,
+        "page_slots": 4,
+        "fetched": 4,
+        "new_versions": 4,
+        "parsed": 4,
+        "outside_focus_pages": 1,
+        "network_requests": 5,
+        "retries": 0,
+        "remaining_discovered": 56
+      },
+      "languages": {
+        "en": 4
+      },
+      "page_types": {
+        "unit": 2,
+        "other": 1,
+        "directory": 1
+      },
+      "focus_keyword_counts": {
+        "diabetes": 2,
+        "oncology": 1,
+        "neurology": 2,
+        "medtech": 2
+      }
+    },
+    {
+      "source_id": "dcb",
+      "profile": "dev",
+      "started_at": "2026-10-18T14:05:47.234852+00:00",
+      "completed_at": "2026-10-18T14:06:04.408649+00:00",
+      "duration_seconds": 17.17418,
+      "counts": {
+        "discovered": 4,
+        "page_slots": 4,
+        "fetched": 4,
+        "new_versions": 4,
+        "parsed": 4,
+        "network_requests": 7,
+        "retries": 0,
+        "remaining_discovered": 493
+      },
+      "languages": {
+        "en": 2,
+        "de": 2
+      },
+      "page_types": {
+        "project": 2,
+        "directory": 2
+      },
+      "focus_keyword_counts": {
+        "diabetes": 4,
+        "medtech": 2
+      }
+    },
+    {
+      "source_id": "unibe-dbmr",
+      "profile": "dev",
+      "started_at": "2026-10-18T14:06:04.410181+00:00",
+      "completed_at": "2026-10-18T14:06:12.836377+00:00",
+      "duration_seconds": 8.426259,
+      "counts": {
+        "discovered": 4,
+        "page_slots": 4,
+        "fetched": 4,
+        "new_versions": 4,
+        "parsed": 4,
+        "outside_focus_pages": 2,
+        "network_requests": 5,
+        "retries": 0,
+        "remaining_discovered": 179
+      },
+      "languages": {
+        "en": 4
+      },
+      "page_types": {
+        "directory": 3,
+        "unit": 1
+      },
+      "focus_keyword_counts": {
+        "diabetes": 1,
+        "oncology": 2,
+        "neurology": 2
+      }
+    }
+  ],
+  "measurement_kind": "bounded live dev smoke, not a full corpus or quality benchmark",
+  "python": "3.12.14",
+  "machine": "arm64",
+  "tests": {
+    "full_suite_passed": 87,
+    "skipped": 1,
+    "ingestion_cases": 23,
+    "skip_reason": "opt-in live inference test not enabled"
+  }
+}
