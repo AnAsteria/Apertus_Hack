@@ -68,6 +68,17 @@ def _default_candidates(req: SearchRequest) -> list[Result]:
     return list(backend.search(req).results)
 
 
+def _default_reranker(req: SearchRequest, expansions: list[str]) -> tuple[list[Result], list[str]]:
+    """T30: original query plus validated expansions, fused at entity level (served == measured)."""
+    from ..search.expansion import expanded_search
+    from .search import get_backend, index_ready, FixtureBackend
+
+    backend = get_backend()
+    if backend is None or (not isinstance(backend, FixtureBackend) and not index_ready()):
+        return [], []
+    return expanded_search(backend, req, expansions)
+
+
 def _default_assessor(query, needs, candidates, on_result):
     return assess(query, needs, candidates, on_result=on_result)
 
@@ -75,6 +86,8 @@ def _default_assessor(query, needs, candidates, on_result):
 _interpreter: Interpreter = _default_interpreter
 _candidates: CandidateProvider = _default_candidates
 _assessor: Assessor = _default_assessor
+_reranker = _default_reranker
+RERANK_TIMEOUT_S = float(os.environ.get("BERNMATCH_RERANK_TIMEOUT_S", "10"))
 _pool = ThreadPoolExecutor(max_workers=8, thread_name_prefix="enrich")
 
 
@@ -87,6 +100,11 @@ def set_interpreter(fn: Interpreter | None) -> None:
 def set_candidate_provider(fn: CandidateProvider | None) -> None:
     global _candidates
     _candidates = fn or _default_candidates
+
+
+def set_reranker(fn=None) -> None:
+    global _reranker
+    _reranker = fn or _default_reranker
 
 
 def set_assessor(fn: Assessor | None) -> None:
@@ -210,11 +228,34 @@ def _stream(request_id: str, req: SearchRequest) -> Iterator[str]:
         payload["decoding_mode"] = interp.decoding_mode
         yield event("interpretation", payload)
 
+    # Stage 1b (T30): enriched second retrieval pass over the validated expansions. The first
+    # cards stay as they are until this validated ranking arrives; failure leaves them untouched.
+    candidates = None
+    expansions = [e.get("text") for e in (interp.expanded_queries if interp is not None else []) if e.get("text")]
+    if expansions:
+        t2 = time.monotonic()
+        future = _pool.submit(_reranker, req, expansions)
+        try:
+            reranked, used = future.result(timeout=min(RERANK_TIMEOUT_S, JOB_LIFETIME_S))
+        except Exception:
+            future.cancel()
+            reranked, used = [], []
+            yield event("error", _error_payload("RERANK_FAILED", "The expanded search failed; initial results are unaffected.", True) | {"stage": "reranked"})
+        timings["rerank_ms"] = int((time.monotonic() - t2) * 1000)
+        if stale():
+            yield event("error", _error_payload("STALE_REVISION", "A newer revision replaced this search.", False))
+            return
+        if reranked:
+            candidates = reranked
+            yield event("reranked", {"results": [r.model_dump() for r in reranked], "expanded_queries": used,
+                                     "elapsed_ms": timings["rerank_ms"]})
+
     # Stage 2: batched assessment of the current candidates.
-    try:
-        candidates = _candidates(req)
-    except Exception:
-        candidates = []
+    if candidates is None:
+        try:
+            candidates = _candidates(req)
+        except Exception:
+            candidates = []
     needs = interp.needs if interp is not None else list(req.needs)
     if not candidates:
         yield event("progress", {"stage": "assessment", "state": "skipped", "reason": "no_candidates"})

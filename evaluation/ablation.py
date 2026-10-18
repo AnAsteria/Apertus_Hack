@@ -38,16 +38,8 @@ RRF_K = 60
 TOP_K = 10
 
 
-def rrf_fuse(result_lists: list[list], k: int = RRF_K, limit: int = TOP_K) -> list:
-    """Entity-level reciprocal-rank fusion across several result lists (one per query variant).
-    The first-seen Result object is kept; ranks are renumbered."""
-    scores, first = {}, {}
-    for results in result_lists:
-        for rank, r in enumerate(results, start=1):
-            scores[r.entity_id] = scores.get(r.entity_id, 0.0) + 1.0 / (k + rank)
-            first.setdefault(r.entity_id, r)
-    ordered = sorted(scores, key=lambda e: (-scores[e], e))[:limit]
-    return [first[e].model_copy(update={"rank": i}) for i, e in enumerate(ordered, start=1)]
+# Same fusion rule as the served enriched pass (T30), so the ablation measures what is deployed.
+from app.search.expansion import rrf_fuse  # noqa: E402
 
 
 class _InterpretationCache:

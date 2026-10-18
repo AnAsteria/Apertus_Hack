@@ -108,7 +108,7 @@ class SseEvent(Strict):
     request_id: str
     revision: int = Field(ge=1)
     event_sequence: int = Field(ge=0)
-    event_type: Literal["progress", "interpretation", "assessment", "complete", "error"]
+    event_type: Literal["progress", "interpretation", "reranked", "assessment", "complete", "error"]  # reranked: T30 (D12)
     payload: dict
 
 

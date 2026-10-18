@@ -75,6 +75,8 @@ A no-match query is a successful response, not 404; it does not claim global abs
 
 SSE events contain `schema_version`, `request_id`, `revision`, monotonically increasing `event_sequence`, `event_type` (`progress|interpretation|assessment|complete|error`), `payload`. Discard stale revisions on client and server. Streaming transport never publishes raw unvalidated model JSON as facts. Disconnection/replay policy and job lifetime are fixed by T01; provisional choice: no replay requirement, client can rerun enrichment without duplicate feedback.
 
+**T30 `reranked` event (proposed D12, additive):** payload `{results, expanded_queries, elapsed_ms}`. `results` are ordinary validated cards (same schema as the search response, evidence resolved by code) from the original query plus the validated expansions, fused at entity level. Each card's `retrieval.query_variants` names the variants that found it. The client replaces its cards only when the revision matches.
+
 Interpretation payload contains editable `needs`, `expanded_queries` with language and `clarification` (nullable). Assessment contains `entity_id`, `category` (`direct_match|related_capability|insufficient_evidence`), `need_coverage` with need IDs/support/evidence, `explanation`, `evidence` ID pairs and `unresolved_questions`. Batch size/token budgets bounded and configured. Unknown entity/need/evidence IDs reject or quarantine the assessment; don't replace them with invented IDs. Code resolves quotes and checks semantic support before publication. A generic failure event leaves initial cards intact.
 
 **Synthetic assessment envelope:**
