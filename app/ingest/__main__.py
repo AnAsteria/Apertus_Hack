@@ -18,6 +18,7 @@ def main():
     parser.add_argument('--profile', choices=['dev', 'final'], default='dev')
     parser.add_argument('--source', action='append', default=[], help='Source id; repeat to select several')
     parser.add_argument('--max-pages', type=int, help='Explicit profile budget override, recorded in snapshot')
+    parser.add_argument('--workers', type=int, default=1, help='Sources crawled at once (each source keeps its own per-host rate limit)')
     parser.add_argument('--refresh', action='store_true', help='Explicitly re-fetch; does not retire absent URLs')
     args = parser.parse_args()
     if args.command == 'generate':
@@ -42,19 +43,29 @@ def main():
     requested = set(args.source)
     if requested - {s.config.source_id for s in sources}:
         parser.error('Unknown source id')
-    fetcher = Fetcher()
-    try:
-        for source in sources:
-            if requested and source.config.source_id not in requested:
-                continue
-            def progress(sid, vid):
-                # Small checkpoint after each page lets T07 consume an early snapshot.
-                import sys
-                print(json.dumps({'source_id': sid, 'stored_version_id': vid}), file=sys.stderr, flush=True)
+    chosen = [s for s in sources if not requested or s.config.source_id in requested]
+    import sys
+    import threading
+    from concurrent.futures import ThreadPoolExecutor
+    lock = threading.Lock()
+
+    def progress(sid, vid):
+        # Small checkpoint after each page lets T07 consume an early snapshot.
+        with lock:
+            print(json.dumps({'source_id': sid, 'stored_version_id': vid}), file=sys.stderr, flush=True)
+
+    def run(source):
+        # One Fetcher per source: hosts differ between sources, so per-host limits stay per host.
+        fetcher = Fetcher()
+        try:
             snapshot = crawl(source, store, fetcher, refresh=args.refresh, on_progress=progress)
+        finally:
+            fetcher.close()
+        with lock:
             print(json.dumps(snapshot, ensure_ascii=False), flush=True)
-    finally:
-        fetcher.close()
+
+    with ThreadPoolExecutor(max_workers=max(1, args.workers)) as pool:
+        list(pool.map(run, chosen))
 
 
 if __name__ == '__main__':
