@@ -34,7 +34,7 @@ from .schemas import EXTRACTION_SCHEMA_VERSION, PageExtraction
 
 log = logging.getLogger("bernmatch.extract")
 
-PROMPT_VERSION = "p2"
+PROMPT_VERSION = "p3"  # p3: stricter project/infrastructure/service definitions (T37)
 EXTRACTABLE_PAGE_TYPES = frozenset({"person", "unit", "project", "infrastructure", "service"})
 MAX_SENTENCES_PER_CALL = 80
 MAX_TOKENS = 3000  # 70B hit 1500 on a long award page (finish_reason=length)
@@ -47,7 +47,12 @@ Return three lists. Every item cites the numbers of the sentences that state it;
 2. attributes: {subject, predicate, value}. subject is an entity name from your list.
    role = position or title as written (e.g. "Professor", "Head of Lab").
    expertise = a short research topic or method (2-6 words, page language).
-   project / infrastructure / service = short description of what the subject runs or offers.
+   project = a NAMED research project or study the subject carries out (title or short description of its research goal).
+     NOT a job description, duties, a course or training, a publication or thesis title, an event, seminar, lecture series, conference or prize, or a description of the whole group.
+   infrastructure = a facility, platform, laboratory equipment or dataset the subject (a unit) operates, e.g. "GC-MS equipment", "MRI scanner".
+     NOT an address, office, building or affiliation line. A person does not operate infrastructure; attach it to the unit.
+   service = something a unit or facility offers to outside users (analysis, consulting, measurements, training offered to externals).
+     NOT a seminar or event, a website, a person's activity, or general support statements. A person does not offer a service; use role or expertise.
    official_contact = "email" or "phone" only.
 3. relations: {subject, predicate, object}. Both are entity names from your list.
    leader = subject (person) leads object (unit or project).

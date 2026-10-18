@@ -132,3 +132,27 @@ def test_card_fields_use_supported_claims_only_and_keep_roles_apart():
     anna = card_fields(ANNA, claims, ENTS)
     assert {k: [v.value for v in vs] for k, vs in anna.items()} == {"leads": ["Example Lab"]}  # no lab expertise
     assert missing_fields(anna, ["expertise", "leads"]) == {"expertise": ABSENCE_TEXT}
+
+
+# --- T37: fact types ------------------------------------------------------------------
+def test_person_cannot_have_infrastructure_or_service():
+    claims = [claim("clm_infra", "ent_anna", "infrastructure", 2, value="Example Lab"),
+              claim("clm_svc", "ent_anna", "service", 2, value="Example Lab")]
+    out, rep = check_claims(claims, ENTS, LOOKUP, client=judge())
+    assert set(support_of(out).values()) == {"unsupported"}
+    assert rep.reasons == {"infrastructure_subject_person": 1, "service_subject_person": 1}
+
+
+def test_events_are_not_projects_or_services():
+    claims = [claim("clm_p", "ent_lab", "project", 4, value="seminar on robotics"),
+              claim("clm_s", "ent_lab", "service", 4, value="weekly robotics Seminar")]
+    c = judge()
+    out, rep = check_claims(claims, ENTS, LOOKUP, client=c)
+    assert rep.reasons == {"event_not_project": 1, "event_not_service": 1} and c.calls == []
+
+
+def test_judge_wrong_type_verdict_rejects_the_claim():
+    claims = [claim("clm_job", "ent_lab", "project", 1, value="wearable glucose sensors")]
+    out, rep = check_claims(claims, ENTS, LOOKUP, client=judge([(1, "wrong_type")]))
+    assert support_of(out) == {"clm_job": "unsupported"} and rep.reasons == {"judge_wrong_type": 1}
+    assert "named research project" in claim_statement(claims[0], ENTS)
