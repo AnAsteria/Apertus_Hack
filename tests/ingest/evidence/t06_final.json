@@ -2632,5 +2632,18 @@
     "No search indexes, LLM extraction, semantic support scoring, confidential inputs, paid inference or full air-gapped query demonstration are part of this run.",
     "Cache-only replay deliberately blocked 880 uncached requests. An unrestricted repeat crawl can use the network.",
     "Coverage and corpus artifacts use local temporary development storage; hosting transfer and production durability are separate tasks."
-  ]
+  ],
+  "ci": {
+    "pull_request": 54,
+    "evidence_commit": "606a846",
+    "run_id": 39137529111,
+    "checks": {
+      "test": "pass",
+      "container": "pass",
+      "hf-space-image": "pass"
+    },
+    "test_passed": 121,
+    "test_skipped": 1,
+    "note": "PR integration tree contains additional team tests; local 87-pass measurement remains tied to 372b59c."
+  }
 }

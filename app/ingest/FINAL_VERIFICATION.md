@@ -119,7 +119,7 @@ python -m app.ingest crawl --profile final --data-dir /path/to/local-corpus
 python -m app.ingest export --data-dir /path/to/local-corpus > /path/to/local-corpus.jsonl
 ```
 
-The full test suite on the integrated revision returned **87 passed, 1 skipped**, including all **23 ingestion cases**; the skip is the opt-in live inference test. One upstream Starlette/AnyIO deprecation warning occurred. `pip check` found no broken requirements. CI now installs the ingestion requirements through PR #51.
+The full test suite on the integrated revision returned **87 passed, 1 skipped**, including all **23 ingestion cases**; the skip is the opt-in live inference test. One upstream Starlette/AnyIO deprecation warning occurred. `pip check` found no broken requirements. CI now installs the ingestion requirements through PR #51. PR #54 checks for evidence commit `606a846` all passed (`test`, `container`, `hf-space-image`); its actual test log reports **121 passed, 1 skipped**, because the PR integration tree includes additional team tests. This is separate from the 87-pass local result on `372b59c`. CI run: [39137529111](https://github.com/AnAsteria/Apertus_Hack/actions/runs/39137529111).
 
 Local handoff: `/private/tmp/bernmatch-t06-verification/corpus` (SQLite, raw hashes, fetch provenance and snapshots) and `/private/tmp/bernmatch-t06-verification/corpus.jsonl` (export). Raw source/contact text, databases, exports, model files and detailed logs are outside Git. Temporary local paths are not a production durability or hosting-transfer promise.
 
