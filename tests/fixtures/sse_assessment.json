@@ -1,0 +1,17 @@
+{
+ "schema_version": "1",
+ "request_id": "req_demo",
+ "revision": 1,
+ "event_sequence": 2,
+ "event_type": "assessment",
+ "payload": {
+  "entity_id": "ent_demo",
+  "category": "insufficient_evidence",
+  "need_coverage": [],
+  "explanation": "Evidence for the requested capability was not found in the indexed corpus.",
+  "evidence": [],
+  "unresolved_questions": [
+   "Can the unit confirm this capability?"
+  ]
+ }
+}

@@ -1,0 +1,11 @@
+{
+ "schema_version": "1",
+ "request_id": "req_demo",
+ "revision": 1,
+ "results": [],
+ "limitations": [
+  "Support was not found in the indexed corpus."
+ ],
+ "enrichment_state": "not_requested",
+ "timing_ms": null
+}
