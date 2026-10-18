@@ -9,7 +9,7 @@ from app.contracts import MAX_RESULTS, Result, SearchResponse
 from app.storage.indexes import IndexStore
 from .analysis import analyze,language_of,match_expression,query_terms,words
 from .encoder import OnnxEncoder,digest
-from .ranking import entity_max,reciprocal_rank_fusion,diversify
+from .ranking import entity_max,reciprocal_rank_fusion,diversify,non_entity_page,DEMOTION
 
 
 def freshness(evidence, now=None):
@@ -30,11 +30,16 @@ def freshness(evidence, now=None):
 
 
 class HybridBackend:
-    def __init__(self, directory, *, encoder=None, min_dense=None, mode=None):
+    def __init__(self, directory, *, encoder=None, min_dense=None, abstain_dense=None, mode=None):
         mode = mode or os.environ.get('BERNMATCH_SEARCH_MODE','hybrid')
         min_dense = float(os.environ.get('BERNMATCH_MIN_DENSE','.80')) if min_dense is None else min_dense
-        if not 0 <= min_dense <= 1:
+        # Query-level abstention: E5 similarities are compressed (~.80-.91), so a
+        # per-candidate floor cannot reject an off-topic query. Chosen on development
+        # queries and ad hoc off-topic probes only (see app/search/README.md).
+        abstain_dense = float(os.environ.get('BERNMATCH_ABSTAIN_DENSE','.865')) if abstain_dense is None else abstain_dense
+        if not 0 <= min_dense <= 1 or not 0 <= abstain_dense <= 1:
             raise ValueError('invalid_dense_threshold')
+        self.abstain_dense = abstain_dense
         if mode not in ('hybrid','dense','keyword'):
             raise ValueError('invalid_retrieval_mode')
         self.store = IndexStore(directory)
@@ -84,7 +89,7 @@ class HybridBackend:
         keyword = entity_max(self.store.keyword(match_expression(query_terms(req.query))),self.entries,allowed) if self.mode!='dense' else {}
         timing['keyword'] = (time.perf_counter()-t)*1000
         t = time.perf_counter()
-        dense = {}; vector_winners = {}
+        dense = {}; vector_winners = {}; dense_ok = False
         if self.encoder is not None and self.mode!='keyword':
             try:
                 query = self.encoder.encode([req.query],kind='query')[0]
@@ -97,11 +102,20 @@ class HybridBackend:
                     if old is None or scores[index] > old[0]:
                         vector_winners[entry_id] = (float(scores[index]),int(index))
                 dense = entity_max([(i,x[0]) for i,x in vector_winners.items()],self.entries,allowed)
+                dense_ok = True
             except Exception:
                 limitations.append('Local embedding computation failed; available keyword results are retained.')
         timing['dense'] = (time.perf_counter()-t)*1000
+        best_dense = max((score for score,_ in dense.values()),default=0.)
+        if dense_ok and best_dense < self.abstain_dense:
+            limitations.append('No stored passage was similar enough to the request; support was not found in the indexed corpus.')
+            return self._response(req,[],limitations,enrichment,start,timing)
         t = time.perf_counter()
         fused = reciprocal_rank_fusion([keyword,dense])
+        demoted = {eid for eid in fused if non_entity_page(self.entities[eid]['entity']['name'],
+                   self.entities[eid]['entity']['canonical_profiles'])}
+        for eid in demoted:
+            fused[eid] *= DEMOTION
         representatives = {}
         # Use one representative vector per entity, independent of page count.
         for eid in fused:
@@ -138,7 +152,7 @@ class HybridBackend:
                 display_name=entity['name'],fields=item['fields'],reason=reason,evidence=evidence,
                 freshness=freshness(evidence),retrieval={'bm25':keyword.get(eid,(None,None))[0],
                 'dense':dense.get(eid,(None,None))[0],'rrf':fused[eid],'aggregation':'max_before_rrf',
-                'entry_kind':entry['kind'],'query_language':query_language,'mode':self.mode,
+                'entry_kind':entry['kind'],'demoted_listing_page':eid in demoted,'query_language':query_language,'mode':self.mode,
                 'resolution_state':entity['resolution_state'],'entity_status':entity['status'],
                 'model':self.manifest['model']['repo'],'generation':self.manifest['generation']}))
         return self._response(req,results,limitations,enrichment,start,timing)
