@@ -1,36 +1,79 @@
 # Bern Match
 
-Team solution for the Bern Economic Development Agency Research & Expertise Navigator (repository: `Apertus_Hack`).
+Search tool for the Bern Economic Development Agency: an analyst describes a company's need in plain language and gets up to ten research groups, people, projects or infrastructure at the University of Bern (UniBE), ARTORG and Diabetes Center Berne. Every card quotes the exact source sentence and links to the page it came from.
 
-Bern Match is a planned English-language search workspace for agency analysts finding research partners across the University of Bern (UniBE), ARTORG and Diabetes Center Berne. It addresses fragmented institutional information and the gap between a company's business language and researchers' terminology. German-to-English and English-to-German search are required.
+**Live demo:** https://kaktamsdengami-bern-match.hf.space (Hugging Face Docker Space). AI features use [Apertus](https://huggingface.co/swiss-ai), the Swiss open model, through the hackathon organisers' Keera gateway. The first results never wait for the AI.
 
-An analyst enters keywords, a question or a pasted company description; receives up to ten distinct, evidence-backed entities; inspects exact source sentences and URLs; edits needs; selects or excludes results; and records relevance or factual corrections. Simple searches run without waiting for an LLM. Optional asynchronous Apertus interpretation and assessment enrich the results. A one-page brief and email draft are Stretch features. Document upload is out of scope.
+## What works today
 
-- [Architecture and approved pipeline](docs/ARCHITECTURE.md): requirements, acceptance gates, data relationships, evaluation, operating assumptions and unresolved dependencies.
-- [Proposed delivery plan and GitHub backlog](docs/tasks/README.md), [shared contracts](docs/CONTRACTS.md), and [dispatcher/worker workflow](docs/AGENT_WORKFLOW.md). Plan approval and role assignment remain pending; issue creation does not authorise coding.
+Status as of 2026-10-18. "Measured" numbers come from the issues and docs linked next to them.
 
-Current status: documentation and proposed backlog only. Repository inspection found only the original README before this documentation update. No application, crawler, corpus, search index, Apertus integration, evaluation results, deployment or offline demonstration is implemented or verified. All functionality described above and in the architecture is planned unless later accompanied by verification evidence. Core search and measurement take priority over Second layer enrichment and Stretch exports.
+| Area | Implemented | Evidence |
+| --- | --- | --- |
+| Corpus | Crawl of 41 supplied UniBE, ARTORG and DCB domains: 2,811 pages, 148,404 sentences, with fetch dates and content hashes. Respects robots.txt, never crawls per query | [docs/sources.md](docs/sources.md), #6 |
+| Facts | Apertus 70B extracts entities and claims offline; code checks every claim against its source sentence. 4,374 entities, 5,130 claims (4,314 supported) | [docs/extraction.md](docs/extraction.md), [docs/grounding.md](docs/grounding.md), #7, #8 |
+| Search | Hybrid BM25 + multilingual dense retrieval (multilingual-e5-small, CPU), fused ranking, at most 10 distinct entities, exact evidence sentences | [app/search/README.md](app/search/README.md), #9 |
+| Honest answers | Deterministic outcome policy: confident / low confidence / too broad / no evidence, with narrowing suggestions; no card without evidence | #82, [docs/DECISIONS.md](docs/DECISIONS.md) D11 |
+| AI enrichment (optional) | Apertus interprets the request into editable needs and expansions, re-ranks with them, and attaches per-card assessments. All streamed after the first results, validated against schemas, labelled as generated text | [docs/interpretation.md](docs/interpretation.md), [docs/assessment.md](docs/assessment.md), #18, #19, #81 |
+| UI | Search workspace: example queries (EN/DE/FR), type chips, cards with supported fields only, highlighted evidence, source tags, shortlist, outcome states, dark mode | #80 |
+| Data policy | Suppression list, crawler skip, serving filter, `410` for removed records, purge | [docs/data-policy.md](docs/data-policy.md), #12 |
+| Deployment | One-command deploy with smoke test and rollback; index restored from a bucket in seconds; feedback survives restarts | [docs/deployment.md](docs/deployment.md), #84 |
+| Evaluation | Gold set 0.3 (frozen), harness for Recall@10, abstention and latency | [docs/evaluation-protocol.md](docs/evaluation-protocol.md), #14 |
 
-Required submission deliverables are a public GitHub repository, demo video **≤2 minutes**, pitch PDF **≤10 slides**, and technical report PDF **≤6 pages**. Public repository availability and submission are not verified. Deadline: **19 October 2026, 14:30 Europe/Zurich**. The team has three developers: two with AI/ML backgrounds and one with general CS experience; names and ownership are not assigned here.
+**Measured so far (small samples, development split only):** Recall@10 0.56 on 9 development queries against the first evidence-only index, search latency median about 250 ms and p95 about 420 ms (#9, #14). German-to-English queries were the weak spot. Newer runs on the current index are posted on #14. AI cost and latency figures are in [docs/MEASUREMENTS.md](docs/MEASUREMENTS.md) and [docs/costs.md](docs/costs.md).
 
-Planned data handling: collect necessary professional information and official contacts from public sources only. Provide an operator-accessible removal-request route and a suppression list preventing re-ingestion. Confirmed retired records must leave serving indexes; stored copies and backups must expire under a documented retention policy. The route, verification procedure and public-record/backup retention periods remain undecided and are not operational. Proposed defaults are session-only company inputs unless explicitly saved, company-input redaction from logs, and 30-day operational-log retention. These defaults require implementation and verification. Use fictional company profiles until approval for processing real confidential inputs is confirmed. This is a design commitment, not a claim of legal compliance.
+## Planned or not done
 
-## Running the skeleton
+- **Operator contact for removal requests** is still unset in [docs/data-policy.md](docs/data-policy.md), so the removal route is designed and coded but not staffed.
+- **Admin interface** (#13): the feedback API and protected admin routes exist; there is no admin UI.
+- **Offline / air-gapped run** (#15): on hold.
+- **Server-side filters and facets** (#86), **query normalisation** (#85), **new source domains** (#83), **localised interface** (#40): not built.
+- **One-page brief and email draft** (#23, #24): optional, not built. Nothing is ever sent automatically.
+- Coverage is uneven: medical and biomedical sites got larger crawl budgets than other faculties.
 
-Verified: the app skeleton (contracts, health/readiness, a synthetic-fixture search workspace and the inference adapter) runs and passes its tests. Real search, ingestion and deployment are **not** implemented yet.
+## Run it locally
+
+Python 3.12.
 
 ```bash
-python -m venv .venv && .venv/Scripts/python -m pip install -r requirements.lock pytest   # Linux/macOS: .venv/bin/python
-.venv/Scripts/python -m pytest -q                                   # deterministic tests, no network
-BERNMATCH_FIXTURE_MODE=1 .venv/Scripts/python -m uvicorn app.main:app --port 8000   # UI with SYNTHETIC cards
+python -m venv .venv
+.venv/Scripts/python -m pip install -r requirements.lock -r app/search/requirements.txt -r app/ingest/requirements.txt pytest httpx   # Linux/macOS: .venv/bin/python
+.venv/Scripts/python -m pytest -q                      # deterministic tests, no network
 ```
 
-Without `BERNMATCH_FIXTURE_MODE=1`, `/readyz` and search return 503 until `$BERNMATCH_DATA_DIR/READY` exists, and search returns 501 because retrieval is not wired in yet. Container: `docker build -t bernmatch . && docker run -p 8000:8000 -v bernmatch-data:/data bernmatch`; the CI `container` job builds it and probes `/healthz` and `/readyz`. Inference configuration (server-side only) is described in [docs/inference.md](docs/inference.md); copy `env.example` to a real `.env`, which is git-ignored.
+**UI with synthetic data** (no index, no keys):
 
-## Removal requests
+```bash
+BERNMATCH_FIXTURE_MODE=1 .venv/Scripts/python -m uvicorn app.main:app --port 8000
+```
 
-Anyone named in the index can ask for removal. The route, verification steps, suppression-list format and retention periods are in [docs/data-policy.md](docs/data-policy.md). **The route is not operational yet**: the operator contact in that document is still unset, and no enforcement code exists, so this is a design commitment and not a working service.
+**Real search** needs an index. Build one from a corpus export (and optionally the T08 knowledge files):
 
-## Roadmap notes
+```bash
+.venv/Scripts/python -m app.search fetch-model --model small --model-dir models/e5-small
+.venv/Scripts/python -m app.search build --corpus-jsonl corpus.jsonl --knowledge-dir knowledge --model-dir models/e5-small --data-dir data
+BERNMATCH_DATA_DIR=data .venv/Scripts/python -m uvicorn app.main:app --port 8000
+```
 
-There is no verified deployment yet. The MVP will crawl once and query persistent local indexes, with manual refresh; configurable daily refresh and selected hourly refresh are production requirements. Local offline readiness requires a separately evidenced air-gapped query demonstration.
+The corpus itself is not in this repository because it contains names and professional contact details from public pages; crawl it with `python -m app.ingest crawl --profile final` (see [app/ingest/README.md](app/ingest/README.md)). AI features need `APERTUS_BASE_URL`, `APERTUS_API_KEY` and `APERTUS_MODEL` in a git-ignored `.env` (template: [env.example](env.example), details: [docs/inference.md](docs/inference.md)). Without them search still works and the AI parts report themselves unavailable.
+
+**Evaluation** against a running instance:
+
+```bash
+.venv/Scripts/python -m evaluation run --base-url http://127.0.0.1:8000 --split development --out runs/dev.json
+.venv/Scripts/python -m evaluation report runs/dev.json
+```
+
+**Container:** `docker build -t bernmatch . && docker run -p 8000:8000 -v bernmatch-data:/data bernmatch`. The Hugging Face Space uses `deploy/hf-space/`; see [docs/deployment.md](docs/deployment.md).
+
+## Data handling
+
+Only public professional information from the listed institutional sites is collected. Company descriptions typed into the search are not stored and are kept out of logs. Anyone named in the index can ask for removal: suppressed records are skipped by the crawler, filtered at serving time and answered with `410`. See [docs/data-policy.md](docs/data-policy.md). This is a design commitment, not a claim of legal compliance.
+
+## Documentation
+
+[Architecture](docs/ARCHITECTURE.md) · [Contracts](docs/CONTRACTS.md) · [Decisions](docs/DECISIONS.md) · [Measurements](docs/MEASUREMENTS.md) · [Deployment](docs/deployment.md) · [Attribution and licences](docs/attribution.md) · [Team plan](docs/TEAM_PLAN.md)
+
+## Team
+
+Built for the Apertus hackathon (deadline 19 October 2026) by Dimitry ([@kaktamsdengami](https://github.com/kaktamsdengami)), Maxim ([@maxim451](https://github.com/maxim451)) and Ruihan ([@AnAsteria](https://github.com/AnAsteria)).

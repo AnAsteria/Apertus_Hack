@@ -12,3 +12,6 @@ models/
 
 # T33: written by scripts/deploy_space.sh into the staged copy only
 app/REVISION
+
+# Evaluation run records hold search-result excerpts (names from public pages): keep local
+runs/
