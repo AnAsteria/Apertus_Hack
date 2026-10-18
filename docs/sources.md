@@ -1,4 +1,4 @@
-# T02 — Public source audit and proposed discovery inventory
+# T02 — Supplied inventory audit and evidence seeds
 
 Related issue: [#2](https://github.com/AnAsteria/Apertus_Hack/issues/2). Audit date: **18 October 2026**. This is a bounded source inspection, not crawler implementation, an indexed corpus, coverage measurement or legal approval. The user explicitly authorised this task without a separate dispatcher grant; this exception applies only to #2.
 
@@ -6,13 +6,89 @@ Related issue: [#2](https://github.com/AnAsteria/Apertus_Hack/issues/2). Audit d
 
 **Update — 18 October 2026:** the user has now supplied the original workbook. It is retained in [config/sources/unibe_sous_domaines_publics_etendus.xlsx](../config/sources/unibe_sous_domaines_publics_etendus.xlsx), with an exact first-sheet extraction at [config/sources/unibe_inventory.csv](../config/sources/unibe_inventory.csv). See [input provenance and checks](../config/sources/README.md).
 
-The supplied sheet contains 42 rows (41 UniBE-domain URLs and DCB); its Notes sheet says 71. The discrepancy is unresolved. The three-source inspection below predates this file and remains useful evidence, but **does not satisfy revised T02 R1 acceptance for every inventory row**.
+The supplied sheet contains 42 rows (41 UniBE-domain URLs and DCB); its Notes sheet says 71. The discrepancy is retained as an inventory-scope limitation. The R1 audit below accounts for every supplied row; the earlier three-source inspection is retained afterwards as detailed evidence, not as the full inventory.
 
-**Outstanding acceptance work:** audit each supplied row, record reachability/redirects/robots/layout and included/excluded reasons, assign focus tiers, and resolve the claimed 71-versus-42 scope with organisers if needed. The bounded three-source proposal below is historical, not a replacement for the supplied inventory. T06 also depends on its T04 and shared-model requirements. No crawling or indexing is implemented by this input import.
+All 42 rows have been inspected and given an inclusion/exclusion decision with rationale for review. No application crawler or corpus is implemented by this audit. Shared corpus models and agreed crawl budgets remain T06 prerequisites.
 
-UniBE is represented initially by a bounded Department for BioMedical Research (DBMR) slice. This is not full University coverage. ARTORG belongs to UniBE institutionally but is a separate required source label: store each document once, preserve affiliations and prevent double-counting the same entity across source labels. DCB links to university/partner sites; a link does not expand the allowlist.
+The historical three-source examples below represent a bounded DBMR slice; the R1 audit expands input review to the full supplied inventory. Neither is a claim of complete University coverage. ARTORG belongs to UniBE institutionally but is a separate required source label: store each document once, preserve affiliations and prevent double-counting the same entity across source labels. DCB links to university/partner sites; a link does not expand the allowlist.
 
-## 2. Inspected seed pages
+## R1 — Complete supplied-inventory audit
+
+Checked 2026-10-18T13:21:44.065754+00:00 through 2026-10-18T13:22:08.884045+00:00. All **42 supplied start URLs resolved to HTTP 200 landing pages**. Of these, **41 are included** in the proposed ingestion input; **one is excluded** because its page is a content-free placeholder. These are source-audit decisions, not indexed-page counts or retrieval results. The original 42-row CSV is unchanged.
+
+Full row-level evidence: [audit CSV](../config/sources/unibe_inventory_audit.csv) and [sanitised audit JSON](../config/sources/unibe_inventory_audit.json). Each row records original/effective URLs, redirects, robots status/hash, layout signals, language/title, tier rationale and inclusion/exclusion reason. The supplied workbook remains the authority for inventory membership. The Notes claim of 71 is unresolved; no extra entries were fabricated and this audit makes no exhaustive-DNS claim.
+
+### Tiers and decisions
+
+The **14 focus** entries use R1's broad medicine/medtech/neuro/diabetes/oncology routing priority. **28 outside-focus** entries retain lower-budget discovery, except the one unusable placeholder. Tiering is an explicit editorial routing decision based on the supplied description, inspected landing page and earlier S01–S12 evidence; it is not a relevance judgment or assignment of expertise to people. Some medical support/history/education sites remain outside the initial thematic focus with row-level reasons.
+
+| Inventory key | Tier | Decision | Effective landing URL | Layout family |
+| --- | --- | --- | --- | --- |
+| www.unibe.ch | outside_focus | included | [https://www.unibe.ch/](https://www.unibe.ch/) | unibe_cms_candidate |
+| mediarelations.unibe.ch | outside_focus | included | [https://mediarelations.unibe.ch/services/index_ger.html](https://mediarelations.unibe.ch/services/index_ger.html) | unibe_cms_candidate |
+| philnat.unibe.ch | outside_focus | included | [https://www.philnat.unibe.ch/](https://www.philnat.unibe.ch/) | unibe_cms_candidate |
+| medizin.unibe.ch | focus | included | [https://www.medizin.unibe.ch/](https://www.medizin.unibe.ch/) | unibe_cms_candidate |
+| vetsuisse.unibe.ch | outside_focus | included | [https://www.vetsuisse.unibe.ch/](https://www.vetsuisse.unibe.ch/) | unibe_cms_candidate |
+| soz.unibe.ch | outside_focus | included | [https://www.soz.unibe.ch/](https://www.soz.unibe.ch/) | unibe_cms_candidate |
+| psy.unibe.ch | outside_focus | included | [https://www.psy.unibe.ch/](https://www.psy.unibe.ch/) | unibe_cms_candidate |
+| math.unibe.ch | outside_focus | included | [https://www.math.unibe.ch/](https://www.math.unibe.ch/) | unibe_cms_candidate |
+| aiub.unibe.ch | outside_focus | included | [https://www.aiub.unibe.ch/](https://www.aiub.unibe.ch/) | unibe_cms_candidate |
+| physik.unibe.ch | outside_focus | included | [https://www.physik.unibe.ch/](https://www.physik.unibe.ch/) | unibe_cms_candidate |
+| phinst.unibe.ch | outside_focus | included | [https://www.phinst.unibe.ch/](https://www.phinst.unibe.ch/) | unibe_cms_candidate |
+| biology.unibe.ch | outside_focus | included | [https://www.biology.unibe.ch/](https://www.biology.unibe.ch/) | unibe_cms_candidate |
+| iee.unibe.ch | outside_focus | included | [https://www.iee.unibe.ch/](https://www.iee.unibe.ch/) | unibe_cms_candidate |
+| ips.unibe.ch | outside_focus | included | [https://www.ips.unibe.ch/](https://www.ips.unibe.ch/) | unibe_cms_candidate |
+| izb.unibe.ch | outside_focus | included | [https://www.izb.unibe.ch/](https://www.izb.unibe.ch/) | unibe_cms_candidate |
+| geo.unibe.ch | outside_focus | included | [https://www.geo.unibe.ch/](https://www.geo.unibe.ch/) | unibe_cms_candidate |
+| geo2.unibe.ch | outside_focus | excluded | [https://www.geo2.unibe.ch/](https://www.geo2.unibe.ch/) | other_or_unknown |
+| cde.unibe.ch | outside_focus | included | [https://www.cde.unibe.ch/](https://www.cde.unibe.ch/) | unibe_cms_candidate |
+| oeschger.unibe.ch | outside_focus | included | [https://www.oeschger.unibe.ch/](https://www.oeschger.unibe.ch/) | unibe_cms_candidate |
+| bcpm.unibe.ch | focus | included | [https://www.bcpm.unibe.ch/](https://www.bcpm.unibe.ch/) | unibe_cms_candidate |
+| dbmr.unibe.ch | focus | included | [https://www.dbmr.unibe.ch/](https://www.dbmr.unibe.ch/) | unibe_cms_candidate |
+| ngs.unibe.ch | focus | included | [https://www.ngs.unibe.ch/](https://www.ngs.unibe.ch/) | unibe_cms_candidate |
+| tki.unibe.ch | focus | included | [https://www.tki.unibe.ch/](https://www.tki.unibe.ch/) | unibe_cms_candidate |
+| iml.unibe.ch | outside_focus | included | [https://www.iml.unibe.ch/](https://www.iml.unibe.ch/) | other_or_unknown |
+| irm.unibe.ch | outside_focus | included | [https://www.irm.unibe.ch/](https://www.irm.unibe.ch/) | unibe_cms_candidate |
+| ifik.unibe.ch | focus | included | [https://www.ifik.unibe.ch/](https://www.ifik.unibe.ch/) | unibe_cms_candidate |
+| ispm.unibe.ch | focus | included | [https://www.ispm.unibe.ch/](https://www.ispm.unibe.ch/) | unibe_cms_candidate |
+| ikim.unibe.ch | focus | included | [https://www.ikim.unibe.ch/](https://www.ikim.unibe.ch/) | unibe_cms_candidate |
+| img.unibe.ch | outside_focus | included | [https://www.img.unibe.ch/](https://www.img.unibe.ch/) | unibe_cms_candidate |
+| ibmm.unibe.ch | focus | included | [https://www.ibmm.unibe.ch/](https://www.ibmm.unibe.ch/) | unibe_cms_candidate |
+| pki.unibe.ch | focus | included | [https://www.pki.unibe.ch/](https://www.pki.unibe.ch/) | unibe_cms_candidate |
+| artorg.unibe.ch | focus | included | [https://www.artorg.unibe.ch/](https://www.artorg.unibe.ch/) | unibe_cms_candidate |
+| inf.unibe.ch | outside_focus | included | [https://www.inf.unibe.ch/](https://www.inf.unibe.ch/) | unibe_cms_candidate |
+| itp.unibe.ch | outside_focus | included | [https://www.itp.unibe.ch/](https://www.itp.unibe.ch/) | unibe_cms_candidate |
+| iap.unibe.ch | outside_focus | included | [https://www.iap.unibe.ch/](https://www.iap.unibe.ch/) | unibe_cms_candidate |
+| dcbp.unibe.ch | outside_focus | included | [https://www.dcbp.unibe.ch/](https://www.dcbp.unibe.ch/) | unibe_cms_candidate |
+| csh.unibe.ch | outside_focus | included | [https://www.csh.unibe.ch/](https://www.csh.unibe.ch/) | unibe_cms_candidate |
+| mic.unibe.ch | focus | included | [https://www.mic.unibe.ch/](https://www.mic.unibe.ch/) | unibe_cms_candidate |
+| strada.unibe.ch | outside_focus | included | [https://strada.unibe.ch/](https://strada.unibe.ch/) | wordpress |
+| neuroscience.unibe.ch | focus | included | [https://www.neuroscience.unibe.ch/](https://www.neuroscience.unibe.ch/) | unibe_cms_candidate |
+| ita.vetsuisse.unibe.ch | outside_focus | included | [https://www.ita.vetsuisse.unibe.ch/](https://www.ita.vetsuisse.unibe.ch/) | unibe_cms_candidate |
+| dcberne.com | focus | included | [https://www.dcberne.com/en/](https://www.dcberne.com/en/) | wordpress |
+
+### Layout findings and adapter boundaries
+
+- **38** landing pages show both UniBE portal asset paths and `index_eng.html`/`index_ger.html` language-index links. The shared-CMS hypothesis is supported by far more than the required 3–4 subdomain samples, including medicine, DBMR, ARTORG and natural sciences. This is a layout fingerprint, not proof that every inner page parses identically.
+- **38** robots responses share the same SHA-256 as the earlier DBMR/ARTORG audit. Equal robots content and equal CMS signals are separate measurements; never infer either merely from the `unibe.ch` suffix.
+- **STRADA and DCB** show WordPress asset paths. **IML** does not show the full shared-CMS fingerprint and needs a separate layout check. **geo2** returns `Home Home`, no language marker and no useful discovery links; its robots endpoint returns 404. Do not report this as a confirmed JS-only page, scanned PDF, deleted domain or alias of `geo`.
+- All included audited landing URLs were allowed by the applicable robots rules; `geo2` had absent robots (404), not an explicit allow rule. This says nothing about permission for every path. Re-fetch robots in T06 and honour wildcard/terminal-anchor/group-merging rules per request. No access controls were bypassed.
+- Media Relations redirects to `/services/index_ger.html`; DCB redirects to `/en/`. Keep original and effective URLs. No source identities were merged by similar names. ARTORG has both `unibe` and `artorg` labels but one stored document identity; do not fetch/index it twice to satisfy the two labels.
+- Declared XML sitemap URLs and internal research/service links are recorded as **unfetched candidates**, always subject to T06 allowlists/robots/budgets. Do not crawl an entire sitemap merely because it is declared. The earlier ARTORG portfolio S12 remains the single verified text-PDF candidate; no new PDF-parser, OCR or JS-adapter capability is claimed.
+
+### Reproduction, verification and T06 handoff
+
+The finite audit inspected only the 42 enumerated inputs, their robots endpoints and bounded redirects. Four workers handled different hosts; same-host requests were separated by at least two seconds. System curl used normal TLS verification, seven-second connection and fifteen-second request timeouts, a four-MB response limit and a six-hop redirect bound per fetch. Redirect targets were checked for HTTPS/public addresses; changed-origin content targets required their own robots check before fetching. Robots were parsed with Protego 0.7.0 and HTML fingerprinted with Beautiful Soup 4.15.0. No discovered link was fetched. Body hashes, timestamps and safe metadata are retained; raw pages, response cookies and extracted professional-contact lists are not committed.
+
+For a finite manual reproduction of a row, fetch its robots URL using `curl -sS --max-time 15 -A 'BernMatchSourceAudit/0.1' URL`, apply the wildcard/group rules, and inspect the original start URL and each permitted redirect without following unrelated links. Compare effective URL, HTTP status and `shasum -a 256` of response bodies; changes trigger reinspection, not an assumption of unchanged content. Exact byte hashes may vary with dynamic content or later source updates.
+
+Validation: 42/42 original keys and order are preserved; every key has a tier, nonempty rationale and included/excluded reason; original XLSX and raw CSV hashes are unchanged; all 42 final landing statuses are 200; the excluded row is exactly geo2; included rows have usable HTML and robots approval; labels avoid ARTORG duplication; audit JSON/CSV agree; all local documentation links and whitespace checks pass. No application tests, inference, bulk ingestion or benchmarks were run for this audit-only continuation.
+
+T06 should generate per-domain YAML from the original inventory joined by `inventory_key` to the audit file. Skip excluded rows with their recorded reason and keep them visible in coverage. Use effective hosts without silently discarding original URLs. Assign configurable `dev`/`final` budgets per tier; outside-focus sources are lower priority, not silently omitted. Page limits and profile selection belong in configuration, not hard-coded domain filters. Within-domain path allowlists still require appropriate scope and per-path robots evaluation. The snapshot must record chosen profile, limits and actual crawl time; this audit does not create a corpus snapshot.
+
+All 42 supplied rows now have documented decisions, satisfying that R1 audit requirement for review. Remaining human review concerns are the non-exhaustive 42-versus-71 inventory scope, editorial tiers and the choice of implementation budgets, not a missing source file. Shared corpus models/owner approval remain a separate T06 dependency. Issue closure waits for integrated acceptance; no next task starts automatically.
+
+## 2. Historical three-source seed pages
 
 IDs here are human-readable audit references, **not production entity/document/sentence IDs**. Language and page classification describe the inspected main content. Links are primary institutional sources. All dates below distinguish inspection time from source age.
 
@@ -34,9 +110,9 @@ IDs here are human-readable audit references, **not production entity/document/s
 
 The English project date and project-period fields on S10 illustrate why a new fetch cannot establish current activity. Do not infer current availability, market readiness, personal expertise or consent to outreach from these sources. Necessary professional-contact information may be read from official pages later; no bulk contact list is copied into this audit.
 
-## 3. Proposed bounded source configuration
+## 3. Historical three-source configuration proposal
 
-The JSON below is also valid YAML 1.2. It follows the required fields in [CONTRACTS §2](CONTRACTS.md#2-source-configuration-and-discovery), but is documentation only: **not an installed configuration or an approved organiser inventory**. Budgets are conservative proposed limits, not observed coverage. Each source needs its own robots check; caps apply across all jobs on a domain. No automatic refresh scheduler is introduced.
+The JSON below is also valid YAML 1.2. It follows the required fields in [CONTRACTS §2](CONTRACTS.md#2-source-configuration-and-discovery), but is documentation only: **not an installed configuration**. This historical 75-page three-source proposal is superseded by R1 for inventory membership and budget profiles. Do not use it as the full 42-row registry. Its limits were proposed, not observed coverage. Each source needs its own robots check; caps apply across all jobs on a domain. No automatic refresh scheduler is introduced.
 
 ```json
 [
@@ -114,7 +190,7 @@ The appendix below records direct HTTP probes, distinct from search-engine cache
 
 The first Python urllib attempt failed certificate verification because its local CA bundle was unavailable; no TLS verification was disabled. The retry used system curl with normal TLS verification. PDF page/text readability was inspected through the web PDF reader, not a local T06 parser. No application/unit tests were needed for two documentation files; structural/manifest/evidence checks are recorded below.
 
-Open decisions: complete the supplied-inventory R1 audit and resolve the 71-versus-42 scope discrepancy; approve revised budgets and scope; agree contact freshness/retention policies through T01; approve any external-domain adapters; perform T06 real corpus/parser checks and T14 full gold-set review. Keep these limitations in issue #2 and the PR; do not close automatically.
+Open decisions: review the completed per-row R1 audit and the 71-versus-42 scope limitation; approve revised budgets and scope; agree contact freshness/retention policies through T01; approve any external-domain adapters; perform T06 real corpus/parser checks and T14 full gold-set review. Keep these limitations in issue #2 and the PR; close only after integrated acceptance.
 
 
 ### HTTP audit appendix
