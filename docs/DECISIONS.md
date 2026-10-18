@@ -1,6 +1,6 @@
 # Decisions log (T01)
 
-**Status: PROPOSED by Dimitry on 2026-10-18. Not yet approved by Maxim or Ruihan.** Nothing below is ratified until each row is marked APPROVED with a name and date. Where `CONTRACTS.md` says "fixed in T01", this file supplies the proposed value so that independent work does not invent incompatible recipes.
+**Status: PROPOSED by Dimitry on 2026-10-18. Partly approved: Ruihan (contract owner) approved D1 and D3-D7 on 2026-10-18; Dimitry acknowledged D8. Maxim has not yet approved the identifier recipes, limits and merge policy below.** Nothing below is ratified until each row is marked APPROVED with a name and date. Where `CONTRACTS.md` says "fixed in T01", this file supplies the proposed value so that independent work does not invent incompatible recipes.
 
 ## Roles (to confirm)
 
@@ -58,11 +58,11 @@ Branch `codex/issue-<n>-<slug>`, pull request referencing `Refs #n`, green CI, d
 
 ## Deviations
 
-- **D1 (T10, proposed, needs contract-owner approval):** `Result.fields` values changed from bare claim-id strings to `{claim_id, value}` objects, so a card can show a supported claim's text without the UI resolving claims. Additive in intent but breaks any producer using the old shape. Implemented in `app/contracts.py`; `docs/CONTRACTS.md` not yet updated.
+- **D1 (T10, APPROVED by Ruihan as contract owner, 2026-10-18):** `Result.fields` values changed from bare claim-id strings to `{claim_id, value}` objects, so a card can show a supported claim's text without the UI resolving claims. Implemented in `app/contracts.py`; `docs/CONTRACTS.md` section 5 updated. Condition: `value` is copied by code from the stored claim (`Claim.value`, or the object entity's name for relation claims) and only for surfaceable (`supported`/`qualified`) claims. It is never model-authored text. Producers of `Result` (T09/T11) must use this shape.
 - **D2 (T10):** the search route moved to `app/api/search.py` with a pluggable backend. Fixture mode (`BERNMATCH_FIXTURE_MODE=1`) serves synthetic cards for UI work only; it is off by default and labels its output synthetic.
-- **D3 (R1, proposed by Maxim, pending):** `content_hash` = SHA-256 of the cleaned main text, not raw response bytes.
-- **D4 (R1, proposed by Maxim, pending):** crawl budget profiles `dev` (small, development) and `final` (maximum feasible, for final runs/benchmarks/demo); limits live in configuration.
-- **D5 (R1, proposed by Maxim, pending):** T06 stub entities let T09 v1 ship before T07/T08; cards may be evidence-only.
-- **D6 (R1, team decision, pending record):** hosting on a free Hugging Face Space (Docker) with the organiser Keera endpoint; no paid resources.
-- **D7 (R1, proposed by Maxim, pending):** multilingual scope extension — T27 Core query languages EN/DE/FR/IT/RU; T28 Stretch localized output.
-- **D8 (contract owner Ruihan, 2026-10-18, proposed):** CONTRACTS section 3 corpus models and identifier helpers added to `app/contracts.py`, with the enum, predicate and integrity choices listed under section 3 of `CONTRACTS.md`. Additive: no existing model changes. Needs Maxim's (T06) and Dimitry's (integration) acknowledgement.
+- **D3 (R1, proposed by Maxim; APPROVED by Ruihan, 2026-10-18):** `content_hash` = SHA-256 of the cleaned main text, not raw response bytes.
+- **D4 (R1, proposed by Maxim; APPROVED by Ruihan, 2026-10-18):** crawl budget profiles `dev` (small, development) and `final` (maximum feasible, for final runs/benchmarks/demo); limits live in configuration.
+- **D5 (R1, proposed by Maxim; APPROVED by Ruihan, 2026-10-18):** T06 stub entities let T09 v1 ship before T07/T08; cards may be evidence-only. Stubs use the section 3 `Entity` model with `resolution_state: uncertain` and no claims until T07/T08.
+- **D6 (R1, team decision; APPROVED by Ruihan, 2026-10-18):** hosting on a free Hugging Face Space (Docker) with the organiser Keera endpoint; no paid resources.
+- **D7 (R1, proposed by Maxim; APPROVED by Ruihan, 2026-10-18):** multilingual scope extension — T27 Core query languages EN/DE/FR/IT/RU; T28 Stretch localized output.
+- **D8 (contract owner Ruihan, 2026-10-18; acknowledged by Dimitry as integration owner, 2026-10-18; Maxim's confirmation pending):** CONTRACTS section 3 corpus models and identifier helpers added to `app/contracts.py`, with the enum, predicate and integrity choices listed under section 3 of `CONTRACTS.md`. Additive: no existing model changes. Needs Maxim's (T06) and Dimitry's (integration) acknowledgement.
