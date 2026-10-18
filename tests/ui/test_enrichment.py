@@ -159,4 +159,4 @@ def test_reranked_event_carries_validated_cards_and_failure_keeps_stream_alive(c
 
 def test_ui_replaces_cards_on_reranked_event():
     js = open(os.path.join(os.path.dirname(__file__), "..", "..", "app", "static", "app.js"), encoding="utf-8").read()
-    assert 'addEventListener("reranked"' in js and "renderCard(r)" in js
+    assert 'addEventListener("reranked"' in js and "renderCards(d.payload.results)" in js

@@ -3,35 +3,48 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
   <title>Bern Match</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <a class="skip" href="#results">Skip to results</a>
+  <header class="top">
+    <span class="brand">Bern Match</span>
+    <button type="button" id="shortlist-toggle" class="ghost" aria-controls="shortlist" aria-expanded="false">
+      Shortlist <span id="shortlist-count" class="count">0</span>
+    </button>
+  </header>
   <main>
-    <h1>Bern Match</h1>
-    <p class="sub">Find research partners at UniBE, ARTORG and Diabetes Center Berne. Text only.</p>
-    <form id="form">
-      <label for="query">Keywords, a question, or a pasted company description</label>
-      <textarea id="query" rows="3" maxlength="2000" placeholder="e.g. continuous glucose monitoring sensors"></textarea>
-      <div class="row">
-        <label for="type">Looking for</label>
-        <select id="type">
-          <option value="">Anything</option>
-          <option value="person">People</option>
-          <option value="unit">Groups / units</option>
-          <option value="project">Projects</option>
-          <option value="infrastructure">Infrastructure</option>
-          <option value="service">Services</option>
-        </select>
-        <label class="inline"><input type="checkbox" id="interpret"> Interpret my request (optional, Apertus)</label>
-        <button type="submit">Search</button>
-      </div>
-    </form>
+    <section class="hero" id="hero">
+      <h1>Find research partners in Bern</h1>
+      <p class="sub">UniBE, ARTORG and Diabetes Center Berne. Every result quotes its source sentence.</p>
+      <form id="form" role="search">
+        <label for="query" class="sr">Keywords, a question, or a pasted company description</label>
+        <textarea id="query" rows="2" maxlength="2000" placeholder="e.g. continuous glucose monitoring sensors"></textarea>
+        <div class="chips" role="radiogroup" aria-label="Looking for" id="type-chips"></div>
+        <div class="row">
+          <label class="inline"><input type="checkbox" id="interpret"> Interpret my request (optional, Apertus)</label>
+          <button type="submit" class="primary">Search</button>
+        </div>
+      </form>
+      <div class="examples" id="examples" aria-label="Example queries"></div>
+    </section>
+    <div id="summary" class="summary" hidden></div>
     <p id="status" class="status" role="status" aria-live="polite"></p>
+    <section id="outcome" class="outcome" hidden aria-live="polite"></section>
     <ul id="limitations" class="limitations"></ul>
     <section id="needs" class="needs" hidden aria-live="polite"></section>
-    <section id="results"></section>
+    <section id="results" aria-label="Results"></section>
   </main>
+  <aside id="shortlist" class="drawer" hidden aria-label="Shortlist">
+    <h2>Shortlist</h2>
+    <p class="meta">Your selections for this session. Each choice is sent as feedback; no text is stored.</p>
+    <h3>Selected</h3>
+    <ul id="sl-selected" class="sl"></ul>
+    <h3>Excluded</h3>
+    <ul id="sl-excluded" class="sl"></ul>
+  </aside>
   <script src="app.js"></script>
 </body>
 </html>

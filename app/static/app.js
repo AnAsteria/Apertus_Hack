@@ -13,14 +13,71 @@ function dateLine(label, value) {
   return label + ": " + (value ? value : "unknown");
 }
 
+var queryTerms = [];       // words of the current query, for highlighting evidence
+var lastRequestId = null;
+var lastRevision = 0;
+var selectedType = "";
+var shortlist = {};        // entity_id -> { name, state: "select" | "exclude" }
+var feedbackCounter = 0;
+
+var TYPE_ICONS = { person: "👤", unit: "🏛", project: "🧪", infrastructure: "🔬", service: "🛠" };
+var TYPES = [["", "Anything"], ["person", "People"], ["unit", "Groups"], ["project", "Projects"],
+             ["infrastructure", "Infrastructure"], ["service", "Services"]];
+var EXAMPLES = [["EN", "continuous glucose monitoring sensors"], ["DE", "Bildgebung in der Herzchirurgie"],
+                ["FR", "robotique pour la rééducation"]];
+var FIELD_LABELS = { role: "Role", affiliation: "Affiliation", part_of: "Part of", led_by: "Led by", leads: "Leads",
+                     members: "Members", includes: "Includes", expertise: "Expertise", projects: "Projects",
+                     infrastructure: "Infrastructure", services: "Services",
+                     official_contact: "Official contact (role only, not expertise)",
+                     contact: "Official contact (role only, not expertise)" };
+
+// Source tag from the evidence host. Unknown hosts are shown by hostname, never guessed.
+function sourceOf(url) {
+  var host = "";
+  try { host = new URL(url).hostname.toLowerCase(); } catch (e) { return { key: "other", label: "Other" }; }
+  if (host.indexOf("artorg") >= 0) return { key: "artorg", label: "ARTORG" };
+  if (host.indexOf("dbmr") >= 0 || host.indexOf("dcb") >= 0 || host.indexOf("diabetes") >= 0) return { key: "dcb", label: "DCB" };
+  if (/(^|\.)unibe\.ch$/.test(host)) return { key: "unibe", label: "UniBE" };
+  return { key: "other", label: host || "Other" };
+}
+
+function termsOf(q) {
+  var seen = {};
+  return (q.toLowerCase().match(/[\p{L}\p{N}]{3,}/gu) || []).filter(function (w) {
+    if (seen[w]) return false; seen[w] = true; return true;
+  });
+}
+
+// Builds text nodes and <mark> elements only: source text is never parsed as markup.
+function highlighted(parent, text, terms) {
+  if (!terms.length) { parent.appendChild(document.createTextNode(text)); return parent; }
+  var lower = text.toLowerCase(), pos = 0;
+  var spans = [];
+  terms.forEach(function (t) {
+    var from = 0, i;
+    while ((i = lower.indexOf(t, from)) >= 0) { spans.push([i, i + t.length]); from = i + t.length; }
+  });
+  spans.sort(function (a, b) { return a[0] - b[0] || b[1] - a[1]; });
+  spans.forEach(function (s) {
+    if (s[0] < pos) { if (s[1] <= pos) return; s = [pos, s[1]]; }
+    if (s[0] > pos) parent.appendChild(document.createTextNode(text.slice(pos, s[0])));
+    parent.appendChild(el("mark", null, text.slice(s[0], s[1])));
+    pos = s[1];
+  });
+  if (pos < text.length) parent.appendChild(document.createTextNode(text.slice(pos)));
+  return parent;
+}
+
 function renderEvidence(ev) {
   var box = el("blockquote", "evidence");
-  box.appendChild(el("p", "quote", ev.text));
-  var a = el("a", null, ev.url);
+  box.appendChild(highlighted(el("p", "quote"), ev.text, queryTerms));
+  var meta = el("p", "meta");
+  var a = el("a", null, "Open source");
   // Only http(s) links are made clickable.
   if (/^https?:\/\//i.test(ev.url)) { a.href = ev.url; a.rel = "noopener noreferrer"; a.target = "_blank"; }
-  var meta = el("p", "meta");
+  a.title = ev.url;
   meta.appendChild(a);
+  meta.appendChild(document.createTextNode(" · " + ev.url));
   box.appendChild(meta);
   box.appendChild(el("p", "meta",
     dateLine("Source content date", ev.content_date) + " | " +
@@ -30,33 +87,103 @@ function renderEvidence(ev) {
   return box;
 }
 
-function renderFields(fields) {
-  var dl = el("dl", "fields");
-  var labels = { role: "Role", affiliation: "Affiliation", part_of: "Part of", led_by: "Led by", leads: "Leads",
-                 members: "Members", includes: "Includes", expertise: "Expertise", projects: "Projects",
-                 infrastructure: "Infrastructure", services: "Services",
-                 official_contact: "Official contact (role only, not expertise)", contact: "Official contact (role only, not expertise)" };
-  Object.keys(labels).forEach(function (k) {
+// Only fields that have supported values are shown; the rest collapse into one line.
+function renderFields(fields, card) {
+  var dl = el("dl", "fields"), missing = [];
+  Object.keys(FIELD_LABELS).forEach(function (k) {
     var vals = (fields && fields[k]) || [];
-    dl.appendChild(el("dt", null, labels[k]));
-    var dd = el("dd", vals.length ? null : "empty", vals.length ? null : "not stated in sources");
+    if (!vals.length) { if (k !== "contact") missing.push(FIELD_LABELS[k].split(" (")[0].toLowerCase()); return; }
+    dl.appendChild(el("dt", null, FIELD_LABELS[k]));
+    var dd = el("dd");
     vals.forEach(function (v) { dd.appendChild(el("div", null, v.value)); });
     dl.appendChild(dd);
   });
-  return dl;
+  if (dl.childNodes.length) card.appendChild(dl);
+  if (missing.length) card.appendChild(el("p", "notstated", "Not stated in sources: " + missing.join(", ")));
 }
 
-function renderCard(r) {
-  var card = el("article", "card");
+function sendFeedback(r, action) {
+  feedbackCounter += 1;
+  if (!lastRequestId) return;
+  fetch("/api/v1/feedback", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ schema_version: "1", request_id: lastRequestId, revision: lastRevision, entity_id: r.entity_id,
+                           action: action, idempotency_key: lastRequestId + ":" + r.entity_id + ":" + action + ":" + feedbackCounter })
+  }).catch(function () { /* feedback is best effort; the shortlist still works locally */ });
+}
+
+function setShortlist(r, state, card) {
+  var cur = shortlist[r.entity_id];
+  if (cur && cur.state === state) { delete shortlist[r.entity_id]; }
+  else { shortlist[r.entity_id] = { name: r.display_name, state: state }; sendFeedback(r, state); }
+  if (card) refreshCardState(card, r.entity_id);
+  renderShortlist();
+}
+
+function refreshCardState(card, id) {
+  var st = shortlist[id] ? shortlist[id].state : "";
+  card.classList.toggle("excluded", st === "exclude");
+  var sel = card.querySelector(".act-select"), exc = card.querySelector(".act-exclude");
+  if (sel) sel.setAttribute("aria-pressed", String(st === "select"));
+  if (exc) exc.setAttribute("aria-pressed", String(st === "exclude"));
+}
+
+function renderShortlist() {
+  var ids = Object.keys(shortlist), n = 0;
+  ["select", "exclude"].forEach(function (state) {
+    var ul = document.getElementById(state === "select" ? "sl-selected" : "sl-excluded");
+    clearNode(ul);
+    ids.forEach(function (id) {
+      var item = shortlist[id];
+      if (item.state !== state) return;
+      if (state === "select") n += 1;
+      var li = el("li");
+      li.appendChild(el("span", null, item.name));
+      li.appendChild(button("Remove", function () {
+        delete shortlist[id];
+        var c = document.querySelector('.card[data-entity="' + id.replace(/"/g, "") + '"]');
+        if (c) refreshCardState(c, id);
+        renderShortlist();
+      }));
+      ul.appendChild(li);
+    });
+    if (!ul.firstChild) ul.appendChild(el("li", "none", "Nothing yet"));
+  });
+  document.getElementById("shortlist-count").textContent = String(n);
+}
+
+function renderCard(r, index) {
+  var src = sourceOf(r.evidence[0].url);
+  var card = el("article", "card appear src-" + src.key);
+  card.style.animationDelay = Math.min(index || 0, 10) * 60 + "ms";
   card.dataset.entity = r.entity_id;
-  var head = el("h3", null, r.rank + ". " + r.display_name);
-  head.appendChild(el("span", "badge", r.entity_type));
-  head.appendChild(el("span", "badge fresh-" + r.freshness, r.freshness));
+  var head = el("div", "card-head");
+  var title = el("h3");
+  title.appendChild(el("span", "rank", r.rank + "."));
+  title.appendChild(document.createTextNode(r.display_name));
+  head.appendChild(title);
+  var actions = el("div", "actions");
+  var sel = button("Select", function () { setShortlist(r, "select", card); }); sel.classList.add("act-select");
+  var exc = button("Exclude", function () { setShortlist(r, "exclude", card); }); exc.classList.add("act-exclude");
+  sel.setAttribute("aria-pressed", "false"); exc.setAttribute("aria-pressed", "false");
+  actions.appendChild(sel); actions.appendChild(exc);
+  head.appendChild(actions);
   card.appendChild(head);
+  var tags = el("div", "tags");
+  tags.appendChild(el("span", "badge tag-" + src.key, src.label));
+  tags.appendChild(el("span", "badge", (TYPE_ICONS[r.entity_type] || "") + " " + r.entity_type));
+  tags.appendChild(el("span", "badge fresh-" + r.freshness, r.freshness));
+  card.appendChild(tags);
   card.appendChild(el("p", "reason", r.reason));
-  card.appendChild(renderFields(r.fields));
+  renderFields(r.fields, card);
   r.evidence.forEach(function (ev) { card.appendChild(renderEvidence(ev)); });
+  refreshCardState(card, r.entity_id);
   return card;
+}
+
+function renderCards(results) {
+  var out = clearResults();
+  results.forEach(function (r, i) { out.appendChild(renderCard(r, i)); });
 }
 
 function setStatus(text, kind) {
@@ -69,6 +196,89 @@ function clearResults() {
   var out = document.getElementById("results");
   while (out.firstChild) out.removeChild(out.firstChild);
   return out;
+}
+
+function showSkeletons() {
+  var out = clearResults();
+  for (var i = 0; i < 3; i++) { var s = el("div", "skeleton"); s.setAttribute("aria-hidden", "true"); out.appendChild(s); }
+}
+
+// Heuristic only (stop words and diacritics); shown as "detected", never as a fact about the evidence.
+function guessLanguage(q) {
+  var s = " " + q.toLowerCase() + " ";
+  if (/[Ѐ-ӿ]/.test(s)) return "RU";
+  if (/ (der|die|das|und|für|mit|von|zur|bei|in der) |[äöüß]/.test(s)) return "DE";
+  if (/ (le|la|les|des|pour|avec|et|du|de la) |[àâçèéêëîïôùû]/.test(s)) return "FR";
+  if (/ (il|lo|gli|per|con|della|delle|e) /.test(s)) return "IT";
+  return "EN";
+}
+
+function renderSummary(b, query, elapsedMs) {
+  var box = document.getElementById("summary");
+  clearNode(box);
+  box.hidden = false;
+  var total = b.timing_ms && typeof b.timing_ms.request_total === "number" ? b.timing_ms.request_total : elapsedMs;
+  box.appendChild(el("span", "pill latency", b.results.length + " result" + (b.results.length === 1 ? "" : "s") + " in " + Math.round(total) + " ms"));
+  var lang = guessLanguage(query);
+  if (lang !== "EN") box.appendChild(el("span", "pill", "Query language detected: " + lang + " (evidence may be in another language)"));
+}
+
+var OUTCOME_TEXT = {
+  low_confidence: ["Low confidence", "These results are weak matches. Check the quotes before relying on them."],
+  too_broad: ["Request is too broad", "Many things match. Narrow it down with one of the options below."],
+  no_evidence: ["Nothing found", "The indexed corpus has no supported evidence for this request."]
+};
+
+function renderOutcome(b) {
+  var box = document.getElementById("outcome");
+  clearNode(box);
+  var info = OUTCOME_TEXT[b.outcome];
+  if (!info) { box.hidden = true; return; }
+  box.hidden = false;
+  box.appendChild(el("h2", null, info[0]));
+  box.appendChild(el("p", null, info[1]));
+  var chips = el("div", "chips");
+  (b.suggestions || []).forEach(function (s) {
+    chips.appendChild(button(s.label, function () { applySuggestion(s); }, "chip"));
+  });
+  if (chips.firstChild) box.appendChild(chips);
+}
+
+function applySuggestion(s) {
+  if (s.kind === "entity_type") { setType(s.value || ""); runSearch([]); }
+  else if (s.kind === "rephrase" && s.value) { document.getElementById("query").value = s.value; runSearch([]); }
+}
+
+function setType(value) {
+  selectedType = value;
+  var chips = document.querySelectorAll("#type-chips .chip");
+  for (var i = 0; i < chips.length; i++) chips[i].setAttribute("aria-checked", String(chips[i].dataset.value === value));
+}
+
+function initHero() {
+  var group = document.getElementById("type-chips");
+  TYPES.forEach(function (t) {
+    var c = button(t[1], function () { setType(t[0]); }, "chip");
+    c.dataset.value = t[0]; c.setAttribute("role", "radio");
+    group.appendChild(c);
+  });
+  setType("");
+  var ex = document.getElementById("examples");
+  EXAMPLES.forEach(function (e) {
+    var b = button("", function () { document.getElementById("query").value = e[1]; userNeeds = []; suggestedNeeds = []; runSearch([]); }, "example");
+    b.appendChild(el("span", "lang", e[0]));
+    b.appendChild(document.createTextNode(e[1]));
+    ex.appendChild(b);
+  });
+  var toggle = document.getElementById("shortlist-toggle"), drawer = document.getElementById("shortlist");
+  toggle.addEventListener("click", function () {
+    drawer.hidden = !drawer.hidden;
+    toggle.setAttribute("aria-expanded", String(!drawer.hidden));
+  });
+  document.addEventListener("keydown", function (ev) {
+    if (ev.key === "Escape" && !drawer.hidden) { drawer.hidden = true; toggle.setAttribute("aria-expanded", "false"); toggle.focus(); }
+  });
+  renderShortlist();
 }
 
 var eventSource = null;
@@ -86,7 +296,7 @@ function needNote(text) {
   var box = document.getElementById("needs");
   clearNode(box);
   box.hidden = false;
-  box.appendChild(el("p", "meta", text));
+  box.appendChild(el("p", "meta" + (/^Interpreting/.test(text) ? " busy" : ""), text.replace(/^Interpreting/, "Apertus is analysing") ));
 }
 
 function button(label, onclick, cls) {
@@ -190,6 +400,9 @@ function renderAssessment(a) {
     box.appendChild(el("p", "meta", "Open questions: " + a.unresolved_questions.join(" | ")));
   }
   card.appendChild(box);
+  card.classList.remove("flash");
+  void card.offsetWidth; // restart the highlight animation
+  card.classList.add("flash");
 }
 
 function startEnrichment(body, requestId, myRevision) {
@@ -222,8 +435,7 @@ function startEnrichment(body, requestId, myRevision) {
       // T30: validated ranking over the original query plus Apertus expansions replaces the cards.
       var d = parse(e);
       if (!d || !d.payload.results.length) return;
-      var out = clearResults();
-      d.payload.results.forEach(function (r) { out.appendChild(renderCard(r)); });
+      renderCards(d.payload.results);
       setStatus(d.payload.results.length + " result(s), updated with Apertus query expansion (" +
                 d.payload.expanded_queries.join(", ") + ")", "");
     });
@@ -247,13 +459,18 @@ function startEnrichment(body, requestId, myRevision) {
 function runSearch(needs) {
   var query = document.getElementById("query").value.trim();
   if (!query) { setStatus("Enter a keyword or a short description.", "warn"); return; }
-  var type = document.getElementById("type").value;
+  var type = selectedType;
   var interpret = document.getElementById("interpret").checked;
   revision += 1;
   var myRevision = revision;
   closeEvents();
+  var started = performance.now();
+  document.body.classList.add("searched");
+  queryTerms = termsOf(query);
+  document.getElementById("summary").hidden = true;
+  document.getElementById("outcome").hidden = true;
   setStatus("Searching…", "loading");
-  clearResults();
+  showSkeletons();
   clearNode(document.getElementById("limitations")); // never show the previous search's notes next to a new error
   var body = { schema_version: "1", query: query, revision: myRevision,
                entity_type: type || null, company_context: null, needs: needs || [],
@@ -266,15 +483,18 @@ function runSearch(needs) {
     return r.json().then(function (body) { return { ok: r.ok, status: r.status, body: body }; });
   }).then(function (res) {
     if (myRevision !== revision) return; // a newer search superseded this one
-    var out = clearResults();
     if (!res.ok) {
+      clearResults();
       var e = res.body && res.body.error;
       setStatus((e ? e.message : "Search failed.") + (e && e.retryable ? " You can retry." : ""), "error");
       return;
     }
     var b = res.body;
-    setStatus(b.results.length ? b.results.length + " result(s)" : "No results found in the indexed corpus.", "");
-    b.results.forEach(function (r) { out.appendChild(renderCard(r)); });
+    lastRequestId = b.request_id; lastRevision = b.revision;
+    setStatus(b.results.length ? "" : "No results found in the indexed corpus.", "");
+    renderCards(b.results);
+    renderSummary(b, query, performance.now() - started);
+    renderOutcome(b);
     var lim = document.getElementById("limitations");
     clearNode(lim);
     b.limitations.forEach(function (l) { lim.appendChild(el("li", null, l)); });
@@ -286,6 +506,7 @@ function runSearch(needs) {
   });
 }
 
+initHero();
 document.getElementById("form").addEventListener("submit", function (ev) {
   ev.preventDefault();
   userNeeds = []; suggestedNeeds = [];   // a fresh question starts fresh needs
