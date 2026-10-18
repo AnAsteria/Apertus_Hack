@@ -67,6 +67,8 @@ Required response: `schema_version`, `request_id`, `revision`, `results`, `limit
 {"schema_version":"1","request_id":"req_demo","revision":1,"results":[],"limitations":["Support was not found in the indexed corpus."],"enrichment_state":"not_requested","timing_ms":null}
 ```
 
+**T31 answer policy (proposed D11, additive):** the response may carry `outcome` (`confident|low_confidence|too_broad|no_evidence`, or absent from older producers) and `suggestions`, a list of `{kind: entity_type|institution|rephrase|coverage, label, value}`. `value` is something a client can apply (an entity type, a source host or query text); labels are fixed text or stored names, never model output. `too_broad` returns at most five example cards. The policy is deterministic and works without an LLM.
+
 A no-match query is a successful response, not 404; it does not claim global absence. Result entities are distinct; max aggregation proposed for v1, never unlimited score summation. Required type is respected. API serves source text only as escaped data; no HTML/model instruction execution.
 
 ## 6. Optional asynchronous enrichment and inference
