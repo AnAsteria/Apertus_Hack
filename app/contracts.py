@@ -81,6 +81,15 @@ class Result(BaseModel):
         return self
 
 
+class Suggestion(BaseModel):
+    """A way to narrow or rephrase the request (T31). `value` is what a client may apply
+    (entity type, source host or query text); labels are fixed text or stored names."""
+    model_config = ConfigDict(extra="forbid")
+    kind: Literal["entity_type", "institution", "rephrase", "coverage"]
+    label: str
+    value: Optional[str] = None
+
+
 class SearchResponse(Strict):
     request_id: str
     revision: int = Field(ge=1)
@@ -88,6 +97,10 @@ class SearchResponse(Strict):
     limitations: list[str]
     enrichment_state: Literal["not_requested", "pending", "unavailable"]
     timing_ms: Optional[dict] = None  # actual measured values only
+    # T31 (proposed D11, additive): deterministic answer policy. Optional with defaults, so
+    # existing producers and clients stay valid.
+    outcome: Optional[Literal["confident", "low_confidence", "too_broad", "no_evidence"]] = None
+    suggestions: list[Suggestion] = []
 
 
 # --- section 6: SSE envelope --------------------------------------------------

@@ -141,6 +141,18 @@ def test_query_level_dense_abstention(built):
     assert HybridBackend(directory,encoder=encoder,mode='keyword').search(req('glucose laser')).results
 
 
+def test_backend_reports_outcome_and_limits_broad_examples(built,monkeypatch):
+    data,directory,encoder,records,_=built
+    backend=HybridBackend(directory,encoder=encoder,min_dense=.5)
+    confident=backend.search(req('laser'))
+    assert confident.outcome=='confident' and confident.suggestions==[]
+    abstained=backend.search(req('glucose laser'))
+    assert abstained.outcome=='no_evidence' and abstained.results==[]
+    monkeypatch.setenv('BERNMATCH_CONFIDENT_DENSE','1.01')
+    low=backend.search(req('laser'))
+    assert low.outcome=='low_confidence' and low.results and any('low confidence' in x for x in low.limitations)
+
+
 def test_stemming_compounds_and_multilingual_terms():
     assert set(analyze('Krebserkrankungen','de')) & set(query_terms('Krebs'))
     assert analyze('cancers','en')==analyze('cancer','en')

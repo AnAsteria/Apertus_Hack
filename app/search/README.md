@@ -15,6 +15,8 @@ Worker `maxim-T09`; Refs #9. Implements the accepted T06 passage/stub vertical s
 - API integration uses the existing `SearchBackend` hook, preserving synthetic fixture mode and 413/503/501 behavior. A legacy empty `READY` marker does not invent a backend. Accepted T12 suppression is preserved around the API response and checked before ranking, including explicit aliases, for direct backend/CLI queries as well. Missing/unavailable local embedding assets retain keyword search; corrupted evidence/vector assets reject loading. No Apertus dependency is imported on the fast path. Requested enrichment is reported unavailable until its integration task supplies it.
 - Server timings include keyword, local dense, rank, backend total, and route `request_total` (including first-load work). These are actual request measurements, not target guarantees.
 
+- **Answer policy (T31, `app/search/outcome.py`):** every response carries an `outcome`. `no_evidence` when nothing passes abstention; `too_broad` when the request has at most one topic word and the cards are spread over many sources with flat similarity (five examples plus institution / type / rephrase suggestions); `low_confidence` when the best dense similarity is below `BERNMATCH_CONFIDENT_DENSE` (default 0.88) or only keyword matching ran; otherwise `confident`. Topic words exclude quantifiers, request verbs and generic role nouns in EN/DE/FR/IT.
+
 ## Operator commands
 
 Python 3.12; install inside an isolated environment alongside the root requirements:

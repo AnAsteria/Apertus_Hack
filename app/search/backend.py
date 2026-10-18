@@ -10,6 +10,7 @@ from app.storage.indexes import IndexStore
 from .analysis import analyze,language_of,match_expression,query_terms,words
 from .encoder import OnnxEncoder,digest
 from .ranking import entity_max,reciprocal_rank_fusion,diversify,non_entity_page,DEMOTION
+from .outcome import classify,thresholds
 
 
 def freshness(evidence, now=None):
@@ -109,7 +110,7 @@ class HybridBackend:
         best_dense = max((score for score,_ in dense.values()),default=0.)
         if dense_ok and best_dense < self.abstain_dense:
             limitations.append('No stored passage was similar enough to the request; support was not found in the indexed corpus.')
-            return self._response(req,[],limitations,enrichment,start,timing)
+            return self._response(req,[],limitations,enrichment,start,timing,dense_ok=dense_ok,best_dense=best_dense,abstain=self.abstain_dense)
         t = time.perf_counter()
         fused = reciprocal_rank_fusion([keyword,dense])
         demoted = {eid for eid in fused if non_entity_page(self.entities[eid]['entity']['name'],
@@ -155,12 +156,19 @@ class HybridBackend:
                 'entry_kind':entry['kind'],'demoted_listing_page':eid in demoted,'query_language':query_language,'mode':self.mode,
                 'resolution_state':entity['resolution_state'],'entity_status':entity['status'],
                 'model':self.manifest['model']['repo'],'generation':self.manifest['generation']}))
-        return self._response(req,results,limitations,enrichment,start,timing)
+        return self._response(req,results,limitations,enrichment,start,timing,dense_ok=dense_ok,best_dense=best_dense,abstain=self.abstain_dense)
 
     @staticmethod
-    def _response(req,results,limitations,enrichment,start,timing):
+    def _response(req,results,limitations,enrichment,start,timing,*,dense_ok=False,best_dense=0.,abstain=0.):
         if not results:
             limitations.append('Support was not found above the retrieval thresholds in the indexed corpus.')
+        outcome,suggestions,note = classify(req.query,results,dense_ok=dense_ok,best_dense=best_dense,abstain_dense=abstain)
+        if outcome=='too_broad':
+            # Examples only: a broad request has no defensible ranking of ten matches.
+            results = [r.model_copy(update={'rank':i}) for i,r in enumerate(results[:5],1)]
+        if note:
+            limitations.append(note)
         timing['total'] = (time.perf_counter()-start)*1000
         return SearchResponse(schema_version='1',request_id='req_'+uuid.uuid4().hex,revision=req.revision,
-                              results=results,limitations=limitations,enrichment_state=enrichment,timing_ms=timing)
+                              results=results,limitations=limitations,enrichment_state=enrichment,timing_ms=timing,
+                              outcome=outcome,suggestions=suggestions)
