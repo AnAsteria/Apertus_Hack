@@ -127,3 +127,7 @@ Fast-path searches only, no enrichment. 10 non-gold queries, sent from one lapto
 | 10 | 100 | 0 | 3.7 req/s | 2,768 / 3,325 ms | 2,416 / 2,969 ms |
 
 All 110 requests succeeded. Under 10 concurrent users, requests **queue on the CPU**: server time rises about 20×, and p95 of about 3.3 s is at the edge of the 3 s first-card target. Likely cause: every query runs the ONNX encoder with `BERNMATCH_ORT_THREADS=8`, so concurrent requests compete for the same 8 cores. Untested options: fewer threads per request (e.g. 2) for more parallelism, a small query-embedding cache, or a larger Space. One client location, one run; not a capacity guarantee.
+
+## Cold start (EXTRA D2, #135, 2026-10-18)
+
+In-process on an Apple M1 with the extracted bundle, 3 runs: import 0.2–0.3 s; **first search 1.0–1.3 s**, which loads the index metadata, the mmap'd vectors and the ONNX model; second search 0.05–0.06 s. On the Space, Dimitry measured about 7 s from container start to the index restored from the bundle (#84), plus about 3 s for the first call after a start (#11). A full container restart → `/readyz` 200 → first search on the Space has not been re-measured with the current `main`; that needs the Space owner's restart (left for T33).
