@@ -14,6 +14,7 @@ from .outcome import classify,thresholds
 from .explain import channel_ranks,matched_words,reason as explain_reason
 from . import rerank as rerank_mod
 from .typehint import preferred_type,BOOST as TYPE_BOOST
+from .acronyms import AcronymTable
 
 
 def freshness(evidence, now=None):
@@ -70,6 +71,9 @@ class HybridBackend:
                 self.encoder_error = True
         self.min_dense,self.mode = min_dense,mode
         self.reranker = rerank_mod.load_from_env() if reranker is None else (reranker or None)
+        # EXTRA A4: acronym table mined in the background from stored sentences (cached).
+        self.acronyms = AcronymTable(self.store,os.environ.get('BERNMATCH_DATA_DIR',str(self.store.root.parent.parent))) \
+            if os.environ.get('BERNMATCH_ACRONYMS','0')=='1' else None
 
     def search(self, req):
         start = time.perf_counter()
@@ -96,7 +100,9 @@ class HybridBackend:
             return self._response(req,[],limitations,enrichment,start,timing)
         query_language = language_of(req.query)
         t = time.perf_counter()
-        keyword = entity_max(self.store.keyword(match_expression(query_terms(req.query))),self.entries,allowed) if self.mode!='dense' else {}
+        extra_forms = self.acronyms.variants(req.query) if self.acronyms is not None else []
+        keyword_text = ' '.join([req.query]+extra_forms)
+        keyword = entity_max(self.store.keyword(match_expression(query_terms(keyword_text))),self.entries,allowed) if self.mode!='dense' else {}
         timing['keyword'] = (time.perf_counter()-t)*1000
         t = time.perf_counter()
         dense = {}; vector_winners = {}; dense_ok = False
@@ -190,7 +196,7 @@ class HybridBackend:
                 'entry_kind':entry['kind'],'demoted_listing_page':eid in demoted,'query_language':query_language,'mode':self.mode,
                 'keyword_rank':keyword_ranks.get(eid),'dense_rank':dense_ranks.get(eid),'matched_terms':matched,
                 'evidence_language':evidence_language,'channels':[c for c,ranks in (('keyword',keyword_ranks),('dense',dense_ranks)) if eid in ranks],
-                'query_variant':'original','reranked':reranked,'type_hint':type_hint,
+                'query_variant':'original','reranked':reranked,'type_hint':type_hint,'acronym_forms':extra_forms,
                 'resolution_state':entity['resolution_state'],'entity_status':entity['status'],
                 'model':self.manifest['model']['repo'],'generation':self.manifest['generation']}))
         return self._response(req,results,limitations,enrichment,start,timing,dense_ok=dense_ok,best_dense=best_dense,abstain=self.abstain_dense)
