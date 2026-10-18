@@ -58,7 +58,7 @@ Branch `codex/issue-<n>-<slug>`, pull request referencing `Refs #n`, green CI, d
 
 ## Deviations
 
-- **D1 (T10, proposed, needs contract-owner approval):** `Result.fields` values changed from bare claim-id strings to `{claim_id, value}` objects, so a card can show a supported claim's text without the UI resolving claims. Additive in intent but breaks any producer using the old shape. Implemented in `app/contracts.py`; `docs/CONTRACTS.md` not yet updated.
+- **D1 (T10, APPROVED by Ruihan as contract owner, 2026-10-18):** `Result.fields` values changed from bare claim-id strings to `{claim_id, value}` objects, so a card can show a supported claim's text without the UI resolving claims. Implemented in `app/contracts.py`; `docs/CONTRACTS.md` section 5 updated. Condition: `value` is copied by code from the stored claim (`Claim.value`, or the object entity's name for relation claims) and only for surfaceable (`supported`/`qualified`) claims. It is never model-authored text. Producers of `Result` (T09/T11) must use this shape.
 - **D2 (T10):** the search route moved to `app/api/search.py` with a pluggable backend. Fixture mode (`BERNMATCH_FIXTURE_MODE=1`) serves synthetic cards for UI work only; it is off by default and labels its output synthetic.
 - **D3 (R1, proposed by Maxim, pending):** `content_hash` = SHA-256 of the cleaned main text, not raw response bytes.
 - **D4 (R1, proposed by Maxim, pending):** crawl budget profiles `dev` (small, development) and `final` (maximum feasible, for final runs/benchmarks/demo); limits live in configuration.
