@@ -155,3 +155,10 @@ mark { background: var(--mark); color: inherit; border-radius: 3px; padding: 0 .
   #print-view .pv-entry { break-inside: avoid; }
   #print-view .pv-footer { margin-top: 1.2rem; border-top: 1px solid #888; padding-top: .3rem; }
 }
+
+/* T13 operator page */
+.table-wrap { overflow-x: auto; }
+#sources { border-collapse: collapse; width: 100%; font-size: .85rem; background: var(--panel); }
+#sources th, #sources td { text-align: left; padding: .35rem .5rem; border-bottom: 1px solid var(--line); white-space: nowrap; }
+#sources td:nth-child(n+2):nth-child(-n+6), #sources th:nth-child(n+2):nth-child(-n+6) { text-align: right; }
+#token { flex: 1; padding: .45rem; font: inherit; background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 8px; }

@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="robots" content="noindex">
+  <title>Bern Match admin</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <span class="brand">Bern Match <span class="meta">operator</span></span>
+    <a class="meta" href="./">Back to search</a>
+  </header>
+  <main>
+    <h1>Coverage and refresh</h1>
+    <form id="login" class="needs">
+      <label for="token">Admin token</label>
+      <div class="row">
+        <input type="password" id="token" autocomplete="off" required>
+        <button type="submit" class="primary">Load</button>
+      </div>
+      <p class="meta">The token is kept in this page's memory only and sent as a header. It is never stored or put in a URL.</p>
+    </form>
+    <p id="status" class="status" role="status" aria-live="polite"></p>
+    <section id="overview" hidden>
+      <div id="totals" class="summary"></div>
+      <p id="note" class="meta"></p>
+      <h2>Jobs</h2>
+      <p class="meta">Refresh only queues a job: the refresh executor is not built yet (T12), so a queued job does not mean a crawl ran.</p>
+      <div id="jobs"></div>
+      <h2>Feedback received</h2>
+      <div id="feedback" class="summary"></div>
+      <h2>Sources</h2>
+      <div class="table-wrap">
+        <table id="sources">
+          <thead><tr><th>Source</th><th>Pages</th><th>Active</th><th>Retired</th><th>Suppressed</th><th>Sentences</th><th>Last fetched</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+  <script src="admin.js"></script>
+</body>
+</html>

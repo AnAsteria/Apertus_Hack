@@ -71,3 +71,42 @@ def test_refresh_queues_one_job_per_source_and_never_claims_a_crawl(client):
     assert again.status_code == 429
     cov = client.get("/api/v1/admin/coverage", headers=h).json()
     assert cov["jobs_by_state"] == {"queued": 1}
+
+
+def _corpus(path):
+    import sqlite3
+    db = sqlite3.connect(path)
+    db.execute("CREATE TABLE versions (id TEXT PRIMARY KEY, body TEXT NOT NULL)")
+    db.execute("CREATE TABLE sentences (id TEXT PRIMARY KEY, version_id TEXT NOT NULL, body TEXT NOT NULL)")
+    pages = [("v1", "https://www.artorg.unibe.ch/a", "active", "2026-10-18T10:00:00+00:00"),
+             ("v2", "https://www.artorg.unibe.ch/b", "retired", "2026-10-18T12:00:00+00:00"),
+             ("v3", "https://www.dcberne.com/x", "active", None)]
+    for vid, url, state, fetched in pages:
+        db.execute("INSERT INTO versions VALUES (?,?)", (vid, json.dumps({"url": url, "state": state, "fetched_at": fetched})))
+    for i, vid in enumerate(["v1", "v1", "v2", "v3"]):
+        db.execute("INSERT INTO sentences VALUES (?,?,?)", (f"s{i}", vid, "{}"))
+    db.commit(); db.close()
+
+
+def test_coverage_counts_pages_and_sentences_per_source(client, tmp_path):
+    _corpus(tmp_path / "corpus.sqlite")
+    client.post("/api/v1/feedback", json=FB)
+    cov = client.get("/api/v1/admin/coverage", headers={"X-Admin-Token": TOKEN}).json()
+    art, dcb = cov["sources"]
+    assert art == {"source": "www.artorg.unibe.ch", "pages": 2, "active": 1, "retired": 1, "suppressed": 0,
+                   "sentences": 3, "fetched_first": "2026-10-18T10:00:00+00:00", "fetched_last": "2026-10-18T12:00:00+00:00"}
+    assert dcb["pages"] == 1 and dcb["sentences"] == 1 and dcb["fetched_last"] is None
+    assert cov["totals"] == {"pages": 3, "active": 2, "retired": 1, "suppressed": 0, "sentences": 4}
+    assert cov["feedback_by_action"] == {FB["action"]: 1}
+
+
+def test_coverage_without_corpus_says_so(client):
+    cov = client.get("/api/v1/admin/coverage", headers={"X-Admin-Token": TOKEN}).json()
+    assert cov["sources"] == [] and "totals" not in cov and "No corpus is loaded" in cov["note"]
+
+
+def test_admin_page_keeps_the_token_in_memory_and_renders_text_only():
+    js = open(os.path.join(os.path.dirname(__file__), "..", "..", "app", "static", "admin.js"), encoding="utf-8").read()
+    for bad in ("innerHTML", "outerHTML", "insertAdjacentHTML", "document.write", "localStorage", "sessionStorage", "document.cookie", "?token", "&token"):
+        assert bad not in js
+    assert '"X-Admin-Token": token' in js
