@@ -16,6 +16,12 @@ Refs #14. Written by Dimitry (T14 reassigned from Maxim, see the grant on #14). 
 
 The 0.2 additions, including evaluation groups I16-I19 and the evaluation-split variants, were written by Maxim, who also builds and tunes T09 retrieval. Each expected entity was taken from stored T06 final-corpus sentences **before** any search run on that query; no evaluation query was run against the system while writing. Earlier, the T09 abstention threshold (0.865) was chosen on development queries and off-topic probes only. This authorship is a limitation for the report: Ruihan's review (R1) decides whether the evaluation split is accepted as written, edited, or replaced, and then freezes it.
 
+## Disclosure: an evaluation intent was viewed before the re-score (2026-10-18)
+
+While checking that the 70B fields reached the live Space (about 20:43 and 20:53 Zurich), Claude, working for Maxim, sent the ad hoc query "ultrasound robotics micro technologies" twice. That is close to the evaluation query **I17-en** ("A researcher who personally works on ultrasound-driven robotics and micro technologies for medicine"). The returned cards were seen; the expected person appeared at rank 4 among the first five.
+
+The observation was **not used** for any threshold, ranking or fusion choice: T31 thresholds, the abstention value 0.83 and the dense/BM25 fusion weight were chosen on the development split and on non-gold probes only. Gold 0.3 stays frozen and unchanged; Ruihan (reviewer) decides whether I17 is kept as is, flagged in the report, or replaced in a new gold version. Any later evaluation-split result that includes I17 should carry this note.
+
 ## Gold set rules
 
 - Expected entities are keyed by **canonical source URLs** (the profile page plus its language variants), not entity IDs, because IDs only exist after T06/T08 ran. A card matches when one of its evidence URLs is listed, its entity type is acceptable and, if `names` is given, its display name contains an alias. `names` exists because two programmes can share one page (S02: CTR and RNS), and a sibling on the same page must not count as a hit.
