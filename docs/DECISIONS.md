@@ -1,14 +1,14 @@
 # Decisions log (T01)
 
-**Status: PROPOSED by Dimitry on 2026-10-18. Partly approved: Ruihan (contract owner) approved D1 and D3-D7 on 2026-10-18; Dimitry acknowledged D8. Maxim has not yet approved the identifier recipes, limits and merge policy below.** Nothing below is ratified until each row is marked APPROVED with a name and date. Where `CONTRACTS.md` says "fixed in T01", this file supplies the proposed value so that independent work does not invent incompatible recipes.
+**Status (2026-10-18, T01 close-out): ACCEPTED IN PRACTICE, with one stated gap.** Roles and decisions below are in force because the team has been working under them: grants were recorded on the issues and acknowledged by the workers, and shared files, contracts and merge policy were used as written. Ruihan (contract owner) explicitly approved D1 and D3-D7 and acknowledged D9; Dimitry acknowledged D8. **Maxim never posted an explicit approval of this file**; his accepted work follows it (D3 cleaned-text hashes, D8 identifier helpers, the 365-day freshness rule, the pull-request merge policy). The removal route, operator contact and retention periods are NOT settled: they stay open under T12 (#12) and `docs/data-policy.md`.
 
-## Roles (to confirm)
+## Roles
 
 | Role | Proposed holder | Approval |
 | --- | --- | --- |
-| Dispatcher / integration owner | Dimitry | pending |
-| Contract owner (`docs/CONTRACTS.md`, shared schemas) | Ruihan | pending |
-| Data/search lead | Maxim | pending |
+| Dispatcher / integration owner | Dimitry | accepted: acting since 2026-10-18; every grant recorded on its issue |
+| Contract owner (`docs/CONTRACTS.md`, shared schemas) | Ruihan | accepted: acting; approved D1, D3-D7, acknowledged D9 (PRs #47, #64) |
+| Data/search lead | Maxim | accepted in practice: acknowledged grants on #6 and #9, followed D3/D8/365-day freshness; no explicit approval posted |
 
 Deviation recorded: Dimitry instructed T01 drafting and T04 scaffolding to start on 2026-10-18 before Maxim and Ruihan approved this file. T04 work is therefore at risk of rework if a decision below changes. The T04 PR must not merge until the rows it depends on are approved.
 
