@@ -90,8 +90,25 @@ Target "< 3 s to first cards": **met with a large margin** for server compute (p
 
 Target "complete enrichment < 15 s": **not met on the full corpus.** With real cards (longer evidence), 8B assessment batches took a median 9.3 s instead of 2.5–3.6 s on the earlier 8-candidate sample, so assessing the top 10 alone took a median 18.6 s. Interpretation adds 1.5–52 s (shared-gateway variance). Mitigations: assess fewer candidates, run batches concurrently, or trim evidence per candidate. The first cards never wait for enrichment (T18/T19 run over SSE), so this delay affects only the suggestions panel and assessment labels.
 
+## 7. Live enrichment on the deployed Space (2026-10-18, 21:57 Zurich, 10 fictional companies)
+
+Client-side timings, including network, from search request to SSE events. Interpretation uses 70B and assessment 8B (deployed defaults).
+
+| Stage | Median | p95 | n |
+| --- | --- | --- | --- |
+| First cards | 0.50 s | 2.2 s | 10 |
+| Interpretation event | 4.9 s | 6.7 s | 10 |
+| First assessment event | 8.9 s | 10.7 s | 9 |
+| Enrichment complete | 13.2 s | 34.0 s | 10 |
+
+2 of 10 runs ended assessment with `ASSESSMENT_UNAVAILABLE` (gateway timeouts), which drives the p95. Assessment tokens per request: about 1.5–2.3k input and 0.6–1.6k output.
+
+## 8. T20 on the deployed bundle (frozen gold 0.3, evaluation split)
+
+See `docs/report/ai-evaluation-cost.md` for the full table. Hybrid 0.65 → hybrid + 70B expansion 0.82 Recall@10 at abstention threshold 0.83 (correct abstention 0.0); at 0.865: 0.41 → 0.59 with correct abstention 1.0. 8B expansion: 0.65 at 1.3 s median, vs 70B 0.82 at 4.9 s.
+
 ## Not measured (and why)
 
-- **Concurrent load on the live Space:** the deployed index wasn't available when this sheet was written; to be added from the Space once T11 deploys the full index.
+- **Concurrent load on the live Space:** not measured; the live check above ran requests one after another.
 - **Separate prefill/generation throughput:** the gateway doesn't expose it; time to first token is reported instead.
 - **Keera price:** not published to us, so the cost worksheet keeps it as a variable.
