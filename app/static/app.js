@@ -159,6 +159,40 @@ function renderShortlist() {
   document.getElementById("shortlist-count").textContent = String(n);
 }
 
+var LANG_NAMES = { en: "English", de: "German", fr: "French", it: "Italian", ru: "Russian" };
+
+function langName(code) { return LANG_NAMES[code] || (code ? String(code).toUpperCase() : "unknown"); }
+
+// "Why this result?" (T36 data): only retrieval signals the server measured, no model text.
+function renderWhy(r) {
+  var t = r.retrieval || {};
+  var box = el("details", "why");
+  box.appendChild(el("summary", null, "Why this result?"));
+  var dl = el("dl", "fields");
+  function row(label, value) { if (value === null || value === undefined || value === "") return; dl.appendChild(el("dt", null, label)); dl.appendChild(el("dd", null, value)); }
+  var found = [];
+  if (t.keyword_rank) found.push("keyword search, rank " + t.keyword_rank);
+  if (t.dense_rank) found.push("meaning similarity, rank " + t.dense_rank);
+  row("Found by", found.join(" and ") || null);
+  if (t.matched_terms && t.matched_terms.length) {
+    var dd = el("dd", "terms");
+    t.matched_terms.forEach(function (w) { dd.appendChild(el("span", "badge", w)); });
+    dl.appendChild(el("dt", null, "Matched words")); dl.appendChild(dd);
+  }
+  if (t.query_language || t.evidence_language) row("Language", langName(t.query_language) + " request → " + langName(t.evidence_language) + " evidence");
+  if (t.query_variants && t.query_variants.length) row("Query used", t.query_variant === "expansion" ? "Apertus expansion: " + t.query_variants.join(", ") : "your wording");
+  if (t.demoted_listing_page) row("Ranked lower", "the page looks like a listing, news or report page");
+  var scores = [];
+  if (typeof t.bm25 === "number") scores.push("keyword " + t.bm25.toFixed(2));
+  if (typeof t.dense === "number") scores.push("similarity " + t.dense.toFixed(3));
+  if (typeof t.rrf === "number") scores.push("fused " + t.rrf.toFixed(4));
+  row("Scores", scores.join(" · ") || null);
+  if (!dl.firstChild) return null;
+  box.appendChild(dl);
+  box.appendChild(el("p", "meta", "Computed by the search engine from stored source text. Not a probability and not AI-generated."));
+  return box;
+}
+
 function renderCard(r, index) {
   var src = sourceOf(r.evidence[0].url);
   var card = el("article", "card appear src-" + src.key);
@@ -180,12 +214,40 @@ function renderCard(r, index) {
   tags.appendChild(el("span", "badge tag-" + src.key, src.label));
   tags.appendChild(el("span", "badge", (TYPE_ICONS[r.entity_type] || "") + " " + r.entity_type));
   tags.appendChild(el("span", "badge fresh-" + r.freshness, r.freshness));
+  var rt = r.retrieval || {};
+  if (rt.query_language && rt.evidence_language && rt.query_language !== rt.evidence_language)
+    tags.appendChild(el("span", "badge lang", String(rt.query_language).toUpperCase() + " → " + String(rt.evidence_language).toUpperCase()));
   card.appendChild(tags);
   card.appendChild(el("p", "reason", r.reason));
   renderFields(r.fields, card);
   r.evidence.forEach(function (ev) { card.appendChild(renderEvidence(ev)); });
+  var why = renderWhy(r);
+  if (why) card.appendChild(why);
   refreshCardState(card, r.entity_id);
   return card;
+}
+
+// T30 reranked event: cards slide from their old place to the new one; new and moved cards are marked.
+function rerankCards(results) {
+  var out = document.getElementById("results");
+  var before = {}, oldRank = {};
+  Array.prototype.forEach.call(out.querySelectorAll(".card"), function (c, i) {
+    before[c.dataset.entity] = c.getBoundingClientRect().top; oldRank[c.dataset.entity] = i + 1;
+  });
+  clearNode(out);
+  var still = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  results.forEach(function (r, i) {
+    var card = renderCard(r, 0);
+    card.classList.remove("appear");
+    var was = oldRank[r.entity_id];
+    var note = !was ? "new with Apertus expansion" : was > r.rank ? "↑ moved up from " + was : was < r.rank ? "↓ moved down from " + was : "";
+    if (note) { card.classList.add("moved"); card.querySelector(".tags").appendChild(el("span", "badge moved-badge", note)); }
+    out.appendChild(card);
+    if (still) return;
+    var top = card.getBoundingClientRect().top;
+    if (was && card.animate) card.animate([{ transform: "translateY(" + (before[r.entity_id] - top) + "px)" }, { transform: "none" }], { duration: 450, easing: "ease-out" });
+    else if (card.animate) card.animate([{ opacity: 0, transform: "translateY(8px)" }, { opacity: 1, transform: "none" }], { duration: 400, delay: i * 40, easing: "ease-out", fill: "backwards" });
+  });
 }
 
 function renderCards(results) {
@@ -226,8 +288,15 @@ function renderSummary(b, query, elapsedMs) {
   box.hidden = false;
   var total = b.timing_ms && typeof b.timing_ms.request_total === "number" ? b.timing_ms.request_total : elapsedMs;
   box.appendChild(el("span", "pill latency", b.results.length + " result" + (b.results.length === 1 ? "" : "s") + " in " + Math.round(total) + " ms"));
-  var lang = guessLanguage(query);
-  if (lang !== "EN") box.appendChild(el("span", "pill", "Query language detected: " + lang + " (evidence may be in another language)"));
+  var first = b.results[0] && b.results[0].retrieval;
+  var ql = first && first.query_language;
+  if (ql) {
+    var cross = b.results.filter(function (r) { var t = r.retrieval || {}; return t.evidence_language && t.evidence_language !== ql; }).length;
+    box.appendChild(el("span", "pill", langName(ql) + " request" + (cross ? " · " + cross + " card" + (cross === 1 ? "" : "s") + " with evidence in another language" : "")));
+  } else {
+    var lang = guessLanguage(query);
+    if (lang !== "EN") box.appendChild(el("span", "pill", "Query language detected: " + lang + " (evidence may be in another language)"));
+  }
 }
 
 var OUTCOME_TEXT = {
@@ -442,7 +511,7 @@ function startEnrichment(body, requestId, myRevision) {
       // T30: validated ranking over the original query plus Apertus expansions replaces the cards.
       var d = parse(e);
       if (!d || !d.payload.results.length) return;
-      renderCards(d.payload.results);
+      rerankCards(d.payload.results);
       setStatus(d.payload.results.length + " result(s), updated with Apertus query expansion (" +
                 d.payload.expanded_queries.join(", ") + ")", "");
     });
