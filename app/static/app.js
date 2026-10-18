@@ -23,8 +23,8 @@ var feedbackCounter = 0;
 var TYPE_ICONS = { person: "👤", unit: "🏛", project: "🧪", infrastructure: "🔬", service: "🛠" };
 var TYPES = [["", "Anything"], ["person", "People"], ["unit", "Groups"], ["project", "Projects"],
              ["infrastructure", "Infrastructure"], ["service", "Services"]];
-var EXAMPLES = [["EN", "continuous glucose monitoring sensors"], ["DE", "Bildgebung in der Herzchirurgie"],
-                ["FR", "robotique pour la rééducation"]];
+var EXAMPLES = [["DE", "Messung des Blutzuckers ohne Nadel für eine Smartwatch"],
+                ["EN", "continuous glucose monitoring sensors"], ["FR", "robotique pour la rééducation"]];
 var FIELD_LABELS = { role: "Role", affiliation: "Affiliation", part_of: "Part of", led_by: "Led by", leads: "Leads",
                      members: "Members", includes: "Includes", expertise: "Expertise", projects: "Projects",
                      infrastructure: "Infrastructure", services: "Services",
@@ -75,27 +75,44 @@ function highlighted(parent, text, terms) {
   return parent;
 }
 
+var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+function shortDate(iso) {
+  var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || "");
+  return m ? +m[3] + " " + MONTHS[+m[2] - 1] + " " + m[1] : null;
+}
+
+// Short readable link text: host + path, trimmed. The full URL stays in the tooltip.
+function shortUrl(url) {
+  try {
+    var u = new URL(url), s = u.hostname.replace(/^www\./, "") + u.pathname.replace(/\/$/, "");
+    return s.length > 60 ? s.slice(0, 57) + "…" : s;
+  } catch (e) { return url; }
+}
+
 function renderEvidence(ev) {
   var box = el("blockquote", "evidence");
   box.appendChild(highlighted(el("p", "quote"), ev.text, queryTerms));
   var meta = el("p", "meta");
-  var a = el("a", null, "Open source");
+  var a = el("a", "src", shortUrl(ev.url) + " ↗");
   // Only http(s) links are made clickable.
   if (/^https?:\/\//i.test(ev.url)) { a.href = ev.url; a.rel = "noopener noreferrer"; a.target = "_blank"; }
   a.title = ev.url;
   meta.appendChild(a);
-  meta.appendChild(document.createTextNode(" · " + ev.url));
+  // One compact date line; the full set is in the tooltip so nothing is lost.
+  var parts = [];
+  if (ev.content_date) parts.push("dated " + shortDate(ev.content_date));
+  if (ev.last_modified) parts.push("modified " + shortDate(ev.last_modified));
+  if (ev.fetched_at) parts.push("fetched " + shortDate(ev.fetched_at));
+  if (ev.page_number) parts.push("page " + ev.page_number);
+  var dates = el("span", null, parts.length ? " · " + parts.join(" · ") : "");
+  dates.title = dateLine("Source content date", ev.content_date) + " | " + dateLine("Last modified", ev.last_modified) + " | " + dateLine("Fetched", ev.fetched_at);
+  meta.appendChild(dates);
   box.appendChild(meta);
-  box.appendChild(el("p", "meta",
-    dateLine("Source content date", ev.content_date) + " | " +
-    dateLine("Last modified", ev.last_modified) + " | " +
-    dateLine("Fetched", ev.fetched_at) +
-    (ev.page_number ? " | page " + ev.page_number : "")));
   return box;
 }
 
 // Only fields that have supported values are shown; the rest collapse into one line.
-function renderFields(fields, card) {
+function renderFields(fields, card, notStatedTarget) {
   var dl = el("dl", "fields"), missing = [];
   Object.keys(FIELD_LABELS).forEach(function (k) {
     var vals = (fields && fields[k]) || [];
@@ -106,7 +123,7 @@ function renderFields(fields, card) {
     dl.appendChild(dd);
   });
   if (dl.childNodes.length) card.appendChild(dl);
-  if (missing.length) card.appendChild(el("p", "notstated", "Not stated in sources: " + missing.join(", ")));
+  if (missing.length) (notStatedTarget || card).appendChild(el("p", "notstated", "Not stated in sources: " + missing.join(", ")));
 }
 
 function sendFeedback(r, action) {
@@ -318,11 +335,20 @@ var LANG_NAMES = { en: "English", de: "German", fr: "French", it: "Italian", ru:
 
 function langName(code) { return LANG_NAMES[code] || (code ? String(code).toUpperCase() : "unknown"); }
 
+// The server's language guess on short queries is sometimes wrong (an English query shown as
+// Italian). When it disagrees with the simple check below, the page shows the simple check.
+function requestLang(serverCode) {
+  if (!lastQuery) return serverCode;
+  var guess = guessLanguage(lastQuery).toLowerCase();
+  return serverCode && String(serverCode).toLowerCase() === guess ? serverCode : guess;
+}
+
 // "Why this result?" (T36 data): only retrieval signals the server measured, no model text.
 function renderWhy(r) {
   var t = r.retrieval || {};
   var box = el("details", "why");
   box.appendChild(el("summary", null, "Why this result?"));
+  if (r.reason) box.appendChild(el("p", "reason", r.reason));
   var dl = el("dl", "fields");
   function row(label, value) { if (value === null || value === undefined || value === "") return; dl.appendChild(el("dt", null, label)); dl.appendChild(el("dd", null, value)); }
   var found = [];
@@ -334,7 +360,7 @@ function renderWhy(r) {
     t.matched_terms.forEach(function (w) { dd.appendChild(el("span", "badge", w)); });
     dl.appendChild(el("dt", null, "Matched words")); dl.appendChild(dd);
   }
-  if (t.query_language || t.evidence_language) row("Language", langName(t.query_language) + " request → " + langName(t.evidence_language) + " evidence");
+  if (t.query_language || t.evidence_language) row("Language", langName(requestLang(t.query_language)) + " request → " + langName(t.evidence_language) + " evidence");
   if (t.query_variants && t.query_variants.length) row("Query used", t.query_variant === "expansion" ? "Apertus expansion: " + t.query_variants.join(", ") : "your wording");
   if (t.demoted_listing_page) row("Ranked lower", "the page looks like a listing, news or report page");
   var scores = [];
@@ -342,11 +368,13 @@ function renderWhy(r) {
   if (typeof t.dense === "number") scores.push("similarity " + t.dense.toFixed(3));
   if (typeof t.rrf === "number") scores.push("fused " + t.rrf.toFixed(4));
   row("Scores", scores.join(" · ") || null);
-  if (!dl.firstChild) return null;
-  box.appendChild(dl);
+  if (!dl.firstChild && !r.reason) return null;
+  if (dl.firstChild) box.appendChild(dl);
   box.appendChild(el("p", "meta", "Computed by the search engine from stored source text. Not a probability and not AI-generated."));
   return box;
 }
+
+var QUOTES_SHOWN = 2;
 
 function renderCard(r, index) {
   var src = sourceOf(r.evidence[0].url);
@@ -370,14 +398,23 @@ function renderCard(r, index) {
   tags.appendChild(el("span", "badge", (TYPE_ICONS[r.entity_type] || "") + " " + r.entity_type));
   tags.appendChild(el("span", "badge fresh-" + r.freshness, r.freshness));
   var rt = r.retrieval || {};
-  if (rt.query_language && rt.evidence_language && rt.query_language !== rt.evidence_language)
-    tags.appendChild(el("span", "badge lang", String(rt.query_language).toUpperCase() + " → " + String(rt.evidence_language).toUpperCase()));
+  var ql = requestLang(rt.query_language);
+  if (ql && rt.evidence_language && ql !== rt.evidence_language)
+    tags.appendChild(el("span", "badge lang", String(ql).toUpperCase() + " → " + String(rt.evidence_language).toUpperCase()));
   card.appendChild(tags);
-  card.appendChild(el("p", "reason", r.reason));
-  renderFields(r.fields, card);
-  r.evidence.forEach(function (ev) { card.appendChild(renderEvidence(ev)); });
   var why = renderWhy(r);
-  if (why) card.appendChild(why);
+  if (!why) { why = el("details", "why"); why.appendChild(el("summary", null, "Why this result?")); }
+  renderFields(r.fields, card, why);
+  // The best quotes first; the rest fold away so one card never fills the screen.
+  r.evidence.slice(0, QUOTES_SHOWN).forEach(function (ev) { card.appendChild(renderEvidence(ev)); });
+  if (r.evidence.length > QUOTES_SHOWN) {
+    var more = el("details", "more-quotes");
+    var n = r.evidence.length - QUOTES_SHOWN;
+    more.appendChild(el("summary", null, "Show " + n + " more quote" + (n === 1 ? "" : "s")));
+    r.evidence.slice(QUOTES_SHOWN).forEach(function (ev) { more.appendChild(renderEvidence(ev)); });
+    card.appendChild(more);
+  }
+  if (why.childNodes.length > 1) card.appendChild(why);
   refreshCardState(card, r.entity_id);
   return card;
 }
@@ -444,7 +481,7 @@ function renderSummary(b, query, elapsedMs) {
   var total = b.timing_ms && typeof b.timing_ms.request_total === "number" ? b.timing_ms.request_total : elapsedMs;
   box.appendChild(el("span", "pill latency", b.results.length + " result" + (b.results.length === 1 ? "" : "s") + " in " + Math.round(total) + " ms"));
   var first = b.results[0] && b.results[0].retrieval;
-  var ql = first && first.query_language;
+  var ql = first && first.query_language && requestLang(first.query_language);
   if (ql) {
     var cross = b.results.filter(function (r) { var t = r.retrieval || {}; return t.evidence_language && t.evidence_language !== ql; }).length;
     box.appendChild(el("span", "pill", langName(ql) + " request" + (cross ? " · " + cross + " card" + (cross === 1 ? "" : "s") + " with evidence in another language" : "")));
@@ -506,6 +543,9 @@ function initHero() {
     drawer.hidden = !drawer.hidden;
     toggle.setAttribute("aria-expanded", String(!drawer.hidden));
   });
+  document.getElementById("shortlist-close").addEventListener("click", function () {
+    drawer.hidden = true; toggle.setAttribute("aria-expanded", "false"); toggle.focus();
+  });
   document.addEventListener("keydown", function (ev) {
     if (ev.key === "Escape" && !drawer.hidden) { drawer.hidden = true; toggle.setAttribute("aria-expanded", "false"); toggle.focus(); }
   });
@@ -528,6 +568,13 @@ function closeEvents() {
 
 function clearNode(node) { while (node.firstChild) node.removeChild(node.firstChild); }
 
+function aiHead(text) {
+  var h = el("p", "ai-head");
+  h.appendChild(el("span", "ai-tag", "AI · Apertus"));
+  h.appendChild(document.createTextNode(text));
+  return h;
+}
+
 function needNote(text) {
   var box = document.getElementById("needs");
   clearNode(box);
@@ -546,6 +593,7 @@ function renderNeeds(payload) {
   var box = document.getElementById("needs");
   clearNode(box);
   box.hidden = false;
+  box.appendChild(aiHead("How Apertus read your request"));
   if (payload.synthetic || payload.decoding_mode === "synthetic") box.appendChild(el("p", "synthetic", "SYNTHETIC fixture interpretation: not a real model output."));
   box.appendChild(el("h3", null, "Your needs (editable)"));
   var list = el("ul", "needlist");
@@ -673,8 +721,8 @@ function startEnrichment(body, requestId, myRevision) {
       var d = parse(e);
       if (!d || !d.payload.results.length) return;
       rerankCards(d.payload.results);
-      setStatus(d.payload.results.length + " result(s), updated with Apertus query expansion (" +
-                d.payload.expanded_queries.join(", ") + ")", "");
+      setStatus("✦ Re-ranked with Apertus: " + d.payload.results.length + " results, now also searched as " +
+                d.payload.expanded_queries.length + " extra wording" + (d.payload.expanded_queries.length === 1 ? "" : "s") + " (listed above)", "");
     });
     es.addEventListener("assessment", function (e) {
       var d = parse(e);
@@ -710,6 +758,7 @@ function runSearch(needs) {
   setStatus("Searching…", "loading");
   showSkeletons();
   clearNode(document.getElementById("limitations")); // never show the previous search's notes next to a new error
+  document.getElementById("limits-box").hidden = true;
   var body = { schema_version: "1", query: query, revision: myRevision,
                entity_type: type || null, company_context: null, needs: needs || [],
                enrichment_requested: interpret };
@@ -736,6 +785,7 @@ function runSearch(needs) {
     var lim = document.getElementById("limitations");
     clearNode(lim);
     b.limitations.forEach(function (l) { lim.appendChild(el("li", null, l)); });
+    document.getElementById("limits-box").hidden = !b.limitations.length;
     if (b.enrichment_state === "pending") startEnrichment(body, b.request_id, myRevision);
     else if (b.enrichment_state === "unavailable") needNote("AI interpretation is not available right now. The results above are unaffected.");
     else document.getElementById("needs").hidden = true;
