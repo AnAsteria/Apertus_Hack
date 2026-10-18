@@ -1,9 +1,10 @@
 {
- "gold_version": "0.1-seed",
- "status": "SEED, NOT FROZEN: 18 queries, below the 30-50 target; expected entities are keyed by source URL because entity IDs do not exist yet; needs review by Ruihan and more lay/synonym variants before freezing",
+ "gold_version": "0.2-draft",
+ "status": "DRAFT, NOT FROZEN: 36 queries. 0.2 adds FR/IT/RU variants, development groups I14-I15, evaluation groups I16-I19 (written by Maxim, the T09 retrieval author, from corpus evidence before any run; independence limitation disclosed) and language-variant URLs as accept_also. Needs Ruihan review before freezing.",
  "pending_from_seeds": {
   "I08": "person/unit boundary needs real person evidence in the corpus",
-  "I09": "contact freshness: current contact is unlabelled pending evidence review"
+  "I09": "contact freshness: current contact is unlabelled pending evidence review",
+  "I10": "Re-checked on the T06 final corpus: no quantum-communication evidence; AIUB satellite geodesy exists and is a near-match, not a hit"
  },
  "queries": [
   {
@@ -82,6 +83,9 @@
      "names": [
       "AI in Health",
       "AIHN"
+     ],
+     "accept_also": [
+      "https://www.artorg.unibe.ch/forschung/dtr/research_activities/insulin_treatment_optimization/index_ger.html"
      ]
     }
    ],
@@ -115,6 +119,9 @@
      "names": [
       "AI in Health",
       "AIHN"
+     ],
+     "accept_also": [
+      "https://www.artorg.unibe.ch/forschung/dtr/research_activities/insulin_treatment_optimization/index_ger.html"
      ]
     }
    ],
@@ -213,6 +220,10 @@
       "Pharmacology",
       "Pharmakologie",
       "PKI"
+     ],
+     "accept_also": [
+      "https://www.pki.unibe.ch/index_eng.html",
+      "https://www.pki.unibe.ch/index_ger.html"
      ]
     }
    ],
@@ -243,6 +254,10 @@
       "Pharmacology",
       "Pharmakologie",
       "PKI"
+     ],
+     "accept_also": [
+      "https://www.pki.unibe.ch/index_eng.html",
+      "https://www.pki.unibe.ch/index_ger.html"
      ]
     }
    ],
@@ -507,6 +522,10 @@
      "names": [
       "Kocher",
       "TKI"
+     ],
+     "accept_also": [
+      "https://www.tki.unibe.ch/index_eng.html",
+      "https://www.tki.unibe.ch/index_ger.html"
      ]
     }
    ],
@@ -535,6 +554,10 @@
      "names": [
       "Kocher",
       "TKI"
+     ],
+     "accept_also": [
+      "https://www.tki.unibe.ch/index_eng.html",
+      "https://www.tki.unibe.ch/index_ger.html"
      ]
     }
    ],
@@ -542,6 +565,600 @@
     {
      "url": "https://www.tki.unibe.ch/",
      "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+    }
+   ]
+  },
+  {
+   "query_id": "I01-fr",
+   "intent_group_id": "I01",
+   "split": "development",
+   "text": "Partenaires de recherche sur la résistance des cancers aux traitements",
+   "language": "fr",
+   "requested_type": "unit",
+   "category": "cross_lingual",
+   "expected": [
+    {
+     "name": "Cancer Therapy Resistance (DBMR)",
+     "type": "unit",
+     "urls": [
+      "https://www.dbmr.unibe.ch/research/research_programs/index_eng.html"
+     ],
+     "names": [
+      "Cancer Therapy Resistance",
+      "CTR"
+     ]
+    }
+   ],
+   "provenance": [
+    {
+     "url": "https://www.dbmr.unibe.ch/research/research_programs/index_eng.html",
+     "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+    },
+    {
+     "url": "https://www.dbmr.unibe.ch/research/research_programs/index_eng.html",
+     "note": "Variant: Written by Maxim (T09 retrieval author) with Claude from stored T06 final-corpus sentences, BEFORE any search run on this query; NOT yet reviewed by Ruihan"
+    }
+   ],
+   "notes": "French query, English evidence"
+  },
+  {
+   "query_id": "I03-it",
+   "intent_group_id": "I03",
+   "split": "development",
+   "text": "Supporto decisionale basato sull'IA per adattare la terapia insulinica",
+   "language": "it",
+   "requested_type": "unit",
+   "category": "cross_lingual",
+   "expected": [
+    {
+     "name": "AI in Health and Nutrition (ARTORG)",
+     "type": "unit",
+     "urls": [
+      "https://www.artorg.unibe.ch/research/aihn/index_eng.html",
+      "https://www.artorg.unibe.ch/research/aihn/research_activities/adaptive_diabetes_management/index_eng.html"
+     ],
+     "names": [
+      "AI in Health",
+      "AIHN"
+     ],
+     "accept_also": [
+      "https://www.artorg.unibe.ch/forschung/dtr/research_activities/insulin_treatment_optimization/index_ger.html"
+     ]
+    }
+   ],
+   "provenance": [
+    {
+     "url": "https://www.artorg.unibe.ch/research/aihn/index_eng.html",
+     "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+    },
+    {
+     "url": "https://www.artorg.unibe.ch/research/aihn/research_activities/adaptive_diabetes_management/index_eng.html",
+     "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+    },
+    {
+     "url": "https://www.artorg.unibe.ch/research/aihn/index_eng.html",
+     "note": "Variant: Written by Maxim (T09 retrieval author) with Claude from stored T06 final-corpus sentences, BEFORE any search run on this query; NOT yet reviewed by Ruihan"
+    }
+   ],
+   "notes": "Italian query, English evidence"
+  },
+  {
+   "query_id": "I05-ru",
+   "intent_group_id": "I05",
+   "split": "development",
+   "text": "Пилотное исследование измерения глюкозы без прокола пальца",
+   "language": "ru",
+   "requested_type": "project",
+   "category": "cross_lingual",
+   "expected": [
+    {
+     "name": "SPN-005 painless glucose monitoring pilot (DCB)",
+     "type": "project",
+     "urls": [
+      "https://www.dcberne.com/en/project/spn-005-pilot-study-on-painless-glucose-monitoring/",
+      "https://www.dcberne.com/de/project/spn-005-pilotstudie-zur-schmerzfreien-blutzuckermessung/"
+     ],
+     "names": [
+      "SPN-005"
+     ]
+    }
+   ],
+   "provenance": [
+    {
+     "url": "https://www.dcberne.com/en/project/spn-005-pilot-study-on-painless-glucose-monitoring/",
+     "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+    },
+    {
+     "url": "https://www.dcberne.com/de/project/spn-005-pilotstudie-zur-schmerzfreien-blutzuckermessung/",
+     "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+    },
+    {
+     "url": "https://www.dcberne.com/en/project/spn-005-pilot-study-on-painless-glucose-monitoring/",
+     "note": "Variant: Written by Maxim (T09 retrieval author) with Claude from stored T06 final-corpus sentences, BEFORE any search run on this query; NOT yet reviewed by Ruihan"
+    }
+   ],
+   "notes": "Russian query, English/German evidence"
+  },
+  {
+   "query_id": "I13-fr",
+   "intent_group_id": "I13",
+   "split": "development",
+   "text": "Quelle plateforme donne accès aux technologies de séquençage des acides nucléiques ?",
+   "language": "fr",
+   "requested_type": "infrastructure",
+   "category": "cross_lingual",
+   "expected": [
+    {
+     "name": "NGS Platform",
+     "type": "infrastructure",
+     "accept_types": [
+      "service"
+     ],
+     "urls": [
+      "https://www.ngs.unibe.ch/"
+     ],
+     "names": [
+      "NGS",
+      "Sequencing"
+     ]
+    }
+   ],
+   "provenance": [
+    {
+     "url": "https://www.ngs.unibe.ch/",
+     "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+    },
+    {
+     "url": "https://www.ngs.unibe.ch/",
+     "note": "Variant: Written by Maxim (T09 retrieval author) with Claude from stored T06 final-corpus sentences, BEFORE any search run on this query; NOT yet reviewed by Ruihan"
+    }
+   ],
+   "notes": "French query, English evidence"
+  },
+  {
+   "query_id": "I02-it",
+   "intent_group_id": "I02",
+   "split": "evaluation",
+   "text": "Ricerca sulla riparazione del sistema nervoso dopo una lesione cerebrale",
+   "language": "it",
+   "requested_type": "unit",
+   "category": "cross_lingual",
+   "expected": [
+    {
+     "name": "Regenerative Neuroscience (DBMR)",
+     "type": "unit",
+     "urls": [
+      "https://www.dbmr.unibe.ch/research/research_programs/index_eng.html"
+     ],
+     "names": [
+      "Regenerative Neuroscience",
+      "RNS"
+     ]
+    }
+   ],
+   "provenance": [
+    {
+     "url": "https://www.dbmr.unibe.ch/research/research_programs/index_eng.html",
+     "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+    },
+    {
+     "url": "https://www.dbmr.unibe.ch/research/research_programs/index_eng.html",
+     "note": "Variant: Written by Maxim (T09 retrieval author) with Claude from stored T06 final-corpus sentences, BEFORE any search run on this query; NOT yet reviewed by Ruihan"
+    }
+   ],
+   "notes": "Italian query, English evidence"
+  },
+  {
+   "query_id": "I04-fr",
+   "intent_group_id": "I04",
+   "split": "evaluation",
+   "text": "Robotique et instruments miniatures pour la neurochirurgie",
+   "language": "fr",
+   "requested_type": "unit",
+   "category": "cross_lingual",
+   "expected": [
+    {
+     "name": "Neuro Robotics Group (ARTORG)",
+     "type": "unit",
+     "urls": [
+      "https://www.artorg.unibe.ch/research/nrg/index_eng.html"
+     ],
+     "names": [
+      "Neuro Robotics",
+      "NRG"
+     ]
+    }
+   ],
+   "provenance": [
+    {
+     "url": "https://www.artorg.unibe.ch/research/nrg/index_eng.html",
+     "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+    },
+    {
+     "url": "https://www.artorg.unibe.ch/research/nrg/index_eng.html",
+     "note": "Variant: Written by Maxim (T09 retrieval author) with Claude from stored T06 final-corpus sentences, BEFORE any search run on this query; NOT yet reviewed by Ruihan"
+    }
+   ],
+   "notes": "French query, English evidence"
+  },
+  {
+   "query_id": "I11-ru",
+   "intent_group_id": "I11",
+   "split": "evaluation",
+   "text": "Исследования барьеров мозга и иммунного надзора в центральной нервной системе",
+   "language": "ru",
+   "requested_type": "unit",
+   "category": "cross_lingual",
+   "expected": [
+    {
+     "name": "Theodor Kocher Institute",
+     "type": "unit",
+     "urls": [
+      "https://www.tki.unibe.ch/"
+     ],
+     "names": [
+      "Kocher",
+      "TKI"
+     ],
+     "accept_also": [
+      "https://www.tki.unibe.ch/index_eng.html",
+      "https://www.tki.unibe.ch/index_ger.html"
+     ]
+    }
+   ],
+   "provenance": [
+    {
+     "url": "https://www.tki.unibe.ch/",
+     "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+    },
+    {
+     "url": "https://www.tki.unibe.ch/",
+     "note": "Variant: Written by Maxim (T09 retrieval author) with Claude from stored T06 final-corpus sentences, BEFORE any search run on this query; NOT yet reviewed by Ruihan"
+    }
+   ],
+   "notes": "Russian query, English/German evidence"
+  },
+  {
+   "query_id": "I14-en",
+   "intent_group_id": "I14",
+   "split": "development",
+   "text": "Facility for high-parameter spatial single-cell analysis of tissue samples",
+   "language": "en",
+   "requested_type": "infrastructure",
+   "category": "professional",
+   "expected": [
+    {
+     "name": "Imaging Mass Cytometry and Mass Cytometry Platform",
+     "type": "infrastructure",
+     "urls": [
+      "https://www.bcpm.unibe.ch/research/platforms/imaging_mass_cytometry/",
+      "https://www.pki.unibe.ch/services/imaging_mass_cytometry_and_mass_cytometry_platform/index_eng.html",
+      "https://www.pki.unibe.ch/dienstleistungen/imaging_mass_cytometry_and_mass_cytometry_platform/index_ger.html"
+     ],
+     "names": [
+      "Mass Cytometry"
+     ],
+     "accept_types": [
+      "service"
+     ]
+    }
+   ],
+   "provenance": [
+    {
+     "url": "https://www.bcpm.unibe.ch/research/platforms/imaging_mass_cytometry/",
+     "note": "S2-S3: \"an interdisciplinary joint facility\"; \"high-parameter spatial single cell solutions\". Written by Maxim (T09 retrieval author) with Claude from stored T06 final-corpus sentences, BEFORE any search run on this query; NOT yet reviewed by Ruihan"
+    }
+   ]
+  },
+  {
+   "query_id": "I14-de",
+   "intent_group_id": "I14",
+   "split": "development",
+   "text": "Plattform für räumliche Einzelzell-Analyse von Gewebeproben",
+   "language": "de",
+   "requested_type": "infrastructure",
+   "category": "cross_lingual",
+   "expected": [
+    {
+     "name": "Imaging Mass Cytometry and Mass Cytometry Platform",
+     "type": "infrastructure",
+     "urls": [
+      "https://www.bcpm.unibe.ch/research/platforms/imaging_mass_cytometry/",
+      "https://www.pki.unibe.ch/services/imaging_mass_cytometry_and_mass_cytometry_platform/index_eng.html",
+      "https://www.pki.unibe.ch/dienstleistungen/imaging_mass_cytometry_and_mass_cytometry_platform/index_ger.html"
+     ],
+     "names": [
+      "Mass Cytometry"
+     ],
+     "accept_types": [
+      "service"
+     ]
+    }
+   ],
+   "provenance": [
+    {
+     "url": "https://www.bcpm.unibe.ch/research/platforms/imaging_mass_cytometry/",
+     "note": "S2-S3: \"an interdisciplinary joint facility\"; \"high-parameter spatial single cell solutions\". Written by Maxim (T09 retrieval author) with Claude from stored T06 final-corpus sentences, BEFORE any search run on this query; NOT yet reviewed by Ruihan"
+    }
+   ],
+   "notes": "German query, English evidence"
+  },
+  {
+   "query_id": "I15-en",
+   "intent_group_id": "I15",
+   "split": "development",
+   "text": "National surveillance system for antibiotic resistance",
+   "language": "en",
+   "requested_type": "unit",
+   "category": "cross_lingual",
+   "expected": [
+    {
+     "name": "Swiss Centre for Antibiotic Resistance (ANRESIS, IFIK)",
+     "type": "unit",
+     "urls": [
+      "https://www.ifik.unibe.ch/dienstleistungen/centre_suisse_de_la_rsistance_aux_antibiotiques_anresis/index_ger.html",
+      "https://www.ifik.unibe.ch/dienstleistungen/schweizerisches_zentrum_fuer_antibiotikaresistenzen_anresis/index_ger.html",
+      "https://www.ifik.unibe.ch/forschung/the_swiss_centre_for_antibiotic_resistance_anresis_andreas_kronenberg/index_ger.html",
+      "https://www.ifik.unibe.ch/forschung/the_swiss_centre_for_antibiotic_resistance_anresis_andreas_kronenberg/projects/index_ger.html",
+      "https://www.ifik.unibe.ch/forschung/the_swiss_centre_for_antibiotic_resistance_anresis_andreas_kronenberg/team/index_ger.html",
+      "https://www.ifik.unibe.ch/research/the_swiss_centre_for_antibiotic_resistance_anresis_andreas_kronenberg/index_eng.html",
+      "https://www.ifik.unibe.ch/research/the_swiss_centre_for_antibiotic_resistance_anresis_andreas_kronenberg/projects/index_eng.html",
+      "https://www.ifik.unibe.ch/research/the_swiss_centre_for_antibiotic_resistance_anresis_andreas_kronenberg/team/index_eng.html",
+      "https://www.ifik.unibe.ch/services/centre_suisse_de_la_rsistance_aux_antibiotiques_anresis/index_eng.html",
+      "https://www.ifik.unibe.ch/services/swiss_center_for_antibiotic_resistance_anresis/index_eng.html"
+     ],
+     "names": [
+      "ANRESIS",
+      "Antibiotic",
+      "Antibiotika",
+      "Antibiotiques"
+     ],
+     "accept_types": [
+      "service"
+     ]
+    }
+   ],
+   "provenance": [
+    {
+     "url": "https://www.ifik.unibe.ch/dienstleistungen/centre_suisse_de_la_rsistance_aux_antibiotiques_anresis/index_ger.html",
+     "note": "S2-S3 (French text): \"un système régional et national de surveillance\" on antibiotic resistance. Written by Maxim (T09 retrieval author) with Claude from stored T06 final-corpus sentences, BEFORE any search run on this query; NOT yet reviewed by Ruihan"
+    }
+   ],
+   "notes": "English query; one evidence version is French"
+  },
+  {
+   "query_id": "I15-it",
+   "intent_group_id": "I15",
+   "split": "development",
+   "text": "Sistema nazionale di sorveglianza della resistenza agli antibiotici",
+   "language": "it",
+   "requested_type": "unit",
+   "category": "cross_lingual",
+   "expected": [
+    {
+     "name": "Swiss Centre for Antibiotic Resistance (ANRESIS, IFIK)",
+     "type": "unit",
+     "urls": [
+      "https://www.ifik.unibe.ch/dienstleistungen/centre_suisse_de_la_rsistance_aux_antibiotiques_anresis/index_ger.html",
+      "https://www.ifik.unibe.ch/dienstleistungen/schweizerisches_zentrum_fuer_antibiotikaresistenzen_anresis/index_ger.html",
+      "https://www.ifik.unibe.ch/forschung/the_swiss_centre_for_antibiotic_resistance_anresis_andreas_kronenberg/index_ger.html",
+      "https://www.ifik.unibe.ch/forschung/the_swiss_centre_for_antibiotic_resistance_anresis_andreas_kronenberg/projects/index_ger.html",
+      "https://www.ifik.unibe.ch/forschung/the_swiss_centre_for_antibiotic_resistance_anresis_andreas_kronenberg/team/index_ger.html",
+      "https://www.ifik.unibe.ch/research/the_swiss_centre_for_antibiotic_resistance_anresis_andreas_kronenberg/index_eng.html",
+      "https://www.ifik.unibe.ch/research/the_swiss_centre_for_antibiotic_resistance_anresis_andreas_kronenberg/projects/index_eng.html",
+      "https://www.ifik.unibe.ch/research/the_swiss_centre_for_antibiotic_resistance_anresis_andreas_kronenberg/team/index_eng.html",
+      "https://www.ifik.unibe.ch/services/centre_suisse_de_la_rsistance_aux_antibiotiques_anresis/index_eng.html",
+      "https://www.ifik.unibe.ch/services/swiss_center_for_antibiotic_resistance_anresis/index_eng.html"
+     ],
+     "names": [
+      "ANRESIS",
+      "Antibiotic",
+      "Antibiotika",
+      "Antibiotiques"
+     ],
+     "accept_types": [
+      "service"
+     ]
+    }
+   ],
+   "provenance": [
+    {
+     "url": "https://www.ifik.unibe.ch/dienstleistungen/centre_suisse_de_la_rsistance_aux_antibiotiques_anresis/index_ger.html",
+     "note": "S2-S3 (French text): \"un système régional et national de surveillance\" on antibiotic resistance. Written by Maxim (T09 retrieval author) with Claude from stored T06 final-corpus sentences, BEFORE any search run on this query; NOT yet reviewed by Ruihan"
+    }
+   ],
+   "notes": "Italian query, French/German/English evidence"
+  },
+  {
+   "query_id": "I16-en",
+   "intent_group_id": "I16",
+   "split": "evaluation",
+   "text": "Better radiation treatment planning for eye cancer",
+   "language": "en",
+   "requested_type": "project",
+   "category": "lay",
+   "expected": [
+    {
+     "name": "External Beam Radiotherapy of Intraocular Tumors (ARTORG AIMI)",
+     "type": "project",
+     "urls": [
+      "https://www.artorg.unibe.ch/research/aimi/research/ebrt_of_intraocular_tumors/index_eng.html"
+     ],
+     "names": [
+      "Intraocular",
+      "Radiotherapy"
+     ],
+     "accept_types": [
+      "unit"
+     ]
+    }
+   ],
+   "provenance": [
+    {
+     "url": "https://www.artorg.unibe.ch/research/aimi/research/ebrt_of_intraocular_tumors/index_eng.html",
+     "note": "S3, S11-S12: radiotherapy of intra-ocular tumors; \"high-accuracy treatment planning\". Written by Maxim (T09 retrieval author) with Claude from stored T06 final-corpus sentences, BEFORE any search run on this query; NOT yet reviewed by Ruihan"
+    }
+   ]
+  },
+  {
+   "query_id": "I16-de",
+   "intent_group_id": "I16",
+   "split": "evaluation",
+   "text": "Präzise Bestrahlungsplanung für Tumoren im Auge",
+   "language": "de",
+   "requested_type": "project",
+   "category": "cross_lingual",
+   "expected": [
+    {
+     "name": "External Beam Radiotherapy of Intraocular Tumors (ARTORG AIMI)",
+     "type": "project",
+     "urls": [
+      "https://www.artorg.unibe.ch/research/aimi/research/ebrt_of_intraocular_tumors/index_eng.html"
+     ],
+     "names": [
+      "Intraocular",
+      "Radiotherapy"
+     ],
+     "accept_types": [
+      "unit"
+     ]
+    }
+   ],
+   "provenance": [
+    {
+     "url": "https://www.artorg.unibe.ch/research/aimi/research/ebrt_of_intraocular_tumors/index_eng.html",
+     "note": "S3, S11-S12: radiotherapy of intra-ocular tumors; \"high-accuracy treatment planning\". Written by Maxim (T09 retrieval author) with Claude from stored T06 final-corpus sentences, BEFORE any search run on this query; NOT yet reviewed by Ruihan"
+    }
+   ],
+   "notes": "German query, English evidence"
+  },
+  {
+   "query_id": "I17-en",
+   "intent_group_id": "I17",
+   "split": "evaluation",
+   "text": "A researcher who personally works on ultrasound-driven robotics and micro technologies for medicine",
+   "language": "en",
+   "requested_type": "person",
+   "category": "person_unit",
+   "expected": [
+    {
+     "name": "Prof. Dr. Daniel Ahmed (ARTORG ARSL)",
+     "type": "person",
+     "urls": [
+      "https://www.artorg.unibe.ch/research/arsl/group_members/persons/prof_dr_ahmed_daniel/index_eng.html",
+      "https://www.artorg.unibe.ch/research/arsl/daniel_ahmed_pi/index_eng.html"
+     ],
+     "names": [
+      "Ahmed"
+     ]
+    }
+   ],
+   "provenance": [
+    {
+     "url": "https://www.artorg.unibe.ch/research/arsl/group_members/persons/prof_dr_ahmed_daniel/index_eng.html",
+     "note": "S11: \"engaged in ultrasound robotics and micro technologies for use in life science applications\". The ARSL unit does not count as the person. Written by Maxim (T09 retrieval author) with Claude from stored T06 final-corpus sentences, BEFORE any search run on this query; NOT yet reviewed by Ruihan"
+    }
+   ],
+   "notes": "Unit ARSL is not an accepted substitute"
+  },
+  {
+   "query_id": "I17-de",
+   "intent_group_id": "I17",
+   "split": "evaluation",
+   "text": "Forscher, der selbst an ultraschallgesteuerter Robotik und Mikrotechnologie für die Medizin arbeitet",
+   "language": "de",
+   "requested_type": "person",
+   "category": "cross_lingual",
+   "expected": [
+    {
+     "name": "Prof. Dr. Daniel Ahmed (ARTORG ARSL)",
+     "type": "person",
+     "urls": [
+      "https://www.artorg.unibe.ch/research/arsl/group_members/persons/prof_dr_ahmed_daniel/index_eng.html",
+      "https://www.artorg.unibe.ch/research/arsl/daniel_ahmed_pi/index_eng.html"
+     ],
+     "names": [
+      "Ahmed"
+     ]
+    }
+   ],
+   "provenance": [
+    {
+     "url": "https://www.artorg.unibe.ch/research/arsl/group_members/persons/prof_dr_ahmed_daniel/index_eng.html",
+     "note": "S11: \"engaged in ultrasound robotics and micro technologies for use in life science applications\". The ARSL unit does not count as the person. Written by Maxim (T09 retrieval author) with Claude from stored T06 final-corpus sentences, BEFORE any search run on this query; NOT yet reviewed by Ruihan"
+    }
+   ],
+   "notes": "German query, English evidence; unit not accepted"
+  },
+  {
+   "query_id": "I18-en",
+   "intent_group_id": "I18",
+   "split": "evaluation",
+   "text": "Expert in biomedical fluid dynamics of the heart and blood vessels",
+   "language": "en",
+   "requested_type": "person",
+   "category": "synonym",
+   "expected": [
+    {
+     "name": "Prof. Dr. Dominik Obrist (ARTORG Cardiovascular Engineering)",
+     "type": "person",
+     "urls": [
+      "https://www.artorg.unibe.ch/research/cve/group_members/staff/prof_dr_obrist_dominik/index_eng.html"
+     ],
+     "names": [
+      "Obrist"
+     ]
+    }
+   ],
+   "provenance": [
+    {
+     "url": "https://www.artorg.unibe.ch/research/cve/group_members/staff/prof_dr_obrist_dominik/index_eng.html",
+     "note": "S4, S13-S14: \"Professor for Cardiovascular Engineering\"; research interest \"Biomedical fluid dynamics\". Written by Maxim (T09 retrieval author) with Claude from stored T06 final-corpus sentences, BEFORE any search run on this query; NOT yet reviewed by Ruihan"
+    }
+   ],
+   "notes": "Unit CVE is not an accepted substitute"
+  },
+  {
+   "query_id": "I18-fr",
+   "intent_group_id": "I18",
+   "split": "evaluation",
+   "text": "Spécialiste de la dynamique des fluides biomédicale du système cardiovasculaire",
+   "language": "fr",
+   "requested_type": "person",
+   "category": "cross_lingual",
+   "expected": [
+    {
+     "name": "Prof. Dr. Dominik Obrist (ARTORG Cardiovascular Engineering)",
+     "type": "person",
+     "urls": [
+      "https://www.artorg.unibe.ch/research/cve/group_members/staff/prof_dr_obrist_dominik/index_eng.html"
+     ],
+     "names": [
+      "Obrist"
+     ]
+    }
+   ],
+   "provenance": [
+    {
+     "url": "https://www.artorg.unibe.ch/research/cve/group_members/staff/prof_dr_obrist_dominik/index_eng.html",
+     "note": "S4, S13-S14: \"Professor for Cardiovascular Engineering\"; research interest \"Biomedical fluid dynamics\". Written by Maxim (T09 retrieval author) with Claude from stored T06 final-corpus sentences, BEFORE any search run on this query; NOT yet reviewed by Ruihan"
+    }
+   ],
+   "notes": "French query, English evidence"
+  },
+  {
+   "query_id": "I19-en",
+   "intent_group_id": "I19",
+   "split": "evaluation",
+   "text": "Antifouling coatings for ship hulls",
+   "language": "en",
+   "requested_type": "unit",
+   "category": "absent",
+   "expected": [],
+   "provenance": [
+    {
+     "url": "https://www.unibe.ch/",
+     "note": "No active sentence in the T06 final corpus matches antifouling / ship hull / Schiffsrumpf / Bewuchsschutz (pattern search). Absence in the indexed corpus only. Written by Maxim (T09 retrieval author) with Claude from stored T06 final-corpus sentences, BEFORE any search run on this query; NOT yet reviewed by Ruihan"
     }
    ]
   }
