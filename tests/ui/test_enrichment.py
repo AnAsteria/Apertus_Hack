@@ -64,7 +64,9 @@ def test_not_requested_stays_not_requested(client):
 def test_full_flow_events_are_ordered_and_contract_valid(client):
     rid, url = start(client)
     evs = parse_sse(client.get(url).text)
-    assert [t for t, _ in evs] == ["progress", "interpretation", "complete"]
+    # T19 adds an assessment stage; with no inference key it is reported as skipped.
+    assert [t for t, _ in evs] == ["progress", "interpretation", "progress", "complete"]
+    assert evs[2][1]["payload"] == {"stage": "assessment", "state": "skipped", "reason": "inference_disabled"}
     for _, d in evs:
         SseEvent(**d)
         assert d["request_id"] == rid and d["revision"] == 1
