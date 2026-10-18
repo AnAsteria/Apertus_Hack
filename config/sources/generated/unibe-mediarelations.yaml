@@ -1,0 +1,42 @@
+source:
+  schema_version: '1'
+  source_id: unibe-mediarelations
+  label: Relations médias
+  start_urls:
+  - https://mediarelations.unibe.ch/services/index_ger.html
+  allowed_domains:
+  - mediarelations.unibe.ch
+  allowed_paths:
+  - /
+  languages:
+  - de
+  - en
+  - fr
+  - it
+  max_pages: 5
+  max_depth: 1
+  requests_per_second: 0.5
+  focus_areas:
+  - diabetes
+  - oncology
+  - neurology
+  - medtech
+  refresh_default_hours: 24
+  refresh_hours: null
+  adapter: null
+inventory_key: mediarelations.unibe.ch
+tier: outside_focus
+labels:
+- unibe
+sitemaps: []
+profiles:
+  dev:
+    max_pages: 5
+    max_depth: 1
+  final:
+    max_pages: 50
+    max_depth: 2
+network:
+  max_sitemaps: 2
+  max_response_bytes: 10000000
+  max_discovered_urls: 1000

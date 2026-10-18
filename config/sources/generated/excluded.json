@@ -1,0 +1,6 @@
+[
+  {
+    "inventory_key": "geo2.unibe.ch",
+    "reason": "HTTP 200 but only Home placeholder (9 text characters) and no discovery links; exclude from this snapshot pending a usable seed, not a permanent retirement."
+  }
+]

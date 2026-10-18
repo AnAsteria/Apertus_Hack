@@ -1,0 +1,23 @@
+{
+  "unibe-dbmr": {
+    "start_urls": [
+      "https://www.dbmr.unibe.ch/research/research_programs/index_eng.html",
+      "https://www.dbmr.unibe.ch/research/index_eng.html"
+    ]
+  },
+  "artorg": {
+    "start_urls": [
+      "https://www.artorg.unibe.ch/research/aihn/index_eng.html",
+      "https://www.artorg.unibe.ch/unibe/portal/fak_medizin/dept_weitere/ins_artorg/content/e212002/e861724/20250825_ARTORG_ResearchPortfolio_web_eng.pdf",
+      "https://www.artorg.unibe.ch/research/index_eng.html"
+    ]
+  },
+  "dcb": {
+    "start_urls": [
+      "https://www.dcberne.com/en/project/spn-005-pilot-study-on-painless-glucose-monitoring/",
+      "https://www.dcberne.com/de/project/spn-005-pilotstudie-zur-schmerzfreien-blutzuckermessung/",
+      "https://www.dcberne.com/en/projects/",
+      "https://www.dcberne.com/de/projekte/"
+    ]
+  }
+}

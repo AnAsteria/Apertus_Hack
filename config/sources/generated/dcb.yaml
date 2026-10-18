@@ -1,0 +1,47 @@
+source:
+  schema_version: '1'
+  source_id: dcb
+  label: Diabete Center Bern
+  start_urls:
+  - https://www.dcberne.com/en/project/spn-005-pilot-study-on-painless-glucose-monitoring/
+  - https://www.dcberne.com/de/project/spn-005-pilotstudie-zur-schmerzfreien-blutzuckermessung/
+  - https://www.dcberne.com/en/projects/
+  - https://www.dcberne.com/de/projekte/
+  - https://www.dcberne.com/en/
+  allowed_domains:
+  - www.dcberne.com
+  allowed_paths:
+  - /
+  languages:
+  - de
+  - en
+  - fr
+  - it
+  max_pages: 20
+  max_depth: 2
+  requests_per_second: 0.5
+  focus_areas:
+  - diabetes
+  - oncology
+  - neurology
+  - medtech
+  refresh_default_hours: 24
+  refresh_hours: null
+  adapter: null
+inventory_key: dcberne.com
+tier: focus
+labels:
+- dcb
+sitemaps:
+- https://www.dcberne.com/sitemap_index.xml
+profiles:
+  dev:
+    max_pages: 20
+    max_depth: 2
+  final:
+    max_pages: 200
+    max_depth: 4
+network:
+  max_sitemaps: 2
+  max_response_bytes: 10000000
+  max_discovered_urls: 1000

@@ -1,0 +1,46 @@
+source:
+  schema_version: '1'
+  source_id: artorg
+  label: ARTORG Center for Biomedical Engineering Research
+  start_urls:
+  - https://www.artorg.unibe.ch/research/aihn/index_eng.html
+  - https://www.artorg.unibe.ch/unibe/portal/fak_medizin/dept_weitere/ins_artorg/content/e212002/e861724/20250825_ARTORG_ResearchPortfolio_web_eng.pdf
+  - https://www.artorg.unibe.ch/research/index_eng.html
+  - https://www.artorg.unibe.ch/
+  allowed_domains:
+  - www.artorg.unibe.ch
+  allowed_paths:
+  - /
+  languages:
+  - de
+  - en
+  - fr
+  - it
+  max_pages: 20
+  max_depth: 2
+  requests_per_second: 0.5
+  focus_areas:
+  - diabetes
+  - oncology
+  - neurology
+  - medtech
+  refresh_default_hours: 24
+  refresh_hours: null
+  adapter: null
+inventory_key: artorg.unibe.ch
+tier: focus
+labels:
+- unibe
+- artorg
+sitemaps: []
+profiles:
+  dev:
+    max_pages: 20
+    max_depth: 2
+  final:
+    max_pages: 200
+    max_depth: 4
+network:
+  max_sitemaps: 2
+  max_response_bytes: 10000000
+  max_discovered_urls: 1000

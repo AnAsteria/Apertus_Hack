@@ -1,0 +1,51 @@
+{
+  "sources": [
+    "unibe.yaml",
+    "unibe-mediarelations.yaml",
+    "unibe-philnat.yaml",
+    "unibe-medizin.yaml",
+    "unibe-vetsuisse.yaml",
+    "unibe-soz.yaml",
+    "unibe-psy.yaml",
+    "unibe-math.yaml",
+    "unibe-aiub.yaml",
+    "unibe-physik.yaml",
+    "unibe-phinst.yaml",
+    "unibe-biology.yaml",
+    "unibe-iee.yaml",
+    "unibe-ips.yaml",
+    "unibe-izb.yaml",
+    "unibe-geo.yaml",
+    "unibe-cde.yaml",
+    "unibe-oeschger.yaml",
+    "unibe-bcpm.yaml",
+    "unibe-dbmr.yaml",
+    "unibe-ngs.yaml",
+    "unibe-tki.yaml",
+    "unibe-iml.yaml",
+    "unibe-irm.yaml",
+    "unibe-ifik.yaml",
+    "unibe-ispm.yaml",
+    "unibe-ikim.yaml",
+    "unibe-img.yaml",
+    "unibe-ibmm.yaml",
+    "unibe-pki.yaml",
+    "artorg.yaml",
+    "unibe-inf.yaml",
+    "unibe-itp.yaml",
+    "unibe-iap.yaml",
+    "unibe-dcbp.yaml",
+    "unibe-csh.yaml",
+    "unibe-mic.yaml",
+    "unibe-strada.yaml",
+    "unibe-neuroscience.yaml",
+    "unibe-ita-vetsuisse.yaml",
+    "dcb.yaml"
+  ],
+  "excluded": [
+    {
+      "inventory_key": "geo2.unibe.ch",
+      "reason": "HTTP 200 but only Home placeholder (9 text characters) and no discovery links; exclude from this snapshot pending a usable seed, not a permanent retirement."
+    }
+  ]
+}
