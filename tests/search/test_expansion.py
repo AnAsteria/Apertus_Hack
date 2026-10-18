@@ -46,3 +46,24 @@ def test_rrf_fuse_without_labels_matches_the_ablation_rule():
     fused = rrf_fuse([[card('a'), card('b')], [card('b'), card('c')]])
     assert [r.entity_id for r in fused] == ['b', 'a', 'c'] and [r.rank for r in fused] == [1, 2, 3]
     assert 'query_variants' not in fused[0].retrieval
+
+
+class GuardedBackend(Backend):
+    def __init__(self, table, outcome):
+        super().__init__(table)
+        self.outcome = outcome
+
+    def search(self, req):
+        r = super().search(req)
+        return r.model_copy(update={'outcome': self.outcome if req.query == REQ.query else 'confident'})
+
+
+def test_expansion_never_overrides_a_refusal_or_too_broad_outcome():
+    # Regression for #16: expanded terms pulled near-miss pages into absent queries (I10, I19).
+    for outcome in ('no_evidence', 'too_broad'):
+        backend = GuardedBackend({'Therapieresistenz Krebs': [], 'near miss': ['wrong']}, outcome)
+        assert expanded_search(backend, REQ, ['near miss']) == ([], [])
+        assert [r.query for r in backend.seen] == [REQ.query]  # expansions were not even searched
+    backend = GuardedBackend({'Therapieresistenz Krebs': ['a'], 'b': ['b']}, 'low_confidence')
+    fused, used = expanded_search(backend, REQ, ['b'])
+    assert used == ['b'] and {r.entity_id for r in fused} == {'a', 'b'}

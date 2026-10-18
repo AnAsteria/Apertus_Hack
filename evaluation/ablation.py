@@ -89,7 +89,9 @@ def run_config(config: str, gold: dict, split: str, backends: dict, *, interpret
         try:
             base = backend.search(_request(q["text"], q["requested_type"]))
             results, row["limitations"] = list(base.results), list(base.limitations)
-            if config.startswith("hybrid_expansion"):
+            # Same guard as the served T30 pass: expansion never overrides a refusal or too-broad outcome.
+            from app.search.expansion import expansion_allowed
+            if config.startswith("hybrid_expansion") and expansion_allowed(getattr(base, "outcome", None)):
                 cached = cache.get(q["text"], interpret_model) if cache else None
                 if cached is None:
                     interp = interpret_fn(q["text"])

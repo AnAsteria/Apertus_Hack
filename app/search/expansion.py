@@ -38,15 +38,29 @@ def rrf_fuse(result_lists: list[list], k: int = RRF_K, limit: int = TOP_K, label
     return out
 
 
+# Outcomes of the ORIGINAL query that expansion must never override: a refusal stays a refusal
+# (expanded terms pull in near-miss pages, which broke abstention on I10/I19 in Ruihan's
+# baseline cross-check, #16), and a too-broad request needs narrowing, not more matches.
+GUARDED_OUTCOMES = ('no_evidence', 'too_broad')
+
+
+def expansion_allowed(outcome) -> bool:
+    return outcome not in GUARDED_OUTCOMES
+
+
 def expanded_search(backend, req, expansions: list[str], limit: int = TOP_K):
-    """(fused results, used expansion texts). An abstaining or failing variant contributes nothing."""
+    """(fused results, used expansion texts). An abstaining or failing variant contributes nothing.
+    Returns ([], []) when the original query's outcome is guarded (see GUARDED_OUTCOMES)."""
+    base = backend.search(req)
+    if not expansion_allowed(getattr(base, 'outcome', None)):
+        return [], []
     texts, seen = [], {req.query.strip().casefold()}
     for text in expansions:
         key = (text or '').strip().casefold()
         if key and key not in seen and len(texts) < MAX_VARIANTS:
             seen.add(key)
             texts.append(text.strip())
-    lists = [list(backend.search(req).results)]
+    lists = [list(base.results)]
     for text in texts:
         try:
             lists.append(list(backend.search(req.model_copy(update={'query': text})).results))
