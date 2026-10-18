@@ -113,19 +113,18 @@ function renderEvidence(ev) {
   return box;
 }
 
-// Only fields that have supported values are shown; the rest collapse into one line.
-function renderFields(fields, card, notStatedTarget) {
-  var dl = el("dl", "fields"), missing = [];
+// Only fields that have supported values are shown; empty ones are simply left out.
+function renderFields(fields, card) {
+  var dl = el("dl", "fields");
   Object.keys(FIELD_LABELS).forEach(function (k) {
     var vals = (fields && fields[k]) || [];
-    if (!vals.length) { if (k !== "contact") missing.push(FIELD_LABELS[k].split(" (")[0].toLowerCase()); return; }
+    if (!vals.length) return;
     dl.appendChild(el("dt", null, FIELD_LABELS[k]));
     var dd = el("dd");
     vals.forEach(function (v) { dd.appendChild(el("div", null, v.value)); });
     dl.appendChild(dd);
   });
   if (dl.childNodes.length) card.appendChild(dl);
-  if (missing.length) (notStatedTarget || card).appendChild(el("p", "notstated", "Not stated in sources: " + missing.join(", ")));
 }
 
 function sendFeedback(r, action) {
@@ -412,8 +411,7 @@ function renderCard(r, index) {
   }
   card.appendChild(tags);
   var why = renderWhy(r);
-  if (!why) { why = el("details", "why"); why.appendChild(el("summary", null, "Why this result?")); }
-  renderFields(r.fields, card, why);
+  renderFields(r.fields, card);
   // The best quotes first; the rest fold away so one card never fills the screen.
   r.evidence.slice(0, QUOTES_SHOWN).forEach(function (ev) { card.appendChild(renderEvidence(ev)); });
   if (r.evidence.length > QUOTES_SHOWN) {
@@ -423,7 +421,7 @@ function renderCard(r, index) {
     r.evidence.slice(QUOTES_SHOWN).forEach(function (ev) { more.appendChild(renderEvidence(ev)); });
     card.appendChild(more);
   }
-  if (why.childNodes.length > 1) card.appendChild(why);
+  if (why) card.appendChild(why);
   refreshCardState(card, r.entity_id);
   return card;
 }
@@ -483,12 +481,14 @@ function guessLanguage(q) {
   return "EN";
 }
 
-function renderSummary(b, query, elapsedMs) {
+function renderSummary(b, query, elapsedMs, byApertus) {
   var box = document.getElementById("summary");
   clearNode(box);
   box.hidden = false;
   var total = b.timing_ms && typeof b.timing_ms.request_total === "number" ? b.timing_ms.request_total : elapsedMs;
-  box.appendChild(el("span", "pill latency", b.results.length + " result" + (b.results.length === 1 ? "" : "s") + " in " + Math.round(total) + " ms"));
+  var count = b.results.length + " result" + (b.results.length === 1 ? "" : "s");
+  box.appendChild(el("span", "pill latency", byApertus ? count + ", ranked by Apertus in " + (elapsedMs / 1000).toFixed(1) + " s"
+                                                       : count + " in " + Math.round(total) + " ms"));
   var first = b.results[0] && b.results[0].retrieval;
   var ql = first && first.query_language && requestLang(first.query_language);
   if (ql) {
@@ -591,7 +591,7 @@ function needNote(text) {
   var busy = /^Interpreting/.test(text);
   box.appendChild(aiHead(busy ? "Working on your request" : "Apertus"));
   box.appendChild(el("p", "meta" + (busy ? " busy" : ""),
-    busy ? "Reading your request and searching the terms researchers use: synonyms, technical terms, other languages. The results below are already usable and will update." : text));
+    busy ? "Reading your request and searching the terms researchers use: synonyms, technical terms, other languages." : text));
 }
 
 var refineOpen = false; // keep "Refine" open while the analyst edits needs
@@ -681,6 +681,7 @@ var CATEGORY_LABELS = { direct_match: "Direct match", related_capability: "Relat
 var SUPPORT_LABELS = { supported: "supported", partial: "partly supported", none: "not supported" };
 
 function renderAssessment(a) {
+  if (!resultsShown) { pendingAssess.push(a); return; } // shown with the cards once they appear
   var card = document.querySelector('.card[data-entity="' + String(a.entity_id).replace(/"/g, "") + '"]');
   if (!card) return; // assessment for a card that is not on screen: ignore
   var old = card.querySelector(".assessment");
@@ -697,7 +698,9 @@ function renderAssessment(a) {
   if (a.need_coverage && a.need_coverage.length) {
     var ul = el("ul", "needlist");
     a.need_coverage.forEach(function (c) {
-      var li = el("li", null, "“" + (needText[c.need_id] || c.need_id) + "”: " + (SUPPORT_LABELS[c.support] || c.support));
+      // "need_query" is the server's id for the request itself, not a need the analyst wrote.
+      var label = c.need_id === "need_query" ? "Your request" : "“" + (needText[c.need_id] || "Your need") + "”";
+      var li = el("li", null, label + ": " + (SUPPORT_LABELS[c.support] || c.support));
       (c.evidence || []).forEach(function (e) {
         if (!e.version_id || !e.sentence_id) return;
         var link = el("a", null, " [cited sentence]");
@@ -720,14 +723,52 @@ function renderAssessment(a) {
   card.classList.add("flash");
 }
 
+// Apertus first: with Apertus on, the analyst sees its ranking directly instead of watching
+// the direct results get reshuffled. The direct results are kept as the fallback.
+var resultsShown = true;   // false while we wait for Apertus' ranking
+var pendingAssess = [];    // assessments that arrive before the cards are on screen
+var baseRanks = {};        // entity_id -> rank in the direct results, for "Moved up by Apertus"
+var showDirect = null;     // shows the direct results (fallback); null once anything is shown
+var fallbackTimer = null;
+var searchStarted = 0;
+
+function flushAssessments() {
+  var list = pendingAssess; pendingAssess = [];
+  list.forEach(renderAssessment);
+}
+
+function waitForApertus() {
+  showSkeletons();
+  setStatus("Apertus is reading your request and searching other wordings. This usually takes 10 to 20 seconds.", "loading");
+  var s = document.getElementById("status");
+  var skip = button("Show direct results now", function () { if (showDirect) showDirect("Direct results, without Apertus' ranking. They update if Apertus finishes."); });
+  skip.classList.add("skip-wait");
+  s.appendChild(document.createTextNode(" "));
+  s.appendChild(skip);
+}
+
+function showApertusResults(results) {
+  resultsShown = true; showDirect = null; clearTimeout(fallbackTimer);
+  var out = clearResults();
+  results.forEach(function (r, i) {
+    var card = renderCard(r, i);
+    var was = baseRanks[r.entity_id];
+    var note = !was ? "Found by Apertus" : was > r.rank ? "Moved up by Apertus (was #" + was + ")" : "";
+    if (note) { card.classList.add("moved"); card.querySelector(".tags").appendChild(el("span", "badge moved-badge", note)); }
+    out.appendChild(card);
+  });
+  flushAssessments();
+}
+
 function startEnrichment(body, requestId, myRevision) {
   closeEvents();
-  needNote("Interpreting your request… (results above are already usable)");
+  needNote("Interpreting your request…");
+  function fallback(note) { if (myRevision === revision && showDirect) showDirect(note); }
   fetch("/api/v1/search/" + encodeURIComponent(requestId) + "/enrichment", {
     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body)
   }).then(function (r) { return r.ok ? r.json() : null; }).then(function (start) {
     if (myRevision !== revision) return;
-    if (!start) { needNote("AI interpretation is unavailable. The results above are unaffected."); return; }
+    if (!start) { needNote("AI interpretation is unavailable. The direct results below are unaffected."); fallback(""); return; }
     var es = new EventSource(start.events_url);
     eventSource = es;
     function parse(e) {
@@ -751,24 +792,33 @@ function startEnrichment(body, requestId, myRevision) {
       // T30: validated ranking over the original query plus Apertus expansions replaces the cards.
       var d = parse(e);
       if (!d || !d.payload.results.length) return;
-      rerankCards(d.payload.results);
-      setStatus("Re-ranked with Apertus: " + d.payload.results.length + " results, now also searched as " +
-                d.payload.expanded_queries.length + " extra wording" + (d.payload.expanded_queries.length === 1 ? "" : "s") + " (listed above)", "ap");
+      if (resultsShown) rerankCards(d.payload.results); // direct results already on screen (fallback)
+      else showApertusResults(d.payload.results);
+      renderSummary({ results: d.payload.results }, lastQuery, performance.now() - searchStarted, true);
+      setStatus("Ranked by Apertus, also searching " + d.payload.expanded_queries.length + " other wording" +
+                (d.payload.expanded_queries.length === 1 ? "" : "s") + " (listed above).", "ap");
+    });
+    es.addEventListener("progress", function (e) {
+      var d = parse(e);
+      if (d && d.payload.stage === "reranked" && d.payload.state === "skipped")
+        fallback("Apertus kept the direct ranking: the request is too broad or the matches are weak.");
     });
     es.addEventListener("assessment", function (e) {
       var d = parse(e);
       if (d) renderAssessment(d.payload);
     });
-    es.addEventListener("complete", function () { closeEvents(); });
+    es.addEventListener("complete", function () { fallback(""); closeEvents(); });
     es.addEventListener("error", function (e) {
       if (e.data) {
         var d = parse(e);
-        if (d && d.payload.code !== "STALE_REVISION") needNote("AI interpretation is unavailable. The results above are unaffected.");
+        if (d && d.payload.stage === "reranked") { fallback("Apertus could not re-rank this time. These are the direct results."); return; } // the stream goes on with assessments
+        if (d && d.payload.code !== "STALE_REVISION") needNote("AI interpretation is unavailable. The direct results below are unaffected.");
       }
+      fallback("");
       closeEvents(); // no replay: the analyst can search again
     });
   }).catch(function () {
-    if (myRevision === revision) needNote("AI interpretation is unavailable. The results above are unaffected.");
+    if (myRevision === revision) { needNote("AI interpretation is unavailable. The direct results below are unaffected."); fallback(""); }
   });
 }
 
@@ -780,7 +830,10 @@ function runSearch(needs) {
   revision += 1;
   var myRevision = revision;
   closeEvents();
+  clearTimeout(fallbackTimer);
+  resultsShown = true; showDirect = null; pendingAssess = [];
   var started = performance.now();
+  searchStarted = started;
   document.body.classList.add("searched");
   queryTerms = termsOf(query);
   lastQuery = query;
@@ -809,17 +862,36 @@ function runSearch(needs) {
     }
     var b = res.body;
     lastRequestId = b.request_id; lastRevision = b.revision;
-    setStatus(b.results.length ? "" : "No results found in the indexed corpus.", "");
-    renderCards(b.results);
-    renderSummary(b, query, performance.now() - started);
+    var directMs = performance.now() - started;
+    // Outcome and limitations belong to the request, whichever ranking is shown.
     renderOutcome(b);
     var lim = document.getElementById("limitations");
     clearNode(lim);
     b.limitations.forEach(function (l) { lim.appendChild(el("li", null, l)); });
     document.getElementById("limits-box").hidden = !b.limitations.length;
-    if (b.enrichment_state === "pending") startEnrichment(body, b.request_id, myRevision);
-    else if (b.enrichment_state === "unavailable") needNote("AI interpretation is not available right now. The results above are unaffected.");
-    else document.getElementById("needs").hidden = true;
+    showDirect = function (note) {
+      if (myRevision !== revision || resultsShown) return;
+      resultsShown = true; showDirect = null; clearTimeout(fallbackTimer);
+      setStatus(note || (b.results.length ? "" : "No results found in the indexed corpus."), "");
+      renderCards(b.results);
+      renderSummary(b, query, directMs);
+      flushAssessments();
+    };
+    if (b.enrichment_state === "pending" && b.results.length) {
+      resultsShown = false;
+      baseRanks = {};
+      b.results.forEach(function (r) { baseRanks[r.entity_id] = r.rank; });
+      waitForApertus();
+      fallbackTimer = setTimeout(function () {
+        if (showDirect) showDirect("Apertus is taking longer than usual. These are the direct results; they update if Apertus finishes.");
+      }, 30000);
+      startEnrichment(body, b.request_id, myRevision);
+    } else {
+      showDirect();
+      if (b.enrichment_state === "pending") startEnrichment(body, b.request_id, myRevision);
+      else if (b.enrichment_state === "unavailable") needNote("AI interpretation is not available right now. The results below are unaffected.");
+      else document.getElementById("needs").hidden = true;
+    }
   }).catch(function () {
     if (myRevision === revision) setStatus("Could not reach the server.", "error");
   });

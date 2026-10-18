@@ -106,6 +106,7 @@ button.small[aria-pressed="true"] { background: var(--accent); color: var(--acce
 .pill.latency { background: var(--ok); }
 .status { min-height: 1.4rem; color: var(--muted); }
 .status.error { color: #c0392b; }
+.status .skip-wait { margin-left: .4rem; }
 .status.warn { color: #b7791f; }
 .status.loading::before { content: ""; display: inline-block; width: .7rem; height: .7rem; margin-right: .5rem; border-radius: 50%; border: 2px solid var(--line); border-top-color: var(--accent); animation: spin .8s linear infinite; vertical-align: -1px; }
 .limitations { color: var(--muted); font-size: .85rem; padding-left: 1.1rem; margin: .4rem 0 0; }
