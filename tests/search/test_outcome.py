@@ -54,7 +54,7 @@ def test_uncertain_band_is_low_confidence():
     results = [card(i, 'artorg.unibe.ch', .87) for i in range(1, 4)]
     outcome, suggestions, note = run('ultrasound microrobots', results, .87)
     assert outcome == 'low_confidence' and 'low confidence' in note
-    assert all(s['kind'] == 'rephrase' for s in suggestions)
+    assert {s['kind'] for s in suggestions} == {'rephrase', 'coverage'}
 
 
 def test_keyword_only_mode_never_claims_confidence():

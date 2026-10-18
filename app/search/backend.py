@@ -38,7 +38,7 @@ class HybridBackend:
         # Query-level abstention: E5 similarities are compressed (~.80-.91), so a
         # per-candidate floor cannot reject an off-topic query. Chosen on development
         # queries and ad hoc off-topic probes only (see app/search/README.md).
-        abstain_dense = float(os.environ.get('BERNMATCH_ABSTAIN_DENSE','.865')) if abstain_dense is None else abstain_dense
+        abstain_dense = float(os.environ.get('BERNMATCH_ABSTAIN_DENSE','.83')) if abstain_dense is None else abstain_dense
         if not 0 <= min_dense <= 1 or not 0 <= abstain_dense <= 1:
             raise ValueError('invalid_dense_threshold')
         self.abstain_dense = abstain_dense

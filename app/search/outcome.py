@@ -67,6 +67,7 @@ def classify(query, results, *, dense_ok, best_dense, abstain_dense, limits=None
             'Only keyword matching was available, so relevance is less certain.'
     if best_dense < limits['confident_dense']:
         return 'low_confidence', [{'kind': 'rephrase', 'label': 'Add a specific method, disease, technology or product.', 'value': None},
-                                  {'kind': 'rephrase', 'label': 'Try the request in English or German, the main languages of the sources.', 'value': None}], \
+                                  {'kind': 'rephrase', 'label': 'Try the request in English or German, the main languages of the sources.', 'value': None},
+                                  {'kind': 'coverage', 'label': COVERAGE, 'value': None}], \
             'These are possible matches with low confidence: no stored passage is a close match.'
     return 'confident', [], None
