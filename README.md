@@ -15,4 +15,18 @@ Required submission deliverables are a public GitHub repository, demo video **â‰
 
 Planned data handling: collect necessary professional information and official contacts from public sources only. Provide an operator-accessible removal-request route and a suppression list preventing re-ingestion. Confirmed retired records must leave serving indexes; stored copies and backups must expire under a documented retention policy. The route, verification procedure and public-record/backup retention periods remain undecided and are not operational. Proposed defaults are session-only company inputs unless explicitly saved, company-input redaction from logs, and 30-day operational-log retention. These defaults require implementation and verification. Use fictional company profiles until approval for processing real confidential inputs is confirmed. This is a design commitment, not a claim of legal compliance.
 
-There are no verified installation or deployment instructions yet. The MVP will crawl once and query persistent local indexes, with manual refresh; configurable daily refresh and selected hourly refresh are production requirements. Local offline readiness requires a separately evidenced air-gapped query demonstration.
+## Running the skeleton
+
+Verified: the app skeleton (contracts, health/readiness, a synthetic-fixture search workspace and the inference adapter) runs and passes its tests. Real search, ingestion and deployment are **not** implemented yet.
+
+```bash
+python -m venv .venv && .venv/Scripts/python -m pip install -r requirements.lock pytest   # Linux/macOS: .venv/bin/python
+.venv/Scripts/python -m pytest -q                                   # deterministic tests, no network
+BERNMATCH_FIXTURE_MODE=1 .venv/Scripts/python -m uvicorn app.main:app --port 8000   # UI with SYNTHETIC cards
+```
+
+Without `BERNMATCH_FIXTURE_MODE=1`, `/readyz` and search return 503 until `$BERNMATCH_DATA_DIR/READY` exists, and search returns 501 because retrieval is not wired in yet. Container: `docker build -t bernmatch . && docker run -p 8000:8000 -v bernmatch-data:/data bernmatch`; the CI `container` job builds it and probes `/healthz` and `/readyz`. Inference configuration (server-side only) is described in [docs/inference.md](docs/inference.md); copy `env.example` to a real `.env`, which is git-ignored.
+
+## Roadmap notes
+
+There is no verified deployment yet. The MVP will crawl once and query persistent local indexes, with manual refresh; configurable daily refresh and selected hourly refresh are production requirements. Local offline readiness requires a separately evidenced air-gapped query demonstration.
