@@ -41,9 +41,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build the Hugging Face Space image
         run: docker build -f deploy/hf-space/Dockerfile -t bernmatch-hf:ci .
-      - name: Start as uid 1000 on port 7860 and probe
+      - name: Start as uid 1000 with a bucket-like /data and probe
         run: |
-          docker run -d --name bmhf --user 1000 -p 7860:7860 bernmatch-hf:ci
+          mkdir -p hfdata && chmod 777 hfdata
+          docker run -d --name bmhf --user 1000 -p 7860:7860 -v "$PWD/hfdata:/data" bernmatch-hf:ci
           for i in $(seq 1 30); do
             curl -sf http://127.0.0.1:7860/healthz && break || sleep 1
           done
@@ -51,5 +52,6 @@ jobs:
           code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:7860/readyz)
           echo "readyz=$code"
           test "$code" = "503"
-          docker exec bmhf sh -c 'touch "$BERNMATCH_DATA_DIR/w" && echo data-dir-writable'
+          docker exec bmhf test -w /data && echo "data-dir-writable"
+          docker exec bmhf python -c "import onnxruntime, numpy, tokenizers, app.search.build; print('search dependencies import')"
           docker logs bmhf
