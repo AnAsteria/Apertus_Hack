@@ -22,19 +22,19 @@ From the repository root, with `hf` logged in with write access:
 scripts/deploy_space.sh              # deploys origin/main
 ```
 
-It uploads exactly that revision (plus `app/REVISION`), waits until `/healthz` reports the new revision, checks `/readyz` is 200 and runs one real search. Exit code 0 means all three passed. The bundle is not touched, so no index rebuild happens. Add `--tag` to also push a `deploy-<UTC time>` tag.
+It uploads exactly that revision (plus `app/REVISION`), waits until the Space reports `RUNNING` on the uploaded Space commit, checks that `/healthz` reports the git revision (when that revision's code has the field), checks `/readyz` is 200 and runs one real search. Exit code 0 means all of them passed. The bundle is not touched, so no index rebuild happens. Add `--tag` to also push a `deploy-<UTC time>` tag.
 
-Expect 2-4 minutes. The old container keeps serving while the new image builds, then there is a short gap while the new one starts.
+Expect 1-4 minutes. The old container keeps serving while the new image builds, then there is a short gap (about 20 s measured) while the new one starts.
 
 ## Rollback
 
-Deploy the previous revision; the index and feedback are unaffected:
+Deploy the previous revision; the index is unaffected:
 
 ```bash
 scripts/deploy_space.sh <previous-sha-or-deploy-tag>
 ```
 
-The Space's commit history (`Deploy <sha> (<ref>)`) lists what was deployed when. If the index itself is broken, copy the backup bundle back and restart:
+The Space's commit history (`Deploy <sha> (<ref>)`) lists what was deployed when. Rolling back to a revision older than T33 (`b40bbea`) also drops the feedback snapshot loop: feedback written while that old revision runs is not saved, and the next T33 deploy restores the last snapshot taken before the rollback. If the index itself is broken, copy the backup bundle back and restart:
 
 ```bash
 hf buckets cp hf://buckets/kaktamsdengami/bern-match-data/backup/bundle-evidence-only.tar.gz hf://buckets/kaktamsdengami/bern-match-data/bundle.tar.gz
@@ -67,8 +67,9 @@ hf buckets ls kaktamsdengami/bern-match-data -R                # bundle.tar.gz, 
 
 The Space logs show public scanner traffic (`/.env`, `secrets.toml`, ...). Those all return 404: only `app/static/` is served and secrets are environment variables, not files.
 
-## Not done yet (T33 acceptance)
+## Record (T33 acceptance)
 
-- One full deploy and one rollback with the script, recorded here.
-- Restart test on the live Space: feedback written before a restart is readable after it. Covered by `tests/lifecycle/test_state_backup.py` locally; not yet run on the Space.
-- External uptime check from a second network, and cost to date (needs the HF billing page).
+- **Deploy, 2026-10-18 19:55 UTC:** `scripts/deploy_space.sh origin/main --tag` deployed `b40bbea` (Space commit `47ac401a`, tag `deploy-20261018-1955`). `/healthz` reported `b40bbea`, `/readyz` 200, smoke search 10 results. Exit 0 in 32 s (cached image layers).
+- **Restart test, 2026-10-18 19:56-19:57 UTC:** posted one feedback record marked `t33-restart-test` (201, `fbk_bb0e7f0d…`); the snapshot reached `/data/state/bernmatch.sqlite` at 19:56:51 and held it. Restarted the Space at 19:57:11; back at 19:57:34 (`/readyz` 200, log: bundle restored, state restored). Re-posting the same feedback returned **200 with the same id**, so the record survived. The test record stays in the feedback table and is marked by its `entity_id`.
+- **Rollback:** recorded on #84 (run after this change merged, because the first version of the script could only verify revisions that report `/healthz` revision).
+- Not done: external uptime check from a second network; cost to date (needs the HF billing page).
