@@ -11,6 +11,8 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from .api.admin import router as admin_router
+from .api.enrich import router as enrich_router
+from .api.evidence import router as evidence_router
 from .api.feedback import router as feedback_router
 from .api.search import router as search_router
 from .contracts import error
@@ -50,6 +52,8 @@ def readyz():
 
 app.include_router(search_router)
 app.include_router(feedback_router)
+app.include_router(enrich_router)
+app.include_router(evidence_router)
 app.include_router(admin_router)
 
 

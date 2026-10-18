@@ -7,6 +7,8 @@ from datetime import datetime, timezone
 from app.ingest.extract import PARSER_VERSION, parse
 from app.ingest.network import canonical_url, in_scope
 from app.ingest.types import IngestError, Parsed, Section
+from app.lifecycle.serving import load_suppression
+from app.lifecycle.suppression import is_suppressed_url
 
 FOCUS_TERMS = {
     'diabetes': ('diabet', 'insulin', 'glucose', 'glukose'),
@@ -21,7 +23,9 @@ def restore_parsed(data):
     return Parsed(**{**data, 'sections': [Section(**s) for s in data['sections']]})
 
 
-def crawl(source, store, fetcher, refresh=False, on_progress=None):
+def crawl(source, store, fetcher, refresh=False, on_progress=None, suppression=None):
+    # T12: suppressed URLs are never fetched, stored or reused (docs/data-policy.md).
+    suppression = suppression if suppression is not None else load_suppression()
     start = time.monotonic()
     started_at = datetime.now(timezone.utc).isoformat()
     queue = deque((u, 0) for u in dict.fromkeys(source.config.start_urls + store.source_urls(source.config.source_id)))
@@ -43,6 +47,11 @@ def crawl(source, store, fetcher, refresh=False, on_progress=None):
             continue
         seen.add(url)
         counts['discovered'] += 1
+        if is_suppressed_url(suppression, url):
+            events.append({'url': url, 'reason': 'suppressed'})
+            counts['excluded'] += 1
+            counts['suppressed'] += 1
+            continue
         if not in_scope(url, source):
             events.append({'url': url, 'reason': 'outside_scope'})
             counts['excluded'] += 1
