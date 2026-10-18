@@ -45,6 +45,10 @@ The observation was **not used** for any threshold, ranking or fusion choice: T3
 | Latency | Client-side median and p95 per request in ms, including network. Percentile rule: nearest rank (`ceil(p/100 * n)`-th sorted value). |
 | Tokens per query, indexing time | Not visible through the search API. They stay `null` in a run record until T16 fills them from server-side records. |
 
+## Deterministic grounding checks (T37)
+
+`python -m evaluation.grounding --index-dir <serving dir> [--run <run record>]` checks, without any model: every surfaced field cites claim sentences that exist in the index; former/retired entities show no official contact; every served quote is byte-identical to the stored sentence of the cited version, with the stored URL and no cross-version reference. First run (2026-10-18, real 70B bundle `9a0e0951…`, development run on the live Space): **0 problems** over 674 entities with fields, 1,523 field values, 1,695 claim sentences, 170 cards and 1,410 quotes. This proves citation integrity only, not semantic support; support is the human-rated sample below.
+
 ## Running it
 
 ```bash
