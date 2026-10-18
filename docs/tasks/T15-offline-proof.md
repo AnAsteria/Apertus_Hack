@@ -8,6 +8,11 @@ Objective/outcome: Begin model/runtime/dependency downloads as soon as T03 acces
 
 Access/policy prerequisites and limitations: Suitable authorised local hardware/model access and preload bandwidth; start preparation early, not at V2 end.
 
+**Revision R1 (2026-10-18, proposed by Maxim; pending team confirmation — see [README §Revision R1](README.md#revision-r1-2026-10-18)):**
+- Hardware: Dimitry's 16 GB machine (T03 found the 8 GB laptops unsuitable). A prepares scripts, asset list and instructions; the run/recording is done on that machine with C. Record its specs.
+- T03 findings: official Apertus v1.5 weights are gated (licence/AUP acceptance on Hugging Face is a human action); unofficial quantisations must be named with provenance. Verify that the chosen runtime (llama.cpp GGUF or MLX on Apple Silicon) supports the Apertus architecture before relying on it. Start downloads today.
+- Isolation method on macOS: Wi-Fi/Ethernet off plus `HF_HUB_OFFLINE=1`/`TRANSFORMERS_OFFLINE=1`, with a recorded failing outbound check; document it.
+
 ## B. Context and contracts
 
 Read [AGENTS.md](../../AGENTS.md), [README](../../README.md), [architecture](../ARCHITECTURE.md) sections 1–3 and pipeline step(s) **14** (numbers 1/3/9 on T01 also include the corresponding numbered architecture sections). Review architecture sections 5–9 when relevant to verification/delivery. Required [contract sections](../CONTRACTS.md): **2–6, 9**. The [workflow](../AGENT_WORKFLOW.md) governs claims and integration.

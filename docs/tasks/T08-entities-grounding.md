@@ -8,6 +8,9 @@ Objective/outcome: Resolve canonical profiles/identifiers and corroborated names
 
 Access/policy prerequisites and limitations: No inference of unrecorded contacts or expertise.
 
+**Revision R1 (2026-10-18, proposed by Maxim; pending team confirmation — see [README §Revision R1](README.md#revision-r1-2026-10-18)):**
+- Replace/merge T06 stub entities via the alias/merge map; never break existing evidence references. Until T08 is integrated, T09 cards are evidence-only — T08 adds supported `fields`.
+
 ## B. Context and contracts
 
 Read [AGENTS.md](../../AGENTS.md), [README](../../README.md), [architecture](../ARCHITECTURE.md) sections 1–3 and pipeline step(s) **5, 11, 12** (numbers 1/3/9 on T01 also include the corresponding numbered architecture sections). Review architecture sections 5–9 when relevant to verification/delivery. Required [contract sections](../CONTRACTS.md): **3–5**. The [workflow](../AGENT_WORKFLOW.md) governs claims and integration.

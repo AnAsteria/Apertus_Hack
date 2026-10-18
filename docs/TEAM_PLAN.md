@@ -23,6 +23,8 @@
 5. [T12 / #12](https://github.com/AnAsteria/Apertus_Hack/issues/12): после T09 — freshness, manual refresh, removal/suppression и retirement. Передать Dimitry интерфейсы lifecycle для T13.
 6. [T15 / #15](https://github.com/AnAsteria/Apertus_Hack/issues/15): после T03/T05/T09 — unseen query без сети с локальными embeddings, indexes и настоящим Apertus 8B. Подготовку аппаратуры/загрузки начать раньше через согласованную область T03, помощь Ruihan; не ждать конца проекта для скачивания моделей.
 
+7. T27 (добавлено в [Revision R1](tasks/README.md#revision-r1-2026-10-18), ожидает подтверждения): после T09/T14 — запросы на EN/DE/FR/IT/RU по корпусу EN/DE/FR/IT без LLM на быстром пути. T28 (локализация UI/ответов и перевод цитат) — Stretch, отложено как T23/T24.
+
 T14 и T09 — приоритетные переключения по готовности: если T08 уже интегрирован, сначала разблокировать работающий поиск T09; harness не должен искусственно задержать первый deployment. Обе задачи должны быть завершены для своих зависимых проверок.
 
 [T22 / #22](https://github.com/AnAsteria/Apertus_Hack/issues/22) идёт частями с раннего этапа после T01: Maxim ведёт pitch/story и общую структуру, Ruihan даёт AI/evaluation/cost разделы отчёта, Dimitry — видео приложения/deployment и финальные ссылки. Максимальная длина: pitch 10 слайдов, report 6 страниц, видео 2 минуты. Это материалы подачи, не Stretch brief. Финализация требует настоящих измерений T16/T20 и release evidence T25. Один ведущий не означает параллельное редактирование одного файла: согласовать секции/файлы через dispatcher.

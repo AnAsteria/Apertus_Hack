@@ -8,6 +8,12 @@ Objective/outcome: Create 30–50 real source-grounded queries with expected ent
 
 Access/policy prerequisites and limitations: Real source seeds; partner gold review requested separately, not assumed.
 
+**Revision R1 (2026-10-18, proposed by Maxim; pending team confirmation — see [README §Revision R1](README.md#revision-r1-2026-10-18)):**
+- Lead owner proposed to change to workstream A (Maxim), per TEAM_PLAN; pending confirmation.
+- **Split:** T14a gold set — written and frozen (committed with hash) **before** any T09 tuning; T14b harness. Because A also builds retrieval, B (Ruihan) reviews the evaluation split and adjudication rules; paraphrases are written by hand, not generated from the target page (lexical leakage).
+- Add query variants in FR/IT/RU (T27) to the same intent groups; localized-output quality (T28) is not a Core metric.
+- Run the gold set against both crawl profiles only for development; reported results use the `final` profile snapshot.
+
 ## B. Context and contracts
 
 Read [AGENTS.md](../../AGENTS.md), [README](../../README.md), [architecture](../ARCHITECTURE.md) sections 1–3 and pipeline step(s) **15, 16** (numbers 1/3/9 on T01 also include the corresponding numbered architecture sections). Review architecture sections 5–9 when relevant to verification/delivery. Required [contract sections](../CONTRACTS.md): **3–6, 8**. The [workflow](../AGENT_WORKFLOW.md) governs claims and integration.

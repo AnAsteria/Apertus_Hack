@@ -8,6 +8,15 @@ Objective/outcome: Load YAML registry; discover via sitemaps/internal links with
 
 Access/policy prerequisites and limitations: Confirmed inventory/allowed seeds from T02; network access for ingestion.
 
+**Revision R1 (2026-10-18, proposed by Maxim; pending team confirmation — see [README §Revision R1](README.md#revision-r1-2026-10-18)):**
+- **Crawl budget profiles (decision):** page limits are configuration, never hard-coded. `dev` profile = small, economical limit for development (proposed ~20 pages per focus domain, ~5 per outside-focus domain); `final` profile = raised to the maximum feasible for final test runs, benchmarks and the demo corpus. Record the profile, limits and measured crawl time with every snapshot. The crawl runs once into the local store; queries never fetch sources.
+- Generate per-domain source YAML from T02's `config/sources/unibe_inventory.csv` and tiers.
+- `content_hash` = SHA-256 of the cleaned main text (not raw bytes), so dynamic markup does not create a new version on every refresh. Raw snapshots live under `$BERNMATCH_DATA_DIR`, never in Git.
+- Use a tested robots parser supporting `*`, `$` and group merging (e.g. `protego`); `urllib.robotparser` is insufficient. Language detection must cover de/en/fr/it.
+- **Stub entities:** emit deterministic page/section-level entities (name = heading/title, type from the cheap classifier, `resolution_state: uncertain`) so T09 v1 does not wait for T07/T08. T08 later replaces/merges them through the alias map.
+- Hand an early `dev` snapshot to T07/T08 as soon as one source works; do not wait for the full crawl.
+- Dependency added: corpus boundary models (Document/Version/Passage/Sentence/Entity/Claim) in `app/contracts.py`, owned by the contract owner. Coordinate new libraries (HTML/PDF parsers, robots, language id) with the lockfile owner before adding them.
+
 ## B. Context and contracts
 
 Read [AGENTS.md](../../AGENTS.md), [README](../../README.md), [architecture](../ARCHITECTURE.md) sections 1–3 and pipeline step(s) **1–3, 6** (numbers 1/3/9 on T01 also include the corresponding numbered architecture sections). Review architecture sections 5–9 when relevant to verification/delivery. Required [contract sections](../CONTRACTS.md): **2, 3, 9**. The [workflow](../AGENT_WORKFLOW.md) governs claims and integration.

@@ -2,11 +2,17 @@
 
 ## A. Identity and prerequisites
 
-Iteration: V1 — Working vertical slice. Scope tier: **core**. Proposed workstream: **A**. Estimated active effort: **5 person-hours**, an unmeasured planning estimate excluding access waits/model download time. Dependencies: T06, T08
+Iteration: V1 — Working vertical slice. Scope tier: **core**. Proposed workstream: **A**. Estimated active effort: **5 person-hours**, an unmeasured planning estimate excluding access waits/model download time. Dependencies: T06 (v1); T08 for entity-level v2 (see R1)
 
 Objective/outcome: Persist multilingual embeddings/vector arrays and BM25 keyword index for profiles and original passages. Use reciprocal-rank fusion, max entity aggregation and relevance-aware MMR as proposed v1 choices; tune only on development queries. Deduplicate and respect requested type, at most ten entities. Return exact supporting evidence and deterministic relevance reasons without LLM calls. No per-query crawl.
 
 Access/policy prerequisites and limitations: Local multilingual model weights must be available; selected model pinned by T01.
+
+**Revision R1 (2026-10-18, proposed by Maxim; pending team confirmation — see [README §Revision R1](README.md#revision-r1-2026-10-18)):**
+- **Dependency change:** v1 acceptance depends on T06 only and runs on passages + T06 stub entities. T08 integration (resolved entities/claims in cards and aggregation) is a v2 step inside this task, not a start blocker. Cards without supported claims show entity + exact evidence only (`fields` may be empty; evidence is mandatory).
+- BM25 needs per-language analysis (German stemming/compound handling via stemmer or character n-grams; also fr/it); cross-lingual recall relies on dense retrieval, so BM25 alone is never expected to match across languages.
+- Compare `multilingual-e5-small` (needs `query:`/`passage:` prefixes) with one stronger candidate (`multilingual-e5-base` or `bge-m3`) on development queries only, including EN/DE/FR/IT/RU query variants (see T27); pin the winner with licence/revision and CPU latency.
+- Integrate through `SearchBackend` in `app/api/search.py`; the index build writes `$BERNMATCH_DATA_DIR/READY`. Index size must fit the free hosting target (T11).
 
 ## B. Context and contracts
 
