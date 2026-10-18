@@ -1,6 +1,6 @@
 # Deployment to a Hugging Face Docker Space (T11 preparation)
 
-Refs #11. Decision D6: free Hugging Face Space (Docker) for the app, organiser Keera endpoint for Apertus, no paid resources. **Nothing has been deployed.** No Space exists, and creating one needs the team's Hugging Face account, which only a person can do.
+Refs #11. Decision D6: free Hugging Face Space (Docker) for the app, organiser Keera endpoint for Apertus, no paid resources. **Deployed skeleton (2026-10-18):** https://kaktamsdengami-bern-match.hf.space (Space `kaktamsdengami/bern-match`, CPU Upgrade, see D9). Probed from outside: `/healthz` 200, UI 200, `/readyz` 503 and search 503 (no index yet, by design), admin coverage 401 without a token (so the admin secret is set). Real search, restart test and persistence are still open.
 
 ## What is prepared and verified
 
@@ -29,7 +29,7 @@ Feedback is stored in SQLite under `BERNMATCH_DATA_DIR`, and the index must surv
 
 Until one is chosen, state in the report that feedback persistence on the hosted demo is limited.
 
-## Steps for a person (not done)
+## Steps used to create it (done once, by Dimitry)
 
 1. Create the Space (SDK: Docker, public or private as decided) under the team's Hugging Face account.
 2. In the Space settings add secrets, never in Git: `APERTUS_BASE_URL`, `APERTUS_API_KEY`, `BERNMATCH_ADMIN_TOKEN`; variables: `APERTUS_MODEL`.
@@ -38,3 +38,15 @@ Until one is chosen, state in the report that feedback persistence on the hosted
 5. Real search also needs the T06/T09 index in place; until then `/readyz` stays 503 by design.
 
 Record the actual Space URL, build log and restart test in the T11 issue before calling it deployed.
+
+## Updating the Space
+
+From the repository root, after `hf auth login` with a write token:
+
+```bash
+git archive origin/main app requirements.lock | tar -x -C /tmp/hfspace
+cp deploy/hf-space/Dockerfile deploy/hf-space/README.md /tmp/hfspace/
+hf upload kaktamsdengami/bern-match /tmp/hfspace . --repo-type space
+```
+
+The Space rebuilds on every upload. Never upload `.env`, `data/` or `models/`.
