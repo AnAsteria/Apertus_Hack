@@ -9,6 +9,8 @@ GitHub is authoritative for execution state: closed issues are DONE only after v
 
 ## Workstreams and ownership
 
+See the [named team allocation and per-person execution order](../TEAM_PLAN.md): Maxim (data/search), Ruihan (Apertus), Dimitry (application/integration), with proposed T14/T22 transfers to balance workload. This proposal does not itself appoint the dispatcher or grant coding tasks.
+
 - **A — Sources, ingestion, evidence storage and search indexes:** one developer with AI/ML background. Owns ingest/storage/index/lifecycle modules and offline assets.
 - **B — Apertus integration, extraction, interpretation, assessment and evaluation:** the other AI/ML developer. Proposed sole shared-contract owner, confirmed in T01; owns inference/model schemas/evaluation modules.
 - **C — Workspace, API integration, admin, deployment and demo packaging:** general CS developer. Proposed sole dispatcher/integration owner, confirmed before coding grants; owns shared integration/CI/deployment/UI files.
