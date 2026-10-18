@@ -20,6 +20,7 @@ step proves the absence of errors.
 from __future__ import annotations
 
 import logging
+import re
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
@@ -37,6 +38,11 @@ JUDGE_PROMPT_VERSION = "j1"
 JUDGE_BATCH = 12
 _REPORT_LOCK = threading.Lock()
 RULE_PREDICATES = frozenset({"name", "official_contact", "role"})
+UNIT_ONLY_PREDICATES = frozenset({"infrastructure", "service"})
+# Events, prizes and teaching formats are not projects or services (T37 spot check).
+_EVENT_RE = re.compile(r"\b(seminar|seminare?|colloquium|kolloquium|symposium|conference|konferenz|tagung|"
+                       r"lecture series|vortragsreihe|journal club|lunch meeting|meetup|congress|kongress|"
+                       r"prize|preis|award|auszeichnung|day of|retreat|summer school|workshop series)\b", re.I)
 PERSON_SUBJECT_PREDICATES = frozenset({"leader", "member_of", "role"})
 
 SentenceLookup = Callable[[str, str], "str | None"]
@@ -48,14 +54,15 @@ For each item answer:
 - "supported": the evidence sentences explicitly state the claim (paraphrase is fine).
 - "reversed": the evidence states the relation but the other way round (e.g. claim says A is part of B, evidence says B is part of A).
 - "unsupported": the evidence does not state the claim, states something different, or would need outside knowledge or guessing.
+- "wrong_type": the evidence mentions the value, but it is not that KIND of fact. Examples: a job description, course, publication title, event, seminar, conference or prize claimed as a research project; an address or affiliation line claimed as infrastructure; a website, event or general support statement claimed as a service; a description of the whole group claimed as one project.
 Be strict. A group's research is not a member's personal expertise unless the sentence says so. An event, prize or publication list does not make someone an expert unless the sentence describes their research.
 Return exactly one verdict per item."""
 
 _TEMPLATES = {
     "expertise": "{s} works on or has expertise in: {v}.",
-    "project": "{s} runs, is, or describes this project or activity: {v}.",
-    "infrastructure": "{s} operates or provides this infrastructure: {v}.",
-    "service": "{s} offers this service: {v}.",
+    "project": "{s} carries out this named research project or study: {v}.",
+    "infrastructure": "{s} operates this facility, platform or equipment: {v}.",
+    "service": "{s} offers this service to outside users: {v}.",
     "leader": "{s} leads {o}.",
     "member_of": "{s} is a member of {o}.",
     "affiliation": "{s} is affiliated with {o}.",
@@ -67,7 +74,7 @@ _TEMPLATES = {
 class _Verdict(BaseModel):
     model_config = ConfigDict(extra="forbid")
     item: int
-    verdict: Literal["supported", "reversed", "unsupported"]
+    verdict: Literal["supported", "reversed", "unsupported", "wrong_type"]
 
 
 class _Verdicts(BaseModel):
@@ -105,6 +112,12 @@ def _rule_check(claim: Claim, subject: Entity, obj: Entity | None, texts: list[s
     p = claim.predicate
     if p in PERSON_SUBJECT_PREDICATES and subject.entity_type != "person":
         return "unsupported", "subject_not_person"
+    # T37: fact types a person cannot have in this model (person pages list addresses and
+    # websites, which extraction mislabelled as infrastructure/service).
+    if p in UNIT_ONLY_PREDICATES and subject.entity_type == "person":
+        return "unsupported", f"{p}_subject_person"
+    if p in ("project", "service") and _EVENT_RE.search(claim.value or ""):
+        return "unsupported", f"event_not_{p}"
     if claim.object_entity_id is not None and obj is None:
         return "unsupported", "unknown_object"
     if p == "name":
@@ -180,7 +193,8 @@ def check_claims(claims: list[Claim], entities: dict[str, Entity], lookup: Sente
                     report.count("supported")
                 else:
                     out[c.claim_id] = c.model_copy(update={"support": "unsupported"})
-                    report.count("unsupported", "judge_reversed" if v == "reversed" else "judge_unsupported")
+                    report.count("unsupported", {"reversed": "judge_reversed",
+                                                 "wrong_type": "judge_wrong_type"}.get(v, "judge_unsupported"))
                 report.judged += v is not None
     return [out[c.claim_id] for c in claims], report
 
