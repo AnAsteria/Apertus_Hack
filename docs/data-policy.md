@@ -80,11 +80,11 @@ Evidence is `fresh` when its content or last-modified date is within **365 days*
 | Changed page text creates a new version; the old citation still resolves to its old text and is never rebound | existing T06 versioning, now covered by a refresh test | same file |
 | The list is re-read when the file changes, a missing file suppresses nothing, an invalid file raises instead of silently serving | `app/lifecycle/serving.py` | same file |
 
-**Retire** means adding a suppression entry: serving and the crawler honour it at once. Removing the stored copy from the corpus database and rebuilding indexes is a manual step within the 30-day target; there is no purge command yet. Both Dockerfiles copy `config/suppression.json`; if a deployment forgets to, nothing is suppressed, so check it after every deploy.
+**Retire** means adding a suppression entry: serving and the crawler honour it at once. **Purge** removes the stored copies: `python -m app.lifecycle.purge --data-dir data` shows what would go (dry run); add `--apply` to delete the documents, versions, sentences, entities, cached pages, variants and labels of every suppressed URL and VACUUM the database file. A test shows the removed text is no longer in the file's bytes. Run it after every merged suppression entry, and within the 30-day target at the latest. The command does **not** touch derived files (`data/extraction/`, `data/knowledge/`, search indexes, exports) or backups: it lists the derived directories it finds, and those must be rebuilt from the purged corpus by hand. Both Dockerfiles copy `config/suppression.json`; if a deployment forgets to, nothing is suppressed, so check it after every deploy.
 
 ## What is not done
 
 - A real operator contact (see above).
 - Enforcement against the **real index**: the search index (T09) does not exist yet, so the serving filter has only been tested on the synthetic fixture cards and the 410 route on a hand-built corpus file.
-- A purge command for stored copies and indexes, and automatic expiry of backups.
+- Purging derived files and indexes automatically (the command only reports them), and automatic expiry of backups.
 - Maxim's and Ruihan's approval of these retention periods and the verification steps.
