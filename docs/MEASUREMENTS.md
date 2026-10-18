@@ -116,3 +116,14 @@ See `docs/report/ai-evaluation-cost.md` for the full table. Hybrid 0.65 → hybr
 ## Platform drift between the Space and local runs (G2, #147, 2026-10-18)
 
 Same bundle (`9a0e0951…`, generation `3825f2a3…`) and the same code; the evaluation split (gold 0.3, 17 scored queries) gives hybrid Recall@10 **0.76 on the live Space** (x86, HTTP, run `run_42035869…`) and **0.65 in-process on an Apple M1** (arm64), at both BM25 weights 1.0 and 0.25. Per-query diff: only I11-ru and I18-fr differ (hit live, miss locally), both with the expected entity near rank 10. The cause is int8 ONNX score differences of a few thousandths between CPU types. Report the platform with every number; compare configurations only within one platform.
+
+## Load test of the live Space (EXTRA D1, #134, 2026-10-18 ~00:00 Zurich)
+
+Fast-path searches only, no enrichment. 10 non-gold queries, sent from one laptop over the internet to `https://kaktamsdengami-bern-match.hf.space` (cpu-upgrade, 8 vCPU, `main` at 22:26), staying under the 120 requests/minute per-client limit.
+
+| Concurrency | Requests | Errors / 429 | Throughput | Client p50 / p95 | Server `request_total` p50 / p95 |
+|---|---|---|---|---|---|
+| 1 | 10 | 0 | 1.9 req/s | 519 / 629 ms | 121 / 173 ms |
+| 10 | 100 | 0 | 3.7 req/s | 2,768 / 3,325 ms | 2,416 / 2,969 ms |
+
+All 110 requests succeeded. Under 10 concurrent users, requests **queue on the CPU**: server time rises about 20×, and p95 of about 3.3 s is at the edge of the 3 s first-card target. Likely cause: every query runs the ONNX encoder with `BERNMATCH_ORT_THREADS=8`, so concurrent requests compete for the same 8 cores. Untested options: fewer threads per request (e.g. 2) for more parallelism, a small query-embedding cache, or a larger Space. One client location, one run; not a capacity guarantee.
