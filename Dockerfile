@@ -3,6 +3,7 @@ WORKDIR /srv
 COPY requirements.lock .
 RUN pip install --no-cache-dir -r requirements.lock
 COPY app ./app
+COPY config/suppression.json ./config/suppression.json
 ENV BERNMATCH_DATA_DIR=/data
 VOLUME /data
 EXPOSE 8000

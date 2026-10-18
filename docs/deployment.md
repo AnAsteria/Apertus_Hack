@@ -44,7 +44,7 @@ Record the actual Space URL, build log and restart test in the T11 issue before 
 From the repository root, after `hf auth login` with a write token:
 
 ```bash
-git archive origin/main app requirements.lock | tar -x -C /tmp/hfspace
+git archive origin/main app config/suppression.json requirements.lock | tar -x -C /tmp/hfspace
 cp deploy/hf-space/Dockerfile deploy/hf-space/README.md /tmp/hfspace/
 hf upload kaktamsdengami/bern-match /tmp/hfspace . --repo-type space
 ```

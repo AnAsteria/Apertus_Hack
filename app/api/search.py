@@ -12,6 +12,7 @@ from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
 from . import enrich
+from ..lifecycle import serving
 from ..contracts import (MAX_CONTEXT_CHARS, MAX_NEEDS, MAX_QUERY_CHARS, MAX_RESULTS, SearchRequest,
                          SearchResponse, error)
 
@@ -64,10 +65,10 @@ def search(req: SearchRequest):
         return JSONResponse(error("INPUT_TOO_LARGE", "Input exceeds the configured limit."), status_code=413)
     backend = get_backend()
     if isinstance(backend, FixtureBackend):
-        return enrich.apply_state(backend.search(req).model_dump(), req)
+        return enrich.apply_state(serving.apply(backend.search(req).model_dump()), req)
     if not index_ready():
         return JSONResponse(error("INDEX_NOT_READY", "Search indexes are not ready.", True), status_code=503)
     if backend is None:
         # Never invent results.
         return JSONResponse(error("NOT_IMPLEMENTED", "Retrieval is not implemented yet."), status_code=501)
-    return enrich.apply_state(backend.search(req).model_dump(), req)
+    return enrich.apply_state(serving.apply(backend.search(req).model_dump()), req)
