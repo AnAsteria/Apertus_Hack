@@ -70,8 +70,21 @@ Out of scope: judging whether the source site must remove its own page. We only 
 
 Evidence is `fresh` when its content or last-modified date is within **365 days**, `stale` when older, and `unknown` when neither is known. A recent fetch date alone never makes evidence `fresh`. People documented as former staff are never shown as current contacts. These rules come from `DECISIONS.md` and are not yet exercised against real data.
 
+## Enforcement (implemented, tested on synthetic data only)
+
+| Rule | Where | Test |
+| --- | --- | --- |
+| Suppressed URLs are never fetched, stored or reused from cache; counted as `suppressed` in the crawl report | `app/ingest/pipeline.py` | `tests/lifecycle/test_enforcement.py` (fake network) |
+| Suppressed cards are removed from search results before they are served, ranks renumbered, no reason shown | `app/lifecycle/serving.py`, called from `app/api/search.py` | same file |
+| A citation to suppressed or missing evidence returns HTTP 410 `EVIDENCE_REMOVED` with no text; a corpus is never created by this read-only route | `app/api/evidence.py` | same file |
+| Changed page text creates a new version; the old citation still resolves to its old text and is never rebound | existing T06 versioning, now covered by a refresh test | same file |
+| The list is re-read when the file changes, a missing file suppresses nothing, an invalid file raises instead of silently serving | `app/lifecycle/serving.py` | same file |
+
+**Retire** means adding a suppression entry: serving and the crawler honour it at once. Removing the stored copy from the corpus database and rebuilding indexes is a manual step within the 30-day target; there is no purge command yet. Both Dockerfiles copy `config/suppression.json`; if a deployment forgets to, nothing is suppressed, so check it after every deploy.
+
 ## What is not done
 
 - A real operator contact (see above).
-- Enforcement code: the crawler check, serving-time filter, retire action, HTTP 410 path and the controlled refresh test belong to Maxim's T12 and wait for T09.
+- Enforcement against the **real index**: the search index (T09) does not exist yet, so the serving filter has only been tested on the synthetic fixture cards and the 410 route on a hand-built corpus file.
+- A purge command for stored copies and indexes, and automatic expiry of backups.
 - Maxim's and Ruihan's approval of these retention periods and the verification steps.

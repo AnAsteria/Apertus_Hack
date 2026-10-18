@@ -10,6 +10,7 @@ WORKDIR $HOME/app
 COPY --chown=user requirements.lock .
 RUN pip install --no-cache-dir -r requirements.lock
 COPY --chown=user app ./app
+COPY --chown=user config/suppression.json ./config/suppression.json
 RUN mkdir -p $BERNMATCH_DATA_DIR
 EXPOSE 7860
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7860"]
