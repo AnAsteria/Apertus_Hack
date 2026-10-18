@@ -75,3 +75,28 @@ def test_real_backend_replaces_fixture(client):
 def test_static_ui_has_no_inline_script_injection_sink():
     js = open(os.path.join(os.path.dirname(__file__), "..", "..", "app", "static", "app.js"), encoding="utf-8").read()
     assert "innerHTML" not in js and "document.write" not in js
+
+
+def _static(name):
+    return open(os.path.join(os.path.dirname(__file__), "..", "..", "app", "static", name), encoding="utf-8").read()
+
+
+def test_ui_has_no_markup_sinks_and_no_external_requests():
+    js, html, css = _static("app.js"), _static("index.html"), _static("style.css")
+    for sink in ("innerHTML", "outerHTML", "insertAdjacentHTML", "document.write", "eval("):
+        assert sink not in js
+    for text in (html, css, js):
+        assert "http://" not in text.replace("http://www.w3.org", "") or "https?" in text
+        assert "//cdn" not in text and "googleapis" not in text
+
+
+def test_ui_hides_empty_fields_and_shows_one_not_stated_line():
+    js = _static("app.js")
+    # empty fields are skipped (no per-field "not stated" row) and collapsed into one line
+    assert "not stated in sources\"" not in js
+    assert "Not stated in sources: " in js
+
+
+def test_ui_respects_reduced_motion_and_dark_mode():
+    css = _static("style.css")
+    assert "prefers-reduced-motion" in css and "prefers-color-scheme: dark" in css
