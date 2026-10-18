@@ -1,0 +1,281 @@
+{
+  "repository": "AnAsteria/Apertus_Hack",
+  "branch": "codex/backlog-plan",
+  "milestones": {
+    "V1": {
+      "number": 1,
+      "url": "https://github.com/AnAsteria/Apertus_Hack/milestone/1",
+      "title": "V1 — Working vertical slice"
+    },
+    "V2": {
+      "number": 2,
+      "url": "https://github.com/AnAsteria/Apertus_Hack/milestone/2",
+      "title": "V2 — Reliable and measured Core"
+    },
+    "V3": {
+      "number": 3,
+      "url": "https://github.com/AnAsteria/Apertus_Hack/milestone/3",
+      "title": "V3 — Apertus enrichment and comparisons"
+    },
+    "V4": {
+      "number": 4,
+      "url": "https://github.com/AnAsteria/Apertus_Hack/milestone/4",
+      "title": "V4 — Verified release and submission"
+    }
+  },
+  "issues": {
+    "T01": {
+      "number": 1,
+      "url": "https://github.com/AnAsteria/Apertus_Hack/issues/1",
+      "spec": "docs/tasks/T01-contracts.md",
+      "iteration": "V1",
+      "deps": []
+    },
+    "T02": {
+      "number": 2,
+      "url": "https://github.com/AnAsteria/Apertus_Hack/issues/2",
+      "spec": "docs/tasks/T02-source-inventory.md",
+      "iteration": "V1",
+      "deps": []
+    },
+    "T03": {
+      "number": 3,
+      "url": "https://github.com/AnAsteria/Apertus_Hack/issues/3",
+      "spec": "docs/tasks/T03-access-audit.md",
+      "iteration": "V1",
+      "deps": []
+    },
+    "T04": {
+      "number": 4,
+      "url": "https://github.com/AnAsteria/Apertus_Hack/issues/4",
+      "spec": "docs/tasks/T04-scaffold.md",
+      "iteration": "V1",
+      "deps": [
+        "T01"
+      ]
+    },
+    "T05": {
+      "number": 5,
+      "url": "https://github.com/AnAsteria/Apertus_Hack/issues/5",
+      "spec": "docs/tasks/T05-inference-adapter.md",
+      "iteration": "V1",
+      "deps": [
+        "T03",
+        "T04"
+      ]
+    },
+    "T06": {
+      "number": 6,
+      "url": "https://github.com/AnAsteria/Apertus_Hack/issues/6",
+      "spec": "docs/tasks/T06-ingestion.md",
+      "iteration": "V1",
+      "deps": [
+        "T02",
+        "T04"
+      ]
+    },
+    "T07": {
+      "number": 7,
+      "url": "https://github.com/AnAsteria/Apertus_Hack/issues/7",
+      "spec": "docs/tasks/T07-extraction.md",
+      "iteration": "V1",
+      "deps": [
+        "T05",
+        "T06"
+      ]
+    },
+    "T08": {
+      "number": 8,
+      "url": "https://github.com/AnAsteria/Apertus_Hack/issues/8",
+      "spec": "docs/tasks/T08-entities-grounding.md",
+      "iteration": "V1",
+      "deps": [
+        "T07"
+      ]
+    },
+    "T09": {
+      "number": 9,
+      "url": "https://github.com/AnAsteria/Apertus_Hack/issues/9",
+      "spec": "docs/tasks/T09-hybrid-search.md",
+      "iteration": "V1",
+      "deps": [
+        "T06",
+        "T08"
+      ]
+    },
+    "T10": {
+      "number": 10,
+      "url": "https://github.com/AnAsteria/Apertus_Hack/issues/10",
+      "spec": "docs/tasks/T10-workspace.md",
+      "iteration": "V1",
+      "deps": [
+        "T04"
+      ]
+    },
+    "T11": {
+      "number": 11,
+      "url": "https://github.com/AnAsteria/Apertus_Hack/issues/11",
+      "spec": "docs/tasks/T11-initial-deployment.md",
+      "iteration": "V1",
+      "deps": [
+        "T03",
+        "T05",
+        "T09",
+        "T10"
+      ]
+    },
+    "T12": {
+      "number": 12,
+      "url": "https://github.com/AnAsteria/Apertus_Hack/issues/12",
+      "spec": "docs/tasks/T12-lifecycle.md",
+      "iteration": "V2",
+      "deps": [
+        "T09"
+      ]
+    },
+    "T13": {
+      "number": 13,
+      "url": "https://github.com/AnAsteria/Apertus_Hack/issues/13",
+      "spec": "docs/tasks/T13-feedback-admin.md",
+      "iteration": "V2",
+      "deps": [
+        "T11",
+        "T12"
+      ]
+    },
+    "T14": {
+      "number": 14,
+      "url": "https://github.com/AnAsteria/Apertus_Hack/issues/14",
+      "spec": "docs/tasks/T14-evaluation-harness.md",
+      "iteration": "V2",
+      "deps": [
+        "T01",
+        "T02",
+        "T04"
+      ]
+    },
+    "T15": {
+      "number": 15,
+      "url": "https://github.com/AnAsteria/Apertus_Hack/issues/15",
+      "spec": "docs/tasks/T15-offline-proof.md",
+      "iteration": "V2",
+      "deps": [
+        "T03",
+        "T05",
+        "T09"
+      ]
+    },
+    "T16": {
+      "number": 16,
+      "url": "https://github.com/AnAsteria/Apertus_Hack/issues/16",
+      "spec": "docs/tasks/T16-core-benchmarks.md",
+      "iteration": "V2",
+      "deps": [
+        "T11",
+        "T12",
+        "T14"
+      ]
+    },
+    "T17": {
+      "number": 17,
+      "url": "https://github.com/AnAsteria/Apertus_Hack/issues/17",
+      "spec": "docs/tasks/T17-core-release.md",
+      "iteration": "V2",
+      "deps": [
+        "T13",
+        "T15",
+        "T16"
+      ]
+    },
+    "T18": {
+      "number": 18,
+      "url": "https://github.com/AnAsteria/Apertus_Hack/issues/18",
+      "spec": "docs/tasks/T18-interpretation.md",
+      "iteration": "V3",
+      "deps": [
+        "T05",
+        "T11"
+      ]
+    },
+    "T19": {
+      "number": 19,
+      "url": "https://github.com/AnAsteria/Apertus_Hack/issues/19",
+      "spec": "docs/tasks/T19-assessment.md",
+      "iteration": "V3",
+      "deps": [
+        "T08",
+        "T18"
+      ]
+    },
+    "T20": {
+      "number": 20,
+      "url": "https://github.com/AnAsteria/Apertus_Hack/issues/20",
+      "spec": "docs/tasks/T20-full-ablations.md",
+      "iteration": "V3",
+      "deps": [
+        "T16",
+        "T19"
+      ]
+    },
+    "T21": {
+      "number": 21,
+      "url": "https://github.com/AnAsteria/Apertus_Hack/issues/21",
+      "spec": "docs/tasks/T21-partner-review.md",
+      "iteration": "V3",
+      "deps": [
+        "T11",
+        "T14"
+      ]
+    },
+    "T22": {
+      "number": 22,
+      "url": "https://github.com/AnAsteria/Apertus_Hack/issues/22",
+      "spec": "docs/tasks/T22-artifact-preparation.md",
+      "iteration": "V4",
+      "deps": [
+        "T01"
+      ]
+    },
+    "T23": {
+      "number": 23,
+      "url": "https://github.com/AnAsteria/Apertus_Hack/issues/23",
+      "spec": "docs/tasks/T23-brief.md",
+      "iteration": "V4",
+      "deps": [
+        "T17",
+        "T19"
+      ]
+    },
+    "T24": {
+      "number": 24,
+      "url": "https://github.com/AnAsteria/Apertus_Hack/issues/24",
+      "spec": "docs/tasks/T24-email.md",
+      "iteration": "V4",
+      "deps": [
+        "T23"
+      ]
+    },
+    "T25": {
+      "number": 25,
+      "url": "https://github.com/AnAsteria/Apertus_Hack/issues/25",
+      "spec": "docs/tasks/T25-final-deployment.md",
+      "iteration": "V4",
+      "deps": [
+        "T17",
+        "T20",
+        "T21"
+      ]
+    },
+    "T26": {
+      "number": 26,
+      "url": "https://github.com/AnAsteria/Apertus_Hack/issues/26",
+      "spec": "docs/tasks/T26-submission.md",
+      "iteration": "V4",
+      "deps": [
+        "T22",
+        "T25"
+      ]
+    }
+  },
+  "created_at_utc": "2026-10-18T12:15:42.970640+00:00"
+}
