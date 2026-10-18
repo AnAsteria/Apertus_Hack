@@ -129,3 +129,29 @@ mark { background: var(--mark); color: inherit; border-radius: 3px; padding: 0 .
 .card.moved { border-color: var(--ai-line); }
 .badge.moved-badge { background: var(--ai-bg); border: 1px solid var(--ai-line); }
 @media print { .why { display: none; } }
+
+/* T38: editable shortlist and print export */
+.sl li.sl-entry { display: block; padding: .5rem 0; border-bottom: 1px solid var(--line); }
+.sl-head { cursor: grab; }
+.sl li.sl-entry.dragging { opacity: .5; }
+.sl-head { display: flex; gap: .3rem; align-items: center; }
+.sl-name { flex: 1; font-weight: 600; }
+.sl-fields { display: flex; gap: .4rem; flex-wrap: wrap; margin: .3rem 0; font-size: .8rem; }
+.sl-note-label { display: block; font-size: .78rem; color: var(--muted); margin-top: .35rem; }
+.sl-note { width: 100%; font: inherit; font-size: .85rem; padding: .35rem; margin-top: .2rem; background: var(--panel); color: var(--text); border: 1px dashed var(--ai-line); border-radius: 6px; }
+.sl-actions { display: flex; gap: .5rem; margin: .75rem 0 1rem; }
+.sl-actions button:disabled { opacity: .5; cursor: not-allowed; }
+#print-view { display: none; }
+@media print {
+  body { background: #fff; color: #000; }
+  body > *:not(#print-view) { display: none !important; }
+  #print-view { display: block; font-size: 11pt; }
+  #print-view h1 { font-size: 18pt; margin: 0 0 .2rem; }
+  #print-view h2 { font-size: 13pt; margin: 1rem 0 .2rem; }
+  #print-view h3 { font-size: 10pt; margin: .4rem 0 .1rem; }
+  #print-view .meta { color: #444; font-size: 8.5pt; }
+  #print-view .evidence { border-left: 2px solid #888; background: none; margin: .3rem 0; padding: .1rem .5rem; }
+  #print-view .pv-note { border: 1px dashed #888; padding: .2rem .5rem; margin: .4rem 0; }
+  #print-view .pv-entry { break-inside: avoid; }
+  #print-view .pv-footer { margin-top: 1.2rem; border-top: 1px solid #888; padding-top: .3rem; }
+}

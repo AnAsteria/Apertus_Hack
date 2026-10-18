@@ -119,12 +119,91 @@ function sendFeedback(r, action) {
   }).catch(function () { /* feedback is best effort; the shortlist still works locally */ });
 }
 
+// T38: the shortlist keeps the card payload as the server sent it. Analysts can reorder entries,
+// hide fields and add notes; they cannot change source facts or quotes. Session only.
+var slOrder = [];          // selected entity ids, in the analyst's order
+var listNote = "";
+var lastQuery = "";
+
 function setShortlist(r, state, card) {
   var cur = shortlist[r.entity_id];
   if (cur && cur.state === state) { delete shortlist[r.entity_id]; }
-  else { shortlist[r.entity_id] = { name: r.display_name, state: state }; sendFeedback(r, state); }
+  else {
+    shortlist[r.entity_id] = { name: r.display_name, state: state, result: r,
+                               note: cur ? cur.note : "", hidden: cur ? cur.hidden : {} };
+    sendFeedback(r, state);
+  }
+  slOrder = slOrder.filter(function (id) { return shortlist[id] && shortlist[id].state === "select" && id !== r.entity_id; });
+  if (shortlist[r.entity_id] && shortlist[r.entity_id].state === "select") slOrder.push(r.entity_id);
   if (card) refreshCardState(card, r.entity_id);
   renderShortlist();
+}
+
+function moveEntry(id, delta) {
+  var i = slOrder.indexOf(id), j = i + delta;
+  if (i < 0 || j < 0 || j >= slOrder.length) return;
+  slOrder.splice(i, 1); slOrder.splice(j, 0, id);
+  renderShortlist();
+  var again = document.querySelector('#sl-selected [data-entity="' + id.replace(/"/g, "") + '"] .mv-' + (delta < 0 ? "up" : "down"));
+  if (again) again.focus();
+}
+
+function removeEntry(id) {
+  delete shortlist[id];
+  slOrder = slOrder.filter(function (x) { return x !== id; });
+  var c = document.querySelector('.card[data-entity="' + id.replace(/"/g, "") + '"]');
+  if (c) refreshCardState(c, id);
+  renderShortlist();
+}
+
+function supportedFields(r) {
+  return Object.keys(FIELD_LABELS).filter(function (k) { return r.fields && r.fields[k] && r.fields[k].length; });
+}
+
+function renderEntry(id, pos) {
+  var item = shortlist[id], r = item.result;
+  var li = el("li", "sl-entry");
+  li.dataset.entity = id;
+  li.addEventListener("dragstart", function (ev) { ev.dataTransfer.setData("text/plain", id); li.classList.add("dragging"); });
+  li.addEventListener("dragend", function () { li.classList.remove("dragging"); });
+  li.addEventListener("dragover", function (ev) { ev.preventDefault(); });
+  li.addEventListener("drop", function (ev) {
+    ev.preventDefault();
+    var from = ev.dataTransfer.getData("text/plain");
+    if (!from || from === id || slOrder.indexOf(from) < 0) return;
+    slOrder.splice(slOrder.indexOf(from), 1);
+    slOrder.splice(slOrder.indexOf(id), 0, from);
+    renderShortlist();
+  });
+  var head = el("div", "sl-head");
+  head.draggable = true; // only the title row drags, so the note box stays selectable
+  head.appendChild(el("span", "sl-name", (pos + 1) + ". " + item.name));
+  var up = button("↑", function () { moveEntry(id, -1); }); up.classList.add("mv-up"); up.setAttribute("aria-label", "Move " + item.name + " up"); up.disabled = pos === 0;
+  var down = button("↓", function () { moveEntry(id, 1); }); down.classList.add("mv-down"); down.setAttribute("aria-label", "Move " + item.name + " down"); down.disabled = pos === slOrder.length - 1;
+  head.appendChild(up); head.appendChild(down);
+  head.appendChild(button("Remove", function () { removeEntry(id); }));
+  li.appendChild(head);
+  var fields = supportedFields(r);
+  if (fields.length) {
+    var fs = el("div", "sl-fields");
+    fs.appendChild(el("span", "meta", "Show in export: "));
+    fields.forEach(function (k) {
+      var lab = el("label", "inline");
+      var cb = el("input"); cb.type = "checkbox"; cb.checked = !item.hidden[k];
+      cb.setAttribute("aria-label", "Show " + FIELD_LABELS[k].split(" (")[0] + " of " + item.name + " in the export");
+      cb.addEventListener("change", function () { if (cb.checked) delete item.hidden[k]; else item.hidden[k] = true; });
+      lab.appendChild(cb); lab.appendChild(document.createTextNode(" " + FIELD_LABELS[k].split(" (")[0]));
+      fs.appendChild(lab);
+    });
+    li.appendChild(fs);
+  }
+  var nl = el("label", "sl-note-label", "Analyst note (your text, not a source fact)");
+  var note = el("textarea", "sl-note"); note.rows = 2; note.maxLength = 1000; note.value = item.note;
+  note.setAttribute("aria-label", "Analyst note for " + item.name + " (your text, not a source fact)");
+  note.addEventListener("input", function () { item.note = note.value; });
+  nl.appendChild(note);
+  li.appendChild(nl);
+  return li;
 }
 
 function refreshCardState(card, id) {
@@ -136,27 +215,103 @@ function refreshCardState(card, id) {
 }
 
 function renderShortlist() {
-  var ids = Object.keys(shortlist), n = 0;
-  ["select", "exclude"].forEach(function (state) {
-    var ul = document.getElementById(state === "select" ? "sl-selected" : "sl-excluded");
-    clearNode(ul);
-    ids.forEach(function (id) {
-      var item = shortlist[id];
-      if (item.state !== state) return;
-      if (state === "select") n += 1;
-      var li = el("li");
-      li.appendChild(el("span", null, item.name));
-      li.appendChild(button("Remove", function () {
-        delete shortlist[id];
-        var c = document.querySelector('.card[data-entity="' + id.replace(/"/g, "") + '"]');
-        if (c) refreshCardState(c, id);
-        renderShortlist();
-      }));
-      ul.appendChild(li);
-    });
-    if (!ul.firstChild) ul.appendChild(el("li", "none", "Nothing yet"));
+  var sel = document.getElementById("sl-selected"), exc = document.getElementById("sl-excluded");
+  clearNode(sel); clearNode(exc);
+  slOrder.forEach(function (id, i) { sel.appendChild(renderEntry(id, i)); });
+  if (!sel.firstChild) sel.appendChild(el("li", "none", "Nothing yet. Use Select on a result card."));
+  Object.keys(shortlist).forEach(function (id) {
+    if (shortlist[id].state !== "exclude") return;
+    var li = el("li");
+    li.appendChild(el("span", null, shortlist[id].name));
+    li.appendChild(button("Remove", function () { removeEntry(id); }));
+    exc.appendChild(li);
   });
-  document.getElementById("shortlist-count").textContent = String(n);
+  if (!exc.firstChild) exc.appendChild(el("li", "none", "Nothing yet"));
+  document.getElementById("shortlist-count").textContent = String(slOrder.length);
+  document.getElementById("sl-export").disabled = !slOrder.length;
+  document.getElementById("sl-json").disabled = !slOrder.length;
+}
+
+// Built from the stored card payload only: names, supported fields, exact quotes, URLs, dates.
+// AI-generated assessments are never included. The request text only with the analyst's opt-in.
+function exportData() {
+  var withRequest = document.getElementById("sl-include-request").checked;
+  var fetched = [];
+  var entries = slOrder.map(function (id) {
+    var item = shortlist[id], r = item.result;
+    var fields = {};
+    supportedFields(r).forEach(function (k) { if (!item.hidden[k]) fields[k] = r.fields[k].map(function (v) { return v.value; }); });
+    var quotes = r.evidence.slice(0, 2).map(function (e) {
+      if (e.fetched_at) fetched.push(e.fetched_at);
+      return { text: e.text, url: e.url, content_date: e.content_date, last_modified: e.last_modified, fetched_at: e.fetched_at };
+    });
+    return { entity_id: r.entity_id, name: r.display_name, type: r.entity_type, source: sourceOf(r.evidence[0].url).label,
+             fields: fields, evidence: quotes, analyst_note: item.note.trim() || null };
+  });
+  fetched.sort();
+  return { title: "Bern Match shortlist", exported_at: new Date().toISOString(), request: withRequest ? lastQuery : null,
+           analyst_note: listNote.trim() || null, fetched_from: fetched[0] || null, fetched_to: fetched[fetched.length - 1] || null,
+           entries: entries };
+}
+
+function buildPrintView(data) {
+  var view = document.getElementById("print-view");
+  clearNode(view);
+  view.appendChild(el("h1", null, data.title));
+  view.appendChild(el("p", "meta", "Exported " + data.exported_at.slice(0, 16).replace("T", " ") + " UTC · " +
+    data.entries.length + " entr" + (data.entries.length === 1 ? "y" : "ies") +
+    (data.fetched_from ? " · source pages fetched " + data.fetched_from.slice(0, 10) + (data.fetched_to.slice(0, 10) !== data.fetched_from.slice(0, 10) ? " to " + data.fetched_to.slice(0, 10) : "") : "")));
+  if (data.request) view.appendChild(el("p", null, "Request: " + data.request));
+  if (data.analyst_note) {
+    var ln = el("section", "pv-note");
+    ln.appendChild(el("h3", null, "Analyst note for this list (not a source fact)"));
+    ln.appendChild(el("p", null, data.analyst_note));
+    view.appendChild(ln);
+  }
+  data.entries.forEach(function (e, i) {
+    var s = el("section", "pv-entry");
+    s.appendChild(el("h2", null, (i + 1) + ". " + e.name));
+    s.appendChild(el("p", "meta", e.type + " · " + e.source));
+    var keys = Object.keys(e.fields);
+    if (keys.length) {
+      var dl = el("dl", "fields");
+      keys.forEach(function (k) {
+        dl.appendChild(el("dt", null, FIELD_LABELS[k]));
+        var dd = el("dd"); e.fields[k].forEach(function (v) { dd.appendChild(el("div", null, v)); }); dl.appendChild(dd);
+      });
+      s.appendChild(dl);
+    }
+    e.evidence.forEach(function (q) {
+      var b = el("blockquote", "evidence");
+      b.appendChild(el("p", "quote", q.text));
+      b.appendChild(el("p", "meta", q.url));
+      b.appendChild(el("p", "meta", dateLine("Source content date", q.content_date) + " | " + dateLine("Last modified", q.last_modified) + " | " + dateLine("Fetched", q.fetched_at)));
+      s.appendChild(b);
+    });
+    if (e.analyst_note) {
+      var n = el("div", "pv-note");
+      n.appendChild(el("h3", null, "Analyst note (not a source fact)"));
+      n.appendChild(el("p", null, e.analyst_note));
+      s.appendChild(n);
+    }
+    view.appendChild(s);
+  });
+  view.appendChild(el("p", "meta pv-footer", "Facts and quotes come from the public pages named under each quote, as stored in the Bern Match index on the fetch dates shown. " +
+    "Analyst notes are the analyst's own text and are not source facts. No AI-generated text is included."));
+}
+
+function exportPdf() {
+  if (!slOrder.length) return;
+  buildPrintView(exportData());
+  window.print(); // the browser's print dialog saves it as PDF; nothing is sent to the server
+}
+
+function exportJson() {
+  if (!slOrder.length) return;
+  var blob = new Blob([JSON.stringify(exportData(), null, 2)], { type: "application/json" });
+  var a = el("a"); a.href = URL.createObjectURL(blob); a.download = "bern-match-shortlist.json";
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
 }
 
 var LANG_NAMES = { en: "English", de: "German", fr: "French", it: "Italian", ru: "Russian" };
@@ -354,6 +509,10 @@ function initHero() {
   document.addEventListener("keydown", function (ev) {
     if (ev.key === "Escape" && !drawer.hidden) { drawer.hidden = true; toggle.setAttribute("aria-expanded", "false"); toggle.focus(); }
   });
+  var ln = document.getElementById("sl-list-note");
+  ln.addEventListener("input", function () { listNote = ln.value; });
+  document.getElementById("sl-export").addEventListener("click", exportPdf);
+  document.getElementById("sl-json").addEventListener("click", exportJson);
   renderShortlist();
 }
 
@@ -361,6 +520,7 @@ var eventSource = null;
 var userNeeds = [];      // needs the analyst controls (origin "user")
 var suggestedNeeds = []; // model suggestions: never sent as requirements until accepted
 var needCounter = 0;
+var needText = {};       // need_id -> text, so assessments name the need instead of its id
 
 function closeEvents() {
   if (eventSource) { eventSource.close(); eventSource = null; }
@@ -460,7 +620,7 @@ function renderAssessment(a) {
   if (a.need_coverage && a.need_coverage.length) {
     var ul = el("ul", "needlist");
     a.need_coverage.forEach(function (c) {
-      var li = el("li", null, c.need_id + ": " + (SUPPORT_LABELS[c.support] || c.support));
+      var li = el("li", null, "“" + (needText[c.need_id] || c.need_id) + "”: " + (SUPPORT_LABELS[c.support] || c.support));
       (c.evidence || []).forEach(function (e) {
         if (!e.version_id || !e.sentence_id) return;
         var link = el("a", null, " [cited sentence]");
@@ -505,6 +665,7 @@ function startEnrichment(body, requestId, myRevision) {
         if (!userNeeds.length && q) userNeeds = [{ schema_version: "1", need_id: "u0", text: q, origin: "user", kind: "problem" }];
       }
       suggestedNeeds = d.payload.needs.filter(function (n) { return n.origin === "suggested"; });
+      d.payload.needs.forEach(function (n) { needText[n.need_id] = n.text; });
       renderNeeds(d.payload);
     });
     es.addEventListener("reranked", function (e) {
@@ -543,6 +704,7 @@ function runSearch(needs) {
   var started = performance.now();
   document.body.classList.add("searched");
   queryTerms = termsOf(query);
+  lastQuery = query;
   document.getElementById("summary").hidden = true;
   document.getElementById("outcome").hidden = true;
   setStatus("Searching…", "loading");

@@ -39,12 +39,20 @@
   </main>
   <aside id="shortlist" class="drawer" hidden aria-label="Shortlist">
     <h2>Shortlist</h2>
-    <p class="meta">Your selections for this session. Each choice is sent as feedback; no text is stored.</p>
-    <h3>Selected</h3>
-    <ul id="sl-selected" class="sl"></ul>
+    <p class="meta">Your selections for this session. Select and exclude are sent as feedback; notes stay in this browser tab and are never sent.</p>
+    <h3>Selected <span class="meta">(drag or use the arrows to reorder)</span></h3>
+    <ol id="sl-selected" class="sl"></ol>
+    <label class="sl-note-label" for="sl-list-note">Analyst note for the whole list (your text, not a source fact)</label>
+    <textarea id="sl-list-note" class="sl-note" rows="2" maxlength="2000"></textarea>
+    <label class="inline"><input type="checkbox" id="sl-include-request"> Include my request text in the export</label>
+    <div class="sl-actions">
+      <button type="button" id="sl-export" class="primary">Export PDF</button>
+      <button type="button" id="sl-json" class="ghost">Download JSON</button>
+    </div>
     <h3>Excluded</h3>
     <ul id="sl-excluded" class="sl"></ul>
   </aside>
+  <section id="print-view" aria-hidden="true"></section>
   <script src="app.js"></script>
 </body>
 </html>
