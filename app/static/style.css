@@ -179,6 +179,20 @@ mark { background: var(--mark); color: inherit; border-radius: 3px; padding: 0 .
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+/* Apertus credit: their own Swiss red, used only here so it never reads as an error colour */
+:root { --apertus: #e02d24; }
+.top { gap: .75rem; }
+.powered { margin-left: auto; display: inline-flex; align-items: center; gap: .45rem; font-size: .8rem; color: var(--muted); text-decoration: none;
+  padding: .3rem .75rem; border: 1px solid var(--line); border-radius: 99px; background: var(--panel); transition: border-color .15s; }
+.powered b { color: var(--text); letter-spacing: .14em; text-transform: uppercase; font-weight: 500; }
+.powered:hover { border-color: var(--apertus); }
+.dot { display: inline-block; width: .5rem; height: .5rem; border-radius: 50%; background: var(--apertus); box-shadow: 0 0 0 3px rgba(224,45,36,.15); flex-shrink: 0; }
+.credit { max-width: 56rem; margin: 0 auto; padding: 1.5rem 1rem 3rem; border-top: 1px solid var(--line); font-size: .8rem; color: var(--muted); }
+.credit p { margin: .3rem 0; }
+.credit .dot { margin-right: .45rem; vertical-align: 1px; }
+.credit a { color: var(--text); }
+@media (max-width: 36rem) { .powered { display: none; } }
+@media print { .credit, .powered { display: none; } }
 .drawer-head { display: flex; justify-content: space-between; align-items: center; }
 @media (max-width: 36rem) {
   .steps { grid-template-columns: 1fr; }
