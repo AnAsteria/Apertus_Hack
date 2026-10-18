@@ -407,3 +407,35 @@ def test_t08_text_entities_are_indexed_with_card_field_names(tmp_path):
     # Same sentence as Anna, so MMR may diversify the unit out of this query; check its stored card.
     unit_fields={k:[v['value'] for v in vs] for k,vs in backend.entities[unit.entity_id]['fields'].items()}
     assert unit_fields == {'led_by':['Anna Example'],'projects':['laser precision lab']}
+
+
+def test_evidence_route_reads_the_index_generation_when_no_corpus_exists(built,monkeypatch,tmp_path):
+    """A freshly built, query-only serving directory has no corpus.sqlite and no symlink."""
+    data,directory,encoder,records,_=built
+    assert not (data/'corpus.sqlite').exists()
+    monkeypatch.setenv('BERNMATCH_DATA_DIR',str(data))
+    monkeypatch.setenv('BERNMATCH_SUPPRESSION_FILE',str(tmp_path/'none.json'))
+    from app.main import app
+    client=TestClient(app)
+    sentence=records[0]['sentences'][0]
+    ok=client.get(f'/api/v1/evidence/{sentence.version_id}/{sentence.sentence_id}')
+    assert ok.status_code==200 and ok.json()['text']==sentence.text   # exact stored text, not rebound
+    assert ok.json()['url']=='https://fixture.invalid/a'
+    gone=client.get(f'/api/v1/evidence/{sentence.version_id}/{sentence.version_id}:s999')
+    assert gone.status_code==410 and gone.json()['error']['code']=='EVIDENCE_REMOVED'
+    assert not (data/'corpus.sqlite').exists()                       # read-only: nothing was created
+
+
+def test_evidence_route_is_410_for_a_suppressed_url_in_a_query_only_directory(built,monkeypatch,tmp_path):
+    data,directory,encoder,records,_=built
+    supp=tmp_path/'s.json'
+    supp.write_text(json.dumps({'schema_version':'1','entries':[{'entry_id':'s','reason_category':'removal_request',
+        'action':'suppress','confirmed_at':'x','confirmed_by_role':'operator',
+        'identifiers':{'url_prefixes':['https://fixture.invalid/a']}}]}))
+    monkeypatch.setenv('BERNMATCH_DATA_DIR',str(data)); monkeypatch.setenv('BERNMATCH_SUPPRESSION_FILE',str(supp))
+    from app.main import app
+    from app.lifecycle import serving
+    serving._cache.update(path=None,mtime=None)
+    sentence=records[0]['sentences'][0]
+    r=TestClient(app).get(f'/api/v1/evidence/{sentence.version_id}/{sentence.sentence_id}')
+    assert r.status_code==410 and sentence.text not in r.text

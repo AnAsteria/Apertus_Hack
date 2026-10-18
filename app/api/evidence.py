@@ -13,12 +13,21 @@ from fastapi.responses import JSONResponse
 
 from ..contracts import error
 from ..lifecycle import serving, suppression
+from ..storage.indexes import current_generation
 
 router = APIRouter()
 
 
 def _corpus_path() -> str:
-    return os.path.join(os.environ.get("BERNMATCH_DATA_DIR", "data"), "corpus.sqlite")
+    """An operator's real corpus when present; otherwise the evidence tables inside the current
+    search generation (same sentence/version layout), so a query-only serving directory works
+    without a symlink or a second copy."""
+    root = os.environ.get("BERNMATCH_DATA_DIR", "data")
+    corpus = os.path.join(root, "corpus.sqlite")
+    if os.path.exists(corpus):
+        return corpus
+    current = current_generation(root)
+    return str(current[0] / "search.sqlite") if current else corpus
 
 
 @router.get("/api/v1/evidence/{version_id}/{sentence_id:path}")
