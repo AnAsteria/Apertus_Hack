@@ -9,6 +9,7 @@ import uuid
 from pathlib import Path
 import numpy as np
 from app.contracts import Claim, Entity
+from app.grounding.fields import FIELD_FOR, INVERSE_FIELD
 from app.storage.indexes import INDEX_VERSION, current_generation
 from .analysis import analyze
 from .encoder import digest
@@ -49,6 +50,10 @@ def prepare(records, extra_entities=(), claims=()):
     for alias in aliases:
         canonical(alias)
     fields, claim_refs = {}, {}
+    def add_field(eid, name, claim_id, value):
+        bucket = fields.setdefault(eid,{}).setdefault(name,[])
+        if all(v['value'] != value for v in bucket):
+            bucket.append({'claim_id':claim_id,'value':value})
     for raw in claims:
         claim = Claim.model_validate(raw)
         eid = canonical(claim.subject_entity_id)
@@ -68,13 +73,21 @@ def prepare(records, extra_entities=(), claims=()):
         if claim.predicate == 'official_contact' and entity.status != 'current':
             continue
         value = claim.value
+        target = None
         if claim.object_entity_id:
             target = canonical(claim.object_entity_id)
             if not target:
                 raise ValueError('unavailable_claim_object')
             value = entities[target].name
-        fields.setdefault(eid,{}).setdefault(claim.predicate,[]).append({'claim_id':claim.claim_id,'value':value})
+        # Field names follow the T08 cards and the UI labels (`projects`, `leads`, ...); see
+        # app/grounding/fields.py. A relation also appears on the object's card (`led_by`, ...).
         claim_refs.setdefault(eid,[]).extend(e.sentence_id for e in claim.evidence)
+        if claim.predicate == 'name':
+            continue  # the card title, not a field; its evidence still anchors the entity
+        add_field(eid, FIELD_FOR.get(claim.predicate, claim.predicate), claim.claim_id, value)
+        if target and target != eid and claim.predicate in INVERSE_FIELD:
+            add_field(target, INVERSE_FIELD[claim.predicate], claim.claim_id, entities[eid].name)
+            claim_refs.setdefault(target,[]).extend(e.sentence_id for e in claim.evidence)
     entries, texts, first_evidence = [], [], {}
     for record in records:
         version = record['version']
@@ -92,10 +105,12 @@ def prepare(records, extra_entities=(), claims=()):
                 first_evidence.setdefault(eid,passage.sentence_ids)
     retained = {}
     for eid in sorted(entities):
-        if canonical(eid) != eid or eid not in first_evidence:
+        # T08 entities found in page text (e.g. people named on an award page) have no T06
+        # passage link; keep them when supported claims give them stored evidence.
+        if canonical(eid) != eid or (eid not in first_evidence and not claim_refs.get(eid)):
             continue
         entity = entities[eid]
-        refs = list(dict.fromkeys(claim_refs.get(eid,[]) or first_evidence[eid]))
+        refs = list(dict.fromkeys(claim_refs.get(eid,[]) or first_evidence.get(eid,[])))
         profile = entity.name+'\n'+'\n'.join(v['value'] for values in fields.get(eid,{}).values() for v in values)
         language = versions[sentences[refs[0]].version_id].language
         entries.append({'kind':'profile','language':language,'sentence_ids':refs,'entity_ids':[eid]})

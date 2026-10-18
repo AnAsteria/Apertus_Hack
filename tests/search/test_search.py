@@ -307,3 +307,31 @@ def test_model_download_is_pinned_bounded_and_atomic(tmp_path,monkeypatch):
     with pytest.raises(ValueError,match='size_mismatch'): download.fetch_model('small',tmp_path/'bad')
     assert not (tmp_path/'bad').exists()
     assert not list(tmp_path.glob('.e5-download-*'))
+
+
+def test_t08_text_entities_are_indexed_with_card_field_names(tmp_path):
+    # T08 finds a person in page text: no T06 passage links to them, only supported claims.
+    r=record(text='Prof. Anna Example leads the laser precision lab and studies biomedical optics.')
+    unit=r['entities'][0]
+    pair=EvidencePair(version_id=r['version'].version_id,sentence_id=r['sentences'][0].sentence_id)
+    person=Entity(schema_version='1',entity_id='ent_anna',entity_type='person',name='Anna Example',status='unknown',
+                  resolution_state='uncertain',claim_ids=['clm_lead','clm_exp','clm_name'])
+    unit2=unit.model_copy(update={'claim_ids':['clm_proj']})
+    claims=[Claim(schema_version='1',claim_id='clm_lead',subject_entity_id='ent_anna',predicate='leader',
+                  object_entity_id=unit.entity_id,evidence=[pair],support='supported'),
+            Claim(schema_version='1',claim_id='clm_exp',subject_entity_id='ent_anna',predicate='expertise',
+                  value='biomedical optics',evidence=[pair],support='supported'),
+            Claim(schema_version='1',claim_id='clm_name',subject_entity_id='ent_anna',predicate='name',
+                  value='Anna Example',evidence=[pair],support='supported'),
+            Claim(schema_version='1',claim_id='clm_proj',subject_entity_id=unit.entity_id,predicate='project',
+                  value='laser precision lab',evidence=[pair],support='supported')]
+    encoder=FixtureEncoder(tmp_path/'model'); data=tmp_path/'data'
+    build_index([r],data,encoder,extra_entities=[person,unit2],claims=claims)
+    backend=HybridBackend(current_generation(data)[0],encoder=encoder)
+    results={x.entity_id:x for x in backend.search(req('biomedical optics')).results}
+    assert 'ent_anna' in results  # retained and searchable without a passage link
+    assert {k:[v.value for v in vs] for k,vs in results['ent_anna'].fields.items()} == {
+        'leads':[unit.name],'expertise':['biomedical optics']}
+    # Same sentence as Anna, so MMR may diversify the unit out of this query; check its stored card.
+    unit_fields={k:[v['value'] for v in vs] for k,vs in backend.entities[unit.entity_id]['fields'].items()}
+    assert unit_fields == {'led_by':['Anna Example'],'projects':['laser precision lab']}
