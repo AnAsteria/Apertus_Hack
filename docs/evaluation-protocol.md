@@ -7,10 +7,14 @@ Refs #14. Written by Dimitry (T14 reassigned from Maxim, see the grant on #14). 
 | Part | State |
 | --- | --- |
 | Harness (metrics, runner, report, sample sheet, CLI) | implemented, 15 unit tests pass; expected values in the tests are worked out by hand |
-| Gold set `evaluation/gold/gold.json` | **seed only: 18 queries, 11 intent groups, not frozen.** Below the 30-50 target; `python -m evaluation validate --final` fails by design |
+| Gold set `evaluation/gold/gold.json` | **0.2-draft: 36 queries (17 development, 19 evaluation), 17 intent groups, not frozen.** `python -m evaluation validate --final` passes. 0.2 (Maxim, 2026-10-18) adds FR/IT/RU variants, development groups I14-I15, evaluation groups I16-I19 (incl. two person/unit-boundary and one more absent query) and language-variant URLs as `accept_also`. See the independence note below |
 | Review by Ruihan (workstream B), as required by R1 | not done |
 | Partner review of expected matches | not done, not assumed |
 | Measured results | none. T16 and T20 own them |
+
+## Independence note (0.2)
+
+The 0.2 additions, including evaluation groups I16-I19 and the evaluation-split variants, were written by Maxim, who also builds and tunes T09 retrieval. Each expected entity was taken from stored T06 final-corpus sentences **before** any search run on that query; no evaluation query was run against the system while writing. Earlier, the T09 abstention threshold (0.865) was chosen on development queries and off-topic probes only. This authorship is a limitation for the report: Ruihan's review (R1) decides whether the evaluation split is accepted as written, edited, or replaced, and then freezes it.
 
 ## Gold set rules
 
