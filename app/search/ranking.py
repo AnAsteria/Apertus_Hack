@@ -32,12 +32,14 @@ def entity_max(scores, entries, allowed):
     return best
 
 
-def reciprocal_rank_fusion(channels, constant=60, depth=100):
+def reciprocal_rank_fusion(channels, constant=60, depth=100, weights=None):
+    """Weighted RRF: each channel adds weight/(constant+rank). Equal weights = plain RRF."""
     scores = {}
-    for channel in channels:
+    weights = weights or [1.]*len(channels)
+    for channel,weight in zip(channels,weights):
         ranked = sorted(channel,key=lambda eid:(-channel[eid][0],eid))[:depth]
         for rank,eid in enumerate(ranked,1):
-            scores[eid] = scores.get(eid,0.) + 1/(constant+rank)
+            scores[eid] = scores.get(eid,0.) + weight/(constant+rank)
     return scores
 
 

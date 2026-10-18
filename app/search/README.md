@@ -85,3 +85,15 @@ Bundle `bundle.tar.gz` (SHA-256 `9a0e0951…daed3cd`, 2,543 entities, 22,179 vec
 - Scores differ by a few thousandths between the x86 Space and this arm64 run (int8 ONNX); thresholds near a query's score are fragile.
 
 Decision: 0.83 favours recall; the honest label is `low_confidence`. Real refusal of out-of-scope requests needs a semantic check (Apertus scope classification in T18, asynchronous); deterministic signals alone cannot do it at this corpus size. n is tiny; re-check on the frozen evaluation split.
+
+## Weighted fusion (2026-10-18, development split only, real index bundle)
+
+Ruihan's T20 development run (#94) showed hybrid (0.59) below dense alone (0.71): BM25 pulled German/English listing and news pages above the cross-lingual answer. RRF now weights the BM25 channel by `BERNMATCH_KEYWORD_WEIGHT` (dense = 1). Development split, gold 0.3, 17 queries, same bundle as the Space (weight 1.0 reproduces the live Space's 0.71):
+
+| BM25 weight | Recall@10 | cross-lingual (n=11) | misses |
+| --- | --- | --- | --- |
+| 1.00 | 0.706 | 0.64 | I01-de, I01-fr, I03-en, I03-de, I03-it |
+| 0.50 / 0.75 | 0.765 | 0.73 | I01-de, I03-en, I03-de, I03-it |
+| **0.25** / 0.00 | **0.824** | **0.82** | I03-en, I03-de, I03-it |
+
+Default 0.25: the same development result as 0, while keyword-only hits (exact names, codes such as SPN-005) still enter the ranking. n is small and the plateau is tuned on development data; the evaluation split must confirm it. Remaining development misses are all intent I03 (AI insulin decision support).
