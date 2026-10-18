@@ -28,9 +28,9 @@ COVERAGE = ('The indexed corpus covers public pages of the University of Bern (i
 
 
 def thresholds():
-    return {'confident_dense': float(os.environ.get('BERNMATCH_CONFIDENT_DENSE', '.88')),
+    return {'confident_dense': float(os.environ.get('BERNMATCH_CONFIDENT_DENSE', '.885')),
             'broad_max_terms': int(os.environ.get('BERNMATCH_BROAD_MAX_TERMS', '1')),
-            'broad_max_gap': float(os.environ.get('BERNMATCH_BROAD_MAX_GAP', '.02')),
+            'broad_max_gap': float(os.environ.get('BERNMATCH_BROAD_MAX_GAP', '1.0')),
             'broad_min_hosts': int(os.environ.get('BERNMATCH_BROAD_MIN_HOSTS', '4'))}
 
 
