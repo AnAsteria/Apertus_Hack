@@ -8,6 +8,10 @@ Objective/outcome: Route person/group/project/infrastructure/service pages to ba
 
 Access/policy prerequisites and limitations: Live 8B endpoint and T05 probe; fallback is not equivalent constrained decoding.
 
+**Revision R1 (2026-10-18, proposed by Maxim; pending team confirmation — see [README §Revision R1](README.md#revision-r1-2026-10-18)):**
+- T03 observed strict `json_schema` accepted on 8B/70B with 29/30 schema-valid adversarial runs: use `backend_constrained` mode but keep Pydantic validation + bounded retry on every call.
+- Consume T06 `dev` snapshots early; output claims attach to T06 stub entities or new entities through the shared corpus models in `app/contracts.py`. Cache by content hash + model + prompt + schema so final-profile re-runs only process new/changed pages.
+
 ## B. Context and contracts
 
 Read [AGENTS.md](../../AGENTS.md), [README](../../README.md), [architecture](../ARCHITECTURE.md) sections 1–3 and pipeline step(s) **3, 4, 11** (numbers 1/3/9 on T01 also include the corresponding numbered architecture sections). Review architecture sections 5–9 when relevant to verification/delivery. Required [contract sections](../CONTRACTS.md): **3–6**. The [workflow](../AGENT_WORKFLOW.md) governs claims and integration.

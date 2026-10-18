@@ -8,6 +8,14 @@ Objective/outcome: Locate the supplied inventory or document its absence; inspec
 
 Access/policy prerequisites and limitations: Missing organiser inventory may block final acceptance; discovery can start without application code.
 
+**Revision R1 (2026-10-18, proposed by Maxim; pending team confirmation — see [README §Revision R1](README.md#revision-r1-2026-10-18)):**
+- The organiser inventory now exists: `unibe_sous_domaines_publics_etendus.xlsx` (42 rows: 41 public `*.unibe.ch` subdomains + `dcberne.com`; its Notes sheet says 71 subdomains — ask the organisers whether a fuller version exists). The merged three-domain audit (DBMR/ARTORG/DCB, 75-page cap) predates it and must be reworked against the inventory.
+- Commit the inventory as public CSV `config/sources/unibe_inventory.csv` (plus owned docs). For every row record reachability/redirects, robots status and CMS/layout family on a sample; UniBE subdomains appear to share one CMS (`index_eng.html`/`index_ger.html`, identical robots on DBMR/ARTORG) — verify on 3–4 subdomains before assuming one adapter.
+- Tier each domain `focus` (medicine/medtech/neuro/diabetes/oncology) or `outside_focus`; outside-focus domains are still crawled with a smaller budget so coverage reporting stays honest.
+- ARTORG appears both in the UniBE inventory and as a required source: one stored document, both source labels, no double-counted entities.
+- Discovery: internal links everywhere; XML sitemaps where declared (e.g. DCB `sitemap_index.xml`), always filtered by the domain/path allowlist. Keep the ARTORG research-portfolio PDF as the single text-PDF test case.
+- Acceptance change: the organiser inventory replaces "confirm proposed list"; acceptance requires every inventory row to have a recorded status (included/excluded with reason).
+
 ## B. Context and contracts
 
 Read [AGENTS.md](../../AGENTS.md), [README](../../README.md), [architecture](../ARCHITECTURE.md) sections 1–3 and pipeline step(s) **1–3, 16** (numbers 1/3/9 on T01 also include the corresponding numbered architecture sections). Review architecture sections 5–9 when relevant to verification/delivery. Required [contract sections](../CONTRACTS.md): **2, 3, 9**. The [workflow](../AGENT_WORKFLOW.md) governs claims and integration.

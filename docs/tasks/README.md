@@ -57,7 +57,7 @@ flowchart LR
   T05 --> T07
   T06 --> T07
   T07 --> T08
-  T08 --> T09
+  T08 -. v2 .-> T09
   T06 --> T09
   T04 --> T10
   T09 --> T11
@@ -96,6 +96,11 @@ flowchart LR
   T21 --> T25
   T22 --> T26
   T25 --> T26
+  T09 --> T27
+  T14 --> T27
+  T17 --> T28
+  T19 --> T28
+  T27 --> T28
 ```
 
 The issue table is the full dependency source. T10 fixture development can start after T04, but acceptance requires T09 real results. T22 outlines start after T01; its final acceptance consumes T16/T20/T25 evidence, without blocking early drafting. T15 downloads/access preparation should start early; its actual unseen-query proof requires the assembled local runtime/corpus. These are start-versus-acceptance distinctions, not permission to bypass grants.
@@ -116,7 +121,7 @@ Every issue embeds objective, architecture/contract references, scope/ownership,
 | [T06 — Implement bounded initial crawl and immutable evidence storage](T06-ingestion.md) | [#6](https://github.com/AnAsteria/Apertus_Hack/issues/6) | V1 | core | A | [#2](https://github.com/AnAsteria/Apertus_Hack/issues/2), [#4](https://github.com/AnAsteria/Apertus_Hack/issues/4) | 5 | Real-source slice / task §E |
 | [T07 — Extract evidence-backed structured facts with Apertus 8B](T07-extraction.md) | [#7](https://github.com/AnAsteria/Apertus_Hack/issues/7) | V1 | core | B | [#5](https://github.com/AnAsteria/Apertus_Hack/issues/5), [#6](https://github.com/AnAsteria/Apertus_Hack/issues/6) | 4 | Real-source slice / task §E |
 | [T08 — Resolve entities and validate semantic grounding](T08-entities-grounding.md) | [#8](https://github.com/AnAsteria/Apertus_Hack/issues/8) | V1 | core | B | [#7](https://github.com/AnAsteria/Apertus_Hack/issues/7) | 4 | Real-source slice / task §E |
-| [T09 — Build persistent multilingual hybrid retrieval and fair ranking](T09-hybrid-search.md) | [#9](https://github.com/AnAsteria/Apertus_Hack/issues/9) | V1 | core | A | [#6](https://github.com/AnAsteria/Apertus_Hack/issues/6), [#8](https://github.com/AnAsteria/Apertus_Hack/issues/8) | 5 | Real-source slice / task §E |
+| [T09 — Build persistent multilingual hybrid retrieval and fair ranking](T09-hybrid-search.md) | [#9](https://github.com/AnAsteria/Apertus_Hack/issues/9) | V1 | core | A | [#6](https://github.com/AnAsteria/Apertus_Hack/issues/6) (v1); [#8](https://github.com/AnAsteria/Apertus_Hack/issues/8) for v2 | 5 | Real-source slice / task §E |
 | [T10 — Build inspectable search cards and non-blocking API workspace](T10-workspace.md) | [#10](https://github.com/AnAsteria/Apertus_Hack/issues/10) | V1 | core | C | [#4](https://github.com/AnAsteria/Apertus_Hack/issues/4) | 4 | Real-source slice / task §E |
 | [T11 — Integrate vertical slice and deploy early](T11-initial-deployment.md) | [#11](https://github.com/AnAsteria/Apertus_Hack/issues/11) | V1 | core | C | [#3](https://github.com/AnAsteria/Apertus_Hack/issues/3), [#5](https://github.com/AnAsteria/Apertus_Hack/issues/5), [#9](https://github.com/AnAsteria/Apertus_Hack/issues/9), [#10](https://github.com/AnAsteria/Apertus_Hack/issues/10) | 3 | Real-source slice / task §E |
 | [T12 — Implement freshness, manual refresh, retirement and suppression](T12-lifecycle.md) | [#12](https://github.com/AnAsteria/Apertus_Hack/issues/12) | V2 | core | A | [#9](https://github.com/AnAsteria/Apertus_Hack/issues/9) | 4 | Verified Core / task §E |
@@ -134,6 +139,24 @@ Every issue embeds objective, architecture/contract references, scope/ownership,
 | [T24 — Optional email draft last, never automatic sending](T24-email.md) | [#24](https://github.com/AnAsteria/Apertus_Hack/issues/24) | V4 | stretch | C | [#23](https://github.com/AnAsteria/Apertus_Hack/issues/23) | 1 | Release/artifacts / task §E |
 | [T25 — Verify final hosting, release evidence and repository readiness](T25-final-deployment.md) | [#25](https://github.com/AnAsteria/Apertus_Hack/issues/25) | V4 | core | C | [#17](https://github.com/AnAsteria/Apertus_Hack/issues/17), [#20](https://github.com/AnAsteria/Apertus_Hack/issues/20), [#21](https://github.com/AnAsteria/Apertus_Hack/issues/21) | 3 | Release/artifacts / task §E |
 | [T26 — Package final artifacts and confirm submission before deadline](T26-submission.md) | [#26](https://github.com/AnAsteria/Apertus_Hack/issues/26) | V4 | core | C | [#22](https://github.com/AnAsteria/Apertus_Hack/issues/22), [#25](https://github.com/AnAsteria/Apertus_Hack/issues/25) | 2 | Release/artifacts / task §E |
+| [T27 — Accept queries in EN/DE/FR/IT/RU and retrieve EN/DE/FR/IT evidence](T27-multilingual-query.md) | issue not yet created | V2 | core | A | T09, T14 | 2 | Verified Core / task §E |
+| [T28 — Optional localized interface, explanations and translated evidence](T28-localized-ui-answers.md) | issue not yet created | V4 | stretch | C+B | T17, T19, T27 | 3 | Release/artifacts / task §E |
+
+## Revision R1 (2026-10-18)
+
+Proposed by Maxim after the organiser inventory and the T03 access audit arrived; **pending confirmation by Ruihan and Dimitry**. Task specifications carry a "Revision R1" block in section A. GitHub issue bodies, labels and new issues are not yet synchronised; the dispatcher does that after confirmation.
+
+1. **Sources:** the organiser inventory (`unibe_sous_domaines_publics_etendus.xlsx`, 42 rows: 41 `*.unibe.ch` subdomains + `dcberne.com`) replaces the three-domain T02 proposal; T02 is reworked against it (T02 R1).
+2. **Crawl budget profiles:** limits are configuration. `dev` = small, economical limit during development; `final` = raised to the maximum feasible for final test runs, benchmarks and the demo corpus. One crawl into the local store; queries never fetch sources (T06 R1). Reported metrics use the `final` snapshot.
+3. **Search not blocked by LLM extraction:** T06 emits deterministic stub entities; T09 v1 depends on T06 only; T08 integration is T09 v2. Cards without supported claims show evidence only (T06/T08/T09 R1).
+4. **Shared corpus models** (Document/Version/Passage/Sentence/Entity/Claim) must be added to `app/contracts.py` by the contract owner before T06/T07 implementation. `content_hash` is computed over cleaned main text (DECISIONS addition).
+5. **Hosting:** free resources only — Hugging Face Space (Docker) for the app, organiser CSCS/Keera endpoint for Apertus; CSCS hosting if offered (T11 R1).
+6. **Offline proof** on Dimitry's 16 GB machine (T15 R1).
+7. **Evaluation:** T14 split into frozen gold set (before tuning, reviewed by B) and harness; lead owner proposed A (T14 R1).
+8. **T12** reduced to an MVP lifecycle (T12 R1).
+9. **Multilingual:** T27 (Core) — queries in EN/DE/FR/IT/RU retrieve EN/DE/FR/IT evidence without LLM on the fast path. T28 (Stretch, tier 3, deferred like T23/T24) — localized UI, explanations in the user's language and labelled machine-translated evidence. Both are explicit scope extensions to architecture section 1 and need team approval.
+
+Workload: T27 adds ~2 h to A; T28 is deferred Stretch.
 
 ## Readiness and first work per stream
 

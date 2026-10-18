@@ -8,6 +8,9 @@ Objective/outcome: Implement documented freshness threshold, separate fetch/cont
 
 Access/policy prerequisites and limitations: Freshness/retention/removal-confirmation decisions and reachable operator route from T01.
 
+**Revision R1 (2026-10-18, proposed by Maxim; pending team confirmation — see [README §Revision R1](README.md#revision-r1-2026-10-18)):**
+- **MVP reduction:** suppression list in YAML applied before ingestion and at serving time; protected retire action propagating to serving indexes; HTTP 410 `EVIDENCE_REMOVED` for removed citations; removal-request contact in README; one controlled refresh test (changed text → new version, old citation keeps identity). Freshness uses the DECISIONS threshold (365 days on content/last-modified date, else `unknown`). No scheduler; backup/expiry policy is documented text, not automation.
+
 ## B. Context and contracts
 
 Read [AGENTS.md](../../AGENTS.md), [README](../../README.md), [architecture](../ARCHITECTURE.md) sections 1–3 and pipeline step(s) **5, 6, 12, 14** (numbers 1/3/9 on T01 also include the corresponding numbered architecture sections). Review architecture sections 5–9 when relevant to verification/delivery. Required [contract sections](../CONTRACTS.md): **2, 3, 7, 9**. The [workflow](../AGENT_WORKFLOW.md) governs claims and integration.

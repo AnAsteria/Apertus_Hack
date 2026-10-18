@@ -60,3 +60,8 @@ Branch `codex/issue-<n>-<slug>`, pull request referencing `Refs #n`, green CI, d
 
 - **D1 (T10, proposed, needs contract-owner approval):** `Result.fields` values changed from bare claim-id strings to `{claim_id, value}` objects, so a card can show a supported claim's text without the UI resolving claims. Additive in intent but breaks any producer using the old shape. Implemented in `app/contracts.py`; `docs/CONTRACTS.md` not yet updated.
 - **D2 (T10):** the search route moved to `app/api/search.py` with a pluggable backend. Fixture mode (`BERNMATCH_FIXTURE_MODE=1`) serves synthetic cards for UI work only; it is off by default and labels its output synthetic.
+- **D3 (R1, proposed by Maxim, pending):** `content_hash` = SHA-256 of the cleaned main text, not raw response bytes.
+- **D4 (R1, proposed by Maxim, pending):** crawl budget profiles `dev` (small, development) and `final` (maximum feasible, for final runs/benchmarks/demo); limits live in configuration.
+- **D5 (R1, proposed by Maxim, pending):** T06 stub entities let T09 v1 ship before T07/T08; cards may be evidence-only.
+- **D6 (R1, team decision, pending record):** hosting on a free Hugging Face Space (Docker) with the organiser Keera endpoint; no paid resources.
+- **D7 (R1, proposed by Maxim, pending):** multilingual scope extension — T27 Core query languages EN/DE/FR/IT/RU; T28 Stretch localized output.

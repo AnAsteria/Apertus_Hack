@@ -8,6 +8,10 @@ Objective/outcome: Integrate real-page ingestion→indexes→API→cards and dep
 
 Access/policy prerequisites and limitations: Host/credentials/persistent storage access and integration owner; hosting cannot be replaced by localhost proof.
 
+**Revision R1 (2026-10-18, proposed by Maxim; pending team confirmation — see [README §Revision R1](README.md#revision-r1-2026-10-18)):**
+- **Hosting decision (team, free resources only):** Hugging Face Space (Docker) for the app; Apertus via the organiser-provided CSCS/Keera endpoint. Use CSCS hosting instead if the organisers provide it. No paid resources.
+- HF specifics: set `app_port` (or serve on 7860); run as uid 1000; free Spaces have no persistent disk, so bake the corpus/index snapshot into the image or fetch it at startup from a HF Dataset. Feedback persistence on the free tier: either a private HF Dataset via a server-side token, or disclosed as non-persistent across restarts. Keera key only in Space secrets.
+
 ## B. Context and contracts
 
 Read [AGENTS.md](../../AGENTS.md), [README](../../README.md), [architecture](../ARCHITECTURE.md) sections 1–3 and pipeline step(s) **1–7, 9, 11, 12, 14** (numbers 1/3/9 on T01 also include the corresponding numbered architecture sections). Review architecture sections 5–9 when relevant to verification/delivery. Required [contract sections](../CONTRACTS.md): **1–9**. The [workflow](../AGENT_WORKFLOW.md) governs claims and integration.
