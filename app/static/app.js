@@ -508,10 +508,13 @@ var OUTCOME_TEXT = {
   no_evidence: ["Nothing found", "The indexed corpus has no supported evidence for this request."]
 };
 
-function renderOutcome(b) {
+function renderOutcome(b, byApertus) {
   var box = document.getElementById("outcome");
   clearNode(box);
   var info = OUTCOME_TEXT[b.outcome];
+  // The outcome was measured on the direct search. Over Apertus' ranking, say exactly that.
+  if (byApertus && b.outcome === "low_confidence")
+    info = ["Weak match on your exact wording", "The direct search found only weak matches, so Apertus widened it with other wordings. Check the quotes before relying on a result."];
   if (!info) { box.hidden = true; return; }
   box.hidden = false;
   box.appendChild(el("h2", null, info[0]));
@@ -810,6 +813,17 @@ var baseRanks = {};        // entity_id -> rank in the direct results, for "Move
 var showDirect = null;     // shows the direct results (fallback); null once anything is shown
 var fallbackTimer = null;
 var searchStarted = 0;
+var currentResponse = null; // the direct search response of the current request
+
+// Outcome box and limitations appear together with the results, never before them,
+// so a new search never shows the previous one's verdict.
+function renderNotes(b, byApertus) {
+  renderOutcome(b, byApertus);
+  var lim = document.getElementById("limitations");
+  clearNode(lim);
+  b.limitations.forEach(function (l) { lim.appendChild(el("li", null, l)); });
+  document.getElementById("limits-box").hidden = !b.limitations.length;
+}
 
 function flushAssessments() {
   var list = pendingAssess; pendingAssess = [];
@@ -872,9 +886,9 @@ function startEnrichment(body, requestId, myRevision) {
       var d = parse(e);
       if (!d || !d.payload.results.length) return;
       if (resultsShown) rerankCards(d.payload.results); // direct results already on screen (fallback)
-      else showApertusResults(d.payload.results);
+      else { showApertusResults(d.payload.results); if (currentResponse) renderNotes(currentResponse, true); }
       renderSummary({ results: d.payload.results }, lastQuery, performance.now() - searchStarted, true);
-      setStatus("Ranked by Apertus, using the other wordings listed above.", "ap");
+      setStatus("Ranked by Apertus, using the other wordings listed above.", "by-apertus");
     });
     es.addEventListener("progress", function (e) {
       var d = parse(e);
@@ -941,18 +955,14 @@ function runSearch(needs) {
     var b = res.body;
     lastRequestId = b.request_id; lastRevision = b.revision;
     var directMs = performance.now() - started;
-    // Outcome and limitations belong to the request, whichever ranking is shown.
-    renderOutcome(b);
-    var lim = document.getElementById("limitations");
-    clearNode(lim);
-    b.limitations.forEach(function (l) { lim.appendChild(el("li", null, l)); });
-    document.getElementById("limits-box").hidden = !b.limitations.length;
+    currentResponse = b;
     showDirect = function (note) {
       if (myRevision !== revision || resultsShown) return;
       resultsShown = true; showDirect = null; clearTimeout(fallbackTimer);
       setStatus(note || (b.results.length ? "" : "No results found in the indexed corpus."), "");
       renderCards(b.results);
       renderSummary(b, query, directMs);
+      renderNotes(b, false);
       flushAssessments();
     };
     if (b.enrichment_state === "pending" && b.results.length) {

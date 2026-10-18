@@ -196,10 +196,10 @@ mark { background: var(--mark); color: inherit; border-radius: 3px; padding: 0 .
 .powered b { color: var(--text); letter-spacing: .14em; text-transform: uppercase; font-weight: 500; }
 .powered:hover { border-color: var(--apertus); }
 /* The Apertus mark: a red "Λ" drawn with a clip-path (no image file) */
-.ap, .ai-tag::before, .badge.moved-badge::before, .status.ap::before {
+.ap, .ai-tag::before, .badge.moved-badge::before, .status.by-apertus::before {
   content: ""; display: inline-block; width: .74em; height: .9em; background: var(--apertus); flex-shrink: 0;
   clip-path: polygon(50% 0, 100% 100%, 81% 100%, 50% 27%, 19% 100%, 0 100%); vertical-align: -.08em; }
-.ai-tag::before, .badge.moved-badge::before, .status.ap::before { margin-right: .35em; }
+.ai-tag::before, .badge.moved-badge::before, .status.by-apertus::before { margin-right: .35em; }
 .powered .ap { font-size: 1rem; }
 .steps li span .ap { font-size: .85rem; }
 .credit { max-width: 56rem; margin: 0 auto; padding: 1.5rem 1rem 3rem; border-top: 1px solid var(--line); font-size: .8rem; color: var(--muted); }
