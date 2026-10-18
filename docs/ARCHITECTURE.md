@@ -22,7 +22,7 @@ Team: three developers, two with AI/ML backgrounds and one with general CS exper
 
 ### Offline ingestion and persistent state
 
-Source YAML and the supplied inventory → discovery → bounded public fetch → versioned snapshot and coverage → cleaned passages and sentences → cheap page classification → selective Apertus 8B extraction → entity resolution and grounding → persistent vector and BM25 indexes plus structured records and evidence.
+Source YAML and the supplied inventory → discovery → bounded public fetch → versioned snapshot and coverage → cleaned passages and sentences → cheap page classification → selective Apertus 70B extraction (8B fallback; [D10](DECISIONS.md)) → entity resolution and grounding → persistent vector and BM25 indexes plus structured records and evidence.
 
 The MVP performs **one initial crawl** and queries the stored corpus. Both entity profiles and original passages must be searchable. Ingestion requires source network access; calling it an offline processing phase does not imply air-gapped crawling. Cache enrichment by content hash, with invalidation when relevant extraction configuration changes; precise cache keys are a pending implementation choice. Unsupported pages remain visible in coverage reporting.
 
@@ -95,13 +95,15 @@ The following step numbers match the approved pipeline. Every gate requires obse
 
 **Acceptance:** sample sentences resolve to exact stored text and PDF pages where applicable; recrawl versions cannot change old citation text; German/English variants stay traceable; usable non-extraction pages remain searchable; extraction routing is observable.
 
-### Step 4 — Core: extract structured knowledge with Apertus 8B
+### Step 4 — Core: extract structured knowledge with Apertus 70B (8B fallback)
 
 **Inputs:** routed passages, sentence IDs and extraction schema.
 
-**Processing:** extract people, roles, affiliations, units, expertise, projects, infrastructure, services and explicit relationships. Use Apertus 8B for bulk extraction. Require backend JSON-schema-constrained decoding, such as guided decoding or Outlines. Probe Keera capabilities before depending on them. Model responses contain sentence IDs, not quotations; code resolves text. Missing fields stay empty and group expertise is not assigned automatically to members.
+**Processing:** extract people, roles, affiliations, units, expertise, projects, infrastructure, services and explicit relationships. Use Apertus 70B for bulk extraction, with 8B as fallback (amended by D10, see note below). Require backend JSON-schema-constrained decoding, such as guided decoding or Outlines. Probe Keera capabilities before depending on them. Model responses contain sentence IDs, not quotations; code resolves text. Missing fields stay empty and group expertise is not assigned automatically to members.
 
 **Outputs:** structured facts and relationships with sentence evidence.
+
+> **Amendment D10 (2026-10-18; proposed by Ruihan, approved by Maxim and Dimitry).** The approved pipeline originally named 8B for bulk extraction. It was changed to 70B on this measured basis, recorded in [docs/extraction.md](extraction.md): same 11 real T06 `dev` pages (6 DBMR, 2 ARTORG, 3 DCB incl. one German), prompt `p2`, schema `x2`, one run per model. **Hand-checked non-name claim precision: 70B ~35/36 (~97%) vs 8B ~13/27 (~48%); persons found: 24 vs 0; wall time 62.1 s vs 9.2 s (~7× slower); tokens in/out 15,363/6,845 vs 13,314/5,304.** Limits of this metric: n = 11 pages, single run, single rater (Ruihan), no person-profile pages in the sample, 7 of the 70B correct claims are low-value (prize amounts); it is a decision input, not a benchmark. Extraction is offline and cached by content hash, so query latency is unaffected; the full-corpus run is bounded, resumable and announced to the team before use of the shared Keera key. T16/T20 re-measure extraction quality, tokens and cost on the `final` corpus; section 7 assumptions remain 8B-based and must be replaced by these measurements.
 
 **Acceptance:** record endpoint capability probe and decoding mode; outputs pass schema and reference checks; samples preserve missingness and relationship boundaries. If the endpoint lacks constrained decoding, use schema validation with bounded retries, reject/quarantine invalid output and retain searchable passages. Report this as a weaker fallback, **not equivalent constrained-decoding compliance**. Retry bounds and schemas are pending choices. Never expose unvalidated extraction as fact.
 
@@ -279,7 +281,7 @@ The approved pipeline supplies the following **illustrative assumptions requirin
 | Enriched query | 8,000 input + 800 output tokens |
 | Query compute | About 24 GPU-seconds at those assumed rates |
 
-Arithmetic uses input tokens / input rate plus output tokens / output rate: 4,000 + 12,000 seconds for extraction, and 8 + 16 seconds per enriched query. Real prefill/generation, batching and concurrency may not behave like this serial approximation.
+Arithmetic uses input tokens / input rate plus output tokens / output rate: 4,000 + 12,000 seconds for extraction, and 8 + 16 seconds per enriched query. Real prefill/generation, batching and concurrency may not behave like this serial approximation. These assumptions were written for 8B; after D10 bulk extraction uses 70B (~7× slower on the 11-page sample), so extraction compute must be re-measured rather than derived from this table.
 
 The pipeline's SwissGPU reference assumes an RTX 4090 VM at **CHF 0.40/hour**, electricity separate: approximately CHF 292/month continuously running at 730 hours/month. Its illustrative total **CHF 380–445/month** assumes 0.4–0.7 kW average use, but the electricity tariff/billing basis is not specified and must be verified. Quantised 8B memory fit and throughput need tests. Current provider availability/pricing has not been verified in this documentation work; Keera pricing is separately unconfirmed.
 
@@ -313,7 +315,7 @@ These evidence requirements preserve the approved changelog's rationale: fast pa
 
 ### Approved requirements — not open for silent redesign
 
-All 17 steps and their tier labels above; three-source coverage; four focus areas with outside-focus reporting; text-only input; one initial crawl and persistent indexes; no per-query crawling; non-blocking retrieval; sentence-ID grounding plus support checks; 8B bulk extraction; constrained decoding with explicitly weaker fallback; multilingual hybrid retrieval and fair aggregation/MMR; manual MVP refresh; production refresh/removal policy; full evaluation comparisons; local air-gapped proof; submission requirements. Do not introduce extra infrastructure or broaden scope without a recorded decision.
+All 17 steps and their tier labels above; three-source coverage; four focus areas with outside-focus reporting; text-only input; one initial crawl and persistent indexes; no per-query crawling; non-blocking retrieval; sentence-ID grounding plus support checks; 70B bulk extraction with 8B fallback (D10, amended from 8B); constrained decoding with explicitly weaker fallback; multilingual hybrid retrieval and fair aggregation/MMR; manual MVP refresh; production refresh/removal policy; full evaluation comparisons; local air-gapped proof; submission requirements. Do not introduce extra infrastructure or broaden scope without a recorded decision.
 
 ### Implementation choices still to be decided
 
