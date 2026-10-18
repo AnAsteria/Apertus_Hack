@@ -41,10 +41,17 @@ function sourceOf(url) {
   return { key: "other", label: host || "Other" };
 }
 
+// Function words are not highlighted: marking every "der" or "the" in a quote hides the real match.
+var STOP_WORDS = {};
+("the and for with from that this are was our their into about " +
+ "der die das den dem des und für mit von bei zur zum ein eine einer eines auf aus ist sind " +
+ "les des une pour avec dans sur par aux est " +
+ "per con del della delle degli che una nel nella").split(" ").forEach(function (w) { STOP_WORDS[w] = true; });
+
 function termsOf(q) {
   var seen = {};
   return (q.toLowerCase().match(/[\p{L}\p{N}]{3,}/gu) || []).filter(function (w) {
-    if (seen[w]) return false; seen[w] = true; return true;
+    if (seen[w] || STOP_WORDS[w]) return false; seen[w] = true; return true;
   });
 }
 
