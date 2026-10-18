@@ -1,0 +1,146 @@
+"""Stored-corpus hybrid fast path. Local CPU embeddings, never an LLM endpoint."""
+import json
+import os
+import time
+import uuid
+from datetime import datetime,timezone
+import numpy as np
+from app.contracts import MAX_RESULTS, Result, SearchResponse
+from app.storage.indexes import IndexStore
+from .analysis import analyze,language_of,match_expression,query_terms,words
+from .encoder import OnnxEncoder,digest
+from .ranking import entity_max,reciprocal_rank_fusion,diversify
+
+
+def freshness(evidence, now=None):
+    dates = []
+    for item in evidence:
+        raw = item['content_date'] or item['last_modified']
+        if not raw:
+            return 'unknown'
+        try:
+            date = datetime.fromisoformat(raw.replace('Z','+00:00'))
+            if date.tzinfo is None:
+                date = date.replace(tzinfo=timezone.utc)
+            dates.append(date)
+        except ValueError:
+            return 'unknown'
+    now = now or datetime.now(timezone.utc)
+    return 'stale' if any((now-d).total_seconds()>365*86400 for d in dates) else 'fresh'
+
+
+class HybridBackend:
+    def __init__(self, directory, *, encoder=None, min_dense=None, mode=None):
+        mode = mode or os.environ.get('BERNMATCH_SEARCH_MODE','hybrid')
+        min_dense = float(os.environ.get('BERNMATCH_MIN_DENSE','.80')) if min_dense is None else min_dense
+        if not 0 <= min_dense <= 1:
+            raise ValueError('invalid_dense_threshold')
+        if mode not in ('hybrid','dense','keyword'):
+            raise ValueError('invalid_retrieval_mode')
+        self.store = IndexStore(directory)
+        self.manifest = json.loads((self.store.root/'manifest.json').read_text())
+        for name,asset in self.manifest['assets'].items():
+            if not name.startswith('model/') and digest(self.store.root/name) != asset['sha256']:
+                raise ValueError('index_asset_hash_mismatch')
+        self.entities,self.entries = self.store.metadata()
+        self.vectors = np.load(self.store.root/'vectors.npy',mmap_mode='r',allow_pickle=False)
+        self.vector_entries = np.load(self.store.root/'vector_entries.npy',mmap_mode='r',allow_pickle=False)
+        if self.vectors.shape[0] != len(self.vector_entries) or self.vectors.ndim != 2:
+            raise ValueError('index_shape_mismatch')
+        self.encoder = encoder
+        self.encoder_error = False
+        if encoder is None and mode != 'keyword':
+            try:
+                self.encoder = OnnxEncoder(self.store.root/'model')
+            except Exception:
+                self.encoder_error = True
+        self.min_dense,self.mode = min_dense,mode
+
+    def search(self, req):
+        start = time.perf_counter()
+        timing = {}
+        limitations = ['Relevance signals identify potentially related source material; exact quotations alone do not validate semantic support.']
+        if self.encoder_error:
+            limitations.append('Local embedding model unavailable; keyword retrieval remains available.')
+        if any(v['entity']['resolution_state']!='confirmed' for v in self.entities.values()):
+            limitations.append('Some entity identities are provisional; unsupported fields remain empty.')
+        enrichment = 'unavailable' if req.enrichment_requested else 'not_requested'
+        # Edited needs/context enrich in their separate tasks. Do not silently
+        # present an ignored constraint as enforced by the baseline fast path.
+        if req.needs or req.company_context:
+            limitations.append('Baseline retrieval uses the query text; needs/context interpretation is not integrated.')
+        allowed = {eid for eid,item in self.entities.items() if item['entity']['status']!='retired'
+                   and req.entity_type in (None,item['entity']['entity_type'])}
+        if not req.query.strip() or not words(req.query) or not allowed:
+            return self._response(req,[],limitations,enrichment,start,timing)
+        query_language = language_of(req.query)
+        t = time.perf_counter()
+        keyword = entity_max(self.store.keyword(match_expression(query_terms(req.query))),self.entries,allowed) if self.mode!='dense' else {}
+        timing['keyword'] = (time.perf_counter()-t)*1000
+        t = time.perf_counter()
+        dense = {}; vector_winners = {}
+        if self.encoder is not None and self.mode!='keyword':
+            try:
+                query = self.encoder.encode([req.query],kind='query')[0]
+                if query.shape != (self.vectors.shape[1],):
+                    raise ValueError('query_dimension_mismatch')
+                scores = self.vectors @ query
+                for index in np.flatnonzero(scores>=self.min_dense):
+                    entry_id = int(self.vector_entries[index])
+                    old = vector_winners.get(entry_id)
+                    if old is None or scores[index] > old[0]:
+                        vector_winners[entry_id] = (float(scores[index]),int(index))
+                dense = entity_max([(i,x[0]) for i,x in vector_winners.items()],self.entries,allowed)
+            except Exception:
+                limitations.append('Local embedding computation failed; available keyword results are retained.')
+        timing['dense'] = (time.perf_counter()-t)*1000
+        t = time.perf_counter()
+        fused = reciprocal_rank_fusion([keyword,dense])
+        representatives = {}
+        # Use one representative vector per entity, independent of page count.
+        for eid in fused:
+            entry_id = (dense.get(eid) or keyword[eid])[1]
+            if entry_id in vector_winners:
+                vector_id = vector_winners[entry_id][1]
+            else:
+                vector_id = int(np.flatnonzero(self.vector_entries==entry_id)[0])
+            representatives[eid] = self.vectors[vector_id]
+        selected = diversify(fused,representatives,limit=MAX_RESULTS)
+        timing['rank'] = (time.perf_counter()-t)*1000
+        results = []
+        for eid in selected:
+            item = self.entities[eid]; entity = item['entity']
+            # Prefer the strongest semantic passage when available; the lexical
+            # ablation resolves its own best passage. Profiles cite stored text.
+            entry_id = (dense.get(eid) or keyword[eid])[1]
+            entry = self.entries[entry_id]
+            sids = entry['sentence_ids']
+            evidence = self.store.evidence(sids)
+            # Include every sentence needed for surfaced claims. These references
+            # were checked at build time, rather than accepting invented quotes.
+            if item['claim_sentence_ids']:
+                evidence += self.store.evidence(item['claim_sentence_ids'])
+            evidence = list({e['sentence_id']:e for e in evidence}.values())
+            if not evidence:
+                continue
+            reason = ('Matched stored source text by keyword retrieval and multilingual similarity.' if eid in keyword and eid in dense
+                      else 'Matched stored source text by keyword retrieval.' if eid in keyword
+                      else 'Matched stored source text by multilingual similarity.')
+            if entity['status']=='former':
+                reason = 'Documented as former; '+reason
+            results.append(Result(entity_id=eid,entity_type=entity['entity_type'],rank=len(results)+1,
+                display_name=entity['name'],fields=item['fields'],reason=reason,evidence=evidence,
+                freshness=freshness(evidence),retrieval={'bm25':keyword.get(eid,(None,None))[0],
+                'dense':dense.get(eid,(None,None))[0],'rrf':fused[eid],'aggregation':'max_before_rrf',
+                'entry_kind':entry['kind'],'query_language':query_language,'mode':self.mode,
+                'resolution_state':entity['resolution_state'],'entity_status':entity['status'],
+                'model':self.manifest['model']['repo'],'generation':self.manifest['generation']}))
+        return self._response(req,results,limitations,enrichment,start,timing)
+
+    @staticmethod
+    def _response(req,results,limitations,enrichment,start,timing):
+        if not results:
+            limitations.append('Support was not found above the retrieval thresholds in the indexed corpus.')
+        timing['total'] = (time.perf_counter()-start)*1000
+        return SearchResponse(schema_version='1',request_id='req_'+uuid.uuid4().hex,revision=req.revision,
+                              results=results,limitations=limitations,enrichment_state=enrichment,timing_ms=timing)

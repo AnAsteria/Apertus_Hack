@@ -11,7 +11,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install -r requirements.lock -r app/ingest/requirements.txt pytest httpx
+      - run: pip install -r requirements.lock -r app/ingest/requirements.txt -r app/search/requirements.txt pytest httpx
       - run: python -m pytest -q -rs
       - name: Tracked files contain no secrets
         run: |
