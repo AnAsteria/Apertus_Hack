@@ -4,9 +4,11 @@ Related issue: [#2](https://github.com/AnAsteria/Apertus_Hack/issues/2). Audit d
 
 ## 1. Inventory status and handoff boundary
 
-No organiser-supplied URL inventory was found among the tracked repository files or the specifications supplied in this chat. The approved architecture names UniBE, ARTORG and Diabetes Center Berne but does not supply their complete allowed paths. The inventory below is therefore **proposed from inspected public institutional pages**, not represented as the missing organiser inventory.
+**Update — 18 October 2026:** the user has now supplied the original workbook. It is retained in [config/sources/unibe_sous_domaines_publics_etendus.xlsx](../config/sources/unibe_sous_domaines_publics_etendus.xlsx), with an exact first-sheet extraction at [config/sources/unibe_inventory.csv](../config/sources/unibe_inventory.csv). See [input provenance and checks](../config/sources/README.md).
 
-**Outstanding acceptance dependency:** the partner/organiser or authorised project owner must confirm this inventory or provide the original list. Do not mark #2 fully accepted merely because this audit is prepared. T06 must also wait for its T04 dependency and an explicit task authorisation. No crawling or indexing is implemented here.
+The supplied sheet contains 42 rows (41 UniBE-domain URLs and DCB); its Notes sheet says 71. The discrepancy is unresolved. The three-source inspection below predates this file and remains useful evidence, but **does not satisfy revised T02 R1 acceptance for every inventory row**.
+
+**Outstanding acceptance work:** audit each supplied row, record reachability/redirects/robots/layout and included/excluded reasons, assign focus tiers, and resolve the claimed 71-versus-42 scope with organisers if needed. The bounded three-source proposal below is historical, not a replacement for the supplied inventory. T06 also depends on its T04 and shared-model requirements. No crawling or indexing is implemented by this input import.
 
 UniBE is represented initially by a bounded Department for BioMedical Research (DBMR) slice. This is not full University coverage. ARTORG belongs to UniBE institutionally but is a separate required source label: store each document once, preserve affiliations and prevent double-counting the same entity across source labels. DCB links to university/partner sites; a link does not expand the allowlist.
 
@@ -112,7 +114,7 @@ The appendix below records direct HTTP probes, distinct from search-engine cache
 
 The first Python urllib attempt failed certificate verification because its local CA bundle was unavailable; no TLS verification was disabled. The retry used system curl with normal TLS verification. PDF page/text readability was inspected through the web PDF reader, not a local T06 parser. No application/unit tests were needed for two documentation files; structural/manifest/evidence checks are recorded below.
 
-Open decisions: confirm original/proposed inventory; approve narrow budgets and scope; agree contact freshness/retention policies through T01; approve any external-domain adapters; perform T06 real corpus/parser checks and T14 full gold-set review. Keep these limitations in issue #2 and the PR; do not close automatically.
+Open decisions: complete the supplied-inventory R1 audit and resolve the 71-versus-42 scope discrepancy; approve revised budgets and scope; agree contact freshness/retention policies through T01; approve any external-domain adapters; perform T06 real corpus/parser checks and T14 full gold-set review. Keep these limitations in issue #2 and the PR; do not close automatically.
 
 
 ### HTTP audit appendix
