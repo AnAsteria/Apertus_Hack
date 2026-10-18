@@ -218,3 +218,11 @@ def test_zero_indexed_candidates_are_shifted_once():
               verdict(1, "insufficient_evidence", [])])
     out, stats = assess("glucose sensor", NEEDS, [C1, C2], client=c)
     assert [a.entity_id for a in out] == ["ent_c1", "ent_c2"] and stats.corrections == {"zero_indexed_candidates": 1}
+
+
+def test_default_assessor_is_skipped_without_inference_key(api, monkeypatch):
+    monkeypatch.delenv("APERTUS_API_KEY", raising=False)
+    enrichment.set_assessor(None)
+    ev = run(api, "req_k")
+    assert {"stage": "assessment", "state": "skipped", "reason": "inference_disabled"} in [e.payload for e in ev]
+    assert ev[-1].event_type == "complete"

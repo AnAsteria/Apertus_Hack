@@ -33,6 +33,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 
 from ..ai.assess import assess
 from ..ai.client import InferenceError
+from ..ai.config import InferenceConfig
 from ..ai.interpret import Interpretation, interpret
 from ..contracts import (MAX_CONTEXT_CHARS, MAX_NEEDS, MAX_QUERY_CHARS, SCHEMA_VERSION, Result, SearchRequest,
                          SseEvent, error)
@@ -217,6 +218,9 @@ def _stream(request_id: str, req: SearchRequest) -> Iterator[str]:
     needs = interp.needs if interp is not None else list(req.needs)
     if not candidates:
         yield event("progress", {"stage": "assessment", "state": "skipped", "reason": "no_candidates"})
+    elif _assessor is _default_assessor and not InferenceConfig.from_env().enabled:
+        # Fixture mode / no key: say so instead of emitting a model error.
+        yield event("progress", {"stage": "assessment", "state": "skipped", "reason": "inference_disabled"})
     else:
         yield event("progress", {"stage": "assessment", "state": "started", "candidates": min(len(candidates), 8)})
         t1 = time.monotonic()
