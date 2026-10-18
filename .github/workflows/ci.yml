@@ -35,3 +35,21 @@ jobs:
           echo "readyz=$code"
           test "$code" = "503"
           docker logs bm
+  hf-space-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the Hugging Face Space image
+        run: docker build -f deploy/hf-space/Dockerfile -t bernmatch-hf:ci .
+      - name: Start as uid 1000 on port 7860 and probe
+        run: |
+          docker run -d --name bmhf --user 1000 -p 7860:7860 bernmatch-hf:ci
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:7860/healthz && break || sleep 1
+          done
+          curl -sf http://127.0.0.1:7860/healthz
+          code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:7860/readyz)
+          echo "readyz=$code"
+          test "$code" = "503"
+          docker exec bmhf sh -c 'touch "$BERNMATCH_DATA_DIR/w" && echo data-dir-writable'
+          docker logs bmhf
