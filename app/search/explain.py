@@ -17,12 +17,20 @@ def matched_words(query, texts, language):
         stored.update(analyze(text, language if language in LANGUAGES else 'en'))
     out = []
     for word in words(query):
-        if len(word) < 3 or word in STOP or word in out:
+        if len(word) < 3 or word in STOP or word in FUNCTION_WORDS or word in out:
             continue
         if any(stemmer(lang).stemWord(word) in stored for lang in LANGUAGES):
             out.append(word)
     return out
 
+
+# Function words that the short STOP list misses; they must not appear as "matched" evidence.
+FUNCTION_WORDS = set("""bei zur zum vom beim am im ins ans aufs über unter auf aus nach ohne gegen durch bis seit
+wie als oder auch nicht sich sie er es wir ihr man sind ist war hat haben werden wird kann
+was why how who what when where which with without into onto about over under between than
+not but also can are was were has have had will would should could all show find
+pour par sur dans avec sans aux est sont qui que quoi une des les
+per con senza sono che chi una gli dei delle alla nel""".split())
 
 LANGUAGE_NAMES = {'en': 'English', 'de': 'German', 'fr': 'French', 'it': 'Italian', 'ru': 'Russian'}
 

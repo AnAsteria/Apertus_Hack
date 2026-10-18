@@ -21,3 +21,9 @@ def test_reason_names_channels_language_path_and_demotion():
     only_dense = reason(keyword_rank=None, dense_rank=2, matched=[], query_language='ru',
                         evidence_language='en', demoted=False, former=True)
     assert only_dense.startswith('Documented as former.') and 'keyword' not in only_dense
+
+
+def test_function_words_are_never_reported_as_matched_evidence():
+    text = 'Forschung bei Krebs zur Therapieresistenz, show all results.'
+    assert matched_words('Forschungspartner für Therapieresistenz bei Krebs', [text], 'de') == ['therapieresistenz', 'krebs']
+    assert matched_words('show me all monkeys', [text], 'en') == []
