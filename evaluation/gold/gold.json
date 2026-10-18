@@ -1,0 +1,549 @@
+{
+ "gold_version": "0.1-seed",
+ "status": "SEED, NOT FROZEN: 18 queries, below the 30-50 target; expected entities are keyed by source URL because entity IDs do not exist yet; needs review by Ruihan and more lay/synonym variants before freezing",
+ "pending_from_seeds": {
+  "I08": "person/unit boundary needs real person evidence in the corpus",
+  "I09": "contact freshness: current contact is unlabelled pending evidence review"
+ },
+ "queries": [
+  {
+   "query_id": "I01-en",
+   "intent_group_id": "I01",
+   "split": "development",
+   "text": "Research partners studying why cancers resist treatment",
+   "language": "en",
+   "requested_type": "unit",
+   "category": "lay",
+   "expected": [
+    {
+     "name": "Cancer Therapy Resistance (DBMR)",
+     "type": "unit",
+     "urls": [
+      "https://www.dbmr.unibe.ch/research/research_programs/index_eng.html"
+     ],
+     "names": [
+      "Cancer Therapy Resistance",
+      "CTR"
+     ]
+    }
+   ],
+   "provenance": [
+    {
+     "url": "https://www.dbmr.unibe.ch/research/research_programs/index_eng.html",
+     "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+    }
+   ]
+  },
+  {
+   "query_id": "I01-de",
+   "intent_group_id": "I01",
+   "split": "development",
+   "text": "Forschungspartner für Therapieresistenz bei Krebs",
+   "language": "de",
+   "requested_type": "unit",
+   "category": "cross_lingual",
+   "expected": [
+    {
+     "name": "Cancer Therapy Resistance (DBMR)",
+     "type": "unit",
+     "urls": [
+      "https://www.dbmr.unibe.ch/research/research_programs/index_eng.html"
+     ],
+     "names": [
+      "Cancer Therapy Resistance",
+      "CTR"
+     ]
+    }
+   ],
+   "provenance": [
+    {
+     "url": "https://www.dbmr.unibe.ch/research/research_programs/index_eng.html",
+     "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+    }
+   ],
+   "notes": "German query, English evidence"
+  },
+  {
+   "query_id": "I03-en",
+   "intent_group_id": "I03",
+   "split": "development",
+   "text": "AI decision support for adapting insulin therapy",
+   "language": "en",
+   "requested_type": "unit",
+   "category": "professional",
+   "expected": [
+    {
+     "name": "AI in Health and Nutrition (ARTORG)",
+     "type": "unit",
+     "urls": [
+      "https://www.artorg.unibe.ch/research/aihn/index_eng.html",
+      "https://www.artorg.unibe.ch/research/aihn/research_activities/adaptive_diabetes_management/index_eng.html"
+     ],
+     "names": [
+      "AI in Health",
+      "AIHN"
+     ]
+    }
+   ],
+   "provenance": [
+    {
+     "url": "https://www.artorg.unibe.ch/research/aihn/index_eng.html",
+     "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+    },
+    {
+     "url": "https://www.artorg.unibe.ch/research/aihn/research_activities/adaptive_diabetes_management/index_eng.html",
+     "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+    }
+   ]
+  },
+  {
+   "query_id": "I03-de",
+   "intent_group_id": "I03",
+   "split": "development",
+   "text": "KI-Entscheidungsunterstützung zur Anpassung der Insulintherapie",
+   "language": "de",
+   "requested_type": "unit",
+   "category": "cross_lingual",
+   "expected": [
+    {
+     "name": "AI in Health and Nutrition (ARTORG)",
+     "type": "unit",
+     "urls": [
+      "https://www.artorg.unibe.ch/research/aihn/index_eng.html",
+      "https://www.artorg.unibe.ch/research/aihn/research_activities/adaptive_diabetes_management/index_eng.html"
+     ],
+     "names": [
+      "AI in Health",
+      "AIHN"
+     ]
+    }
+   ],
+   "provenance": [
+    {
+     "url": "https://www.artorg.unibe.ch/research/aihn/index_eng.html",
+     "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+    },
+    {
+     "url": "https://www.artorg.unibe.ch/research/aihn/research_activities/adaptive_diabetes_management/index_eng.html",
+     "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+    }
+   ]
+  },
+  {
+   "query_id": "I05-en",
+   "intent_group_id": "I05",
+   "split": "development",
+   "text": "Pilot research on measuring glucose without needle pricks",
+   "language": "en",
+   "requested_type": "project",
+   "category": "lay",
+   "expected": [
+    {
+     "name": "SPN-005 painless glucose monitoring pilot (DCB)",
+     "type": "project",
+     "urls": [
+      "https://www.dcberne.com/en/project/spn-005-pilot-study-on-painless-glucose-monitoring/",
+      "https://www.dcberne.com/de/project/spn-005-pilotstudie-zur-schmerzfreien-blutzuckermessung/"
+     ],
+     "names": [
+      "SPN-005"
+     ]
+    }
+   ],
+   "provenance": [
+    {
+     "url": "https://www.dcberne.com/en/project/spn-005-pilot-study-on-painless-glucose-monitoring/",
+     "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+    },
+    {
+     "url": "https://www.dcberne.com/de/project/spn-005-pilotstudie-zur-schmerzfreien-blutzuckermessung/",
+     "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+    }
+   ]
+  },
+  {
+   "query_id": "I05-de",
+   "intent_group_id": "I05",
+   "split": "development",
+   "text": "Pilotforschung zur Glukosemessung ohne Fingerstich",
+   "language": "de",
+   "requested_type": "project",
+   "category": "cross_lingual",
+   "expected": [
+    {
+     "name": "SPN-005 painless glucose monitoring pilot (DCB)",
+     "type": "project",
+     "urls": [
+      "https://www.dcberne.com/en/project/spn-005-pilot-study-on-painless-glucose-monitoring/",
+      "https://www.dcberne.com/de/project/spn-005-pilotstudie-zur-schmerzfreien-blutzuckermessung/"
+     ],
+     "names": [
+      "SPN-005"
+     ]
+    }
+   ],
+   "provenance": [
+    {
+     "url": "https://www.dcberne.com/en/project/spn-005-pilot-study-on-painless-glucose-monitoring/",
+     "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+    },
+    {
+     "url": "https://www.dcberne.com/de/project/spn-005-pilotstudie-zur-schmerzfreien-blutzuckermessung/",
+     "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+    }
+   ],
+   "notes": "Language-filtered subsets (DE evidence only / EN only) are T16's job"
+  },
+  {
+   "query_id": "I12-en",
+   "intent_group_id": "I12",
+   "split": "development",
+   "text": "Find a unit researching cancer and inflammation pharmacology",
+   "language": "en",
+   "requested_type": "unit",
+   "category": "cross_lingual",
+   "expected": [
+    {
+     "name": "Institute of Pharmacology",
+     "type": "unit",
+     "urls": [
+      "https://www.pki.unibe.ch/"
+     ],
+     "names": [
+      "Pharmacology",
+      "Pharmakologie",
+      "PKI"
+     ]
+    }
+   ],
+   "provenance": [
+    {
+     "url": "https://www.pki.unibe.ch/",
+     "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+    }
+   ],
+   "notes": "English query, German evidence"
+  },
+  {
+   "query_id": "I12-de",
+   "intent_group_id": "I12",
+   "split": "development",
+   "text": "Forschungsgruppe für Pharmakologie von Krebs und Entzündungen",
+   "language": "de",
+   "requested_type": "unit",
+   "category": "professional",
+   "expected": [
+    {
+     "name": "Institute of Pharmacology",
+     "type": "unit",
+     "urls": [
+      "https://www.pki.unibe.ch/"
+     ],
+     "names": [
+      "Pharmacology",
+      "Pharmakologie",
+      "PKI"
+     ]
+    }
+   ],
+   "provenance": [
+    {
+     "url": "https://www.pki.unibe.ch/",
+     "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+    }
+   ]
+  },
+  {
+   "query_id": "I13-en",
+   "intent_group_id": "I13",
+   "split": "development",
+   "text": "Which platform offers access to nucleic-acid sequencing technologies?",
+   "language": "en",
+   "requested_type": "infrastructure",
+   "category": "professional",
+   "expected": [
+    {
+     "name": "NGS Platform",
+     "type": "infrastructure",
+     "accept_types": [
+      "service"
+     ],
+     "urls": [
+      "https://www.ngs.unibe.ch/"
+     ],
+     "names": [
+      "NGS",
+      "Sequencing"
+     ]
+    }
+   ],
+   "provenance": [
+    {
+     "url": "https://www.ngs.unibe.ch/",
+     "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+    }
+   ],
+   "notes": "Access/price/availability not established by the source; accepted type fixed here: infrastructure or service"
+  },
+  {
+   "query_id": "I02-en",
+   "intent_group_id": "I02",
+   "split": "evaluation",
+   "text": "Research on repairing the nervous system after brain injury",
+   "language": "en",
+   "requested_type": "unit",
+   "category": "lay",
+   "expected": [
+    {
+     "name": "Regenerative Neuroscience (DBMR)",
+     "type": "unit",
+     "urls": [
+      "https://www.dbmr.unibe.ch/research/research_programs/index_eng.html"
+     ],
+     "names": [
+      "Regenerative Neuroscience",
+      "RNS"
+     ]
+    }
+   ],
+   "provenance": [
+    {
+     "url": "https://www.dbmr.unibe.ch/research/research_programs/index_eng.html",
+     "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+    }
+   ]
+  },
+  {
+   "query_id": "I02-de",
+   "intent_group_id": "I02",
+   "split": "evaluation",
+   "text": "Forschung zur Reparatur des Nervensystems nach Hirnverletzungen",
+   "language": "de",
+   "requested_type": "unit",
+   "category": "cross_lingual",
+   "expected": [
+    {
+     "name": "Regenerative Neuroscience (DBMR)",
+     "type": "unit",
+     "urls": [
+      "https://www.dbmr.unibe.ch/research/research_programs/index_eng.html"
+     ],
+     "names": [
+      "Regenerative Neuroscience",
+      "RNS"
+     ]
+    }
+   ],
+   "provenance": [
+    {
+     "url": "https://www.dbmr.unibe.ch/research/research_programs/index_eng.html",
+     "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+    }
+   ]
+  },
+  {
+   "query_id": "I04-en",
+   "intent_group_id": "I04",
+   "split": "evaluation",
+   "text": "Robotics and tiny instruments for neurosurgery",
+   "language": "en",
+   "requested_type": "unit",
+   "category": "synonym",
+   "expected": [
+    {
+     "name": "Neuro Robotics Group (ARTORG)",
+     "type": "unit",
+     "urls": [
+      "https://www.artorg.unibe.ch/research/nrg/index_eng.html"
+     ],
+     "names": [
+      "Neuro Robotics",
+      "NRG"
+     ]
+    }
+   ],
+   "provenance": [
+    {
+     "url": "https://www.artorg.unibe.ch/research/nrg/index_eng.html",
+     "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+    }
+   ]
+  },
+  {
+   "query_id": "I04-de",
+   "intent_group_id": "I04",
+   "split": "evaluation",
+   "text": "Robotik und kleine Instrumente für die Neurochirurgie",
+   "language": "de",
+   "requested_type": "unit",
+   "category": "cross_lingual",
+   "expected": [
+    {
+     "name": "Neuro Robotics Group (ARTORG)",
+     "type": "unit",
+     "urls": [
+      "https://www.artorg.unibe.ch/research/nrg/index_eng.html"
+     ],
+     "names": [
+      "Neuro Robotics",
+      "NRG"
+     ]
+    }
+   ],
+   "provenance": [
+    {
+     "url": "https://www.artorg.unibe.ch/research/nrg/index_eng.html",
+     "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+    }
+   ]
+  },
+  {
+   "query_id": "I06-en",
+   "intent_group_id": "I06",
+   "split": "evaluation",
+   "text": "Brain stem-cell repair research, not neurosurgical robotic instruments",
+   "language": "en",
+   "requested_type": "unit",
+   "category": "misleading",
+   "expected": [
+    {
+     "name": "Regenerative Neuroscience (DBMR)",
+     "type": "unit",
+     "urls": [
+      "https://www.dbmr.unibe.ch/research/research_programs/index_eng.html"
+     ],
+     "names": [
+      "Regenerative Neuroscience",
+      "RNS"
+     ]
+    }
+   ],
+   "provenance": [
+    {
+     "url": "https://www.dbmr.unibe.ch/research/research_programs/index_eng.html",
+     "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+    },
+    {
+     "url": "https://www.artorg.unibe.ch/research/nrg/index_eng.html",
+     "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+    }
+   ],
+   "avoid": [
+    {
+     "name": "Neuro Robotics Group (ARTORG)",
+     "type": "unit",
+     "urls": [
+      "https://www.artorg.unibe.ch/research/nrg/index_eng.html"
+     ],
+     "names": [
+      "Neuro Robotics",
+      "NRG"
+     ]
+    }
+   ],
+   "notes": "NRG is the misleading near-match and must not appear in the top 10"
+  },
+  {
+   "query_id": "I07-en",
+   "intent_group_id": "I07",
+   "split": "evaluation",
+   "text": "A needle-free glucose device already ready for market launch",
+   "language": "en",
+   "requested_type": "project",
+   "category": "partial",
+   "expected": [
+    {
+     "name": "SPN-005 painless glucose monitoring pilot (DCB)",
+     "type": "project",
+     "urls": [
+      "https://www.dcberne.com/en/project/spn-005-pilot-study-on-painless-glucose-monitoring/",
+      "https://www.dcberne.com/de/project/spn-005-pilotstudie-zur-schmerzfreien-blutzuckermessung/"
+     ],
+     "names": [
+      "SPN-005"
+     ]
+    }
+   ],
+   "provenance": [
+    {
+     "url": "https://www.dcberne.com/en/project/spn-005-pilot-study-on-painless-glucose-monitoring/",
+     "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+    }
+   ],
+   "notes": "SPN-005 is only a related research candidate; its source does not establish market readiness. A confident direct-match claim is a failure (support check, manual)"
+  },
+  {
+   "query_id": "I10-en",
+   "intent_group_id": "I10",
+   "split": "evaluation",
+   "text": "Research expertise in quantum communication between satellites",
+   "language": "en",
+   "requested_type": "unit",
+   "category": "absent",
+   "expected": [],
+   "provenance": [
+    {
+     "url": "docs/evaluation-seeds.md",
+     "note": "I10 negative candidate (T02); corpus check pending"
+    }
+   ],
+   "notes": "Absent queries have no source URL by definition"
+  },
+  {
+   "query_id": "I11-en",
+   "intent_group_id": "I11",
+   "split": "evaluation",
+   "text": "Find research on brain barriers and CNS immune surveillance",
+   "language": "en",
+   "requested_type": "unit",
+   "category": "professional",
+   "expected": [
+    {
+     "name": "Theodor Kocher Institute",
+     "type": "unit",
+     "urls": [
+      "https://www.tki.unibe.ch/"
+     ],
+     "names": [
+      "Kocher",
+      "TKI"
+     ]
+    }
+   ],
+   "provenance": [
+    {
+     "url": "https://www.tki.unibe.ch/",
+     "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+    }
+   ]
+  },
+  {
+   "query_id": "I11-de",
+   "intent_group_id": "I11",
+   "split": "evaluation",
+   "text": "Forschung zu Hirnschranken und Immunüberwachung im ZNS",
+   "language": "de",
+   "requested_type": "unit",
+   "category": "cross_lingual",
+   "expected": [
+    {
+     "name": "Theodor Kocher Institute",
+     "type": "unit",
+     "urls": [
+      "https://www.tki.unibe.ch/"
+     ],
+     "names": [
+      "Kocher",
+      "TKI"
+     ]
+    }
+   ],
+   "provenance": [
+    {
+     "url": "https://www.tki.unibe.ch/",
+     "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+    }
+   ]
+  }
+ ]
+}
