@@ -46,7 +46,7 @@ Download plan once a host is chosen: `intfloat/multilingual-e5-small` (pinned re
 
 ## 4. Hosting options for the dispatcher (no purchase or provisioning done)
 
-Proposed shape (CONTRACTS §1): one container + one persistent data volume; Keera key as a server-side secret.
+Proposed shape (CONTRACTS §1): one container + one persistent data volume; Keera key as a server-side secret. The T04 `Dockerfile` (uvicorn on port 8000, `VOLUME /data`, `/healthz` check) runs unchanged on any of the options below.
 
 | Option | Pros | Cons |
 | --- | --- | --- |
@@ -65,7 +65,7 @@ Decision required from C (dispatcher). Until then, public hosting is a blocker, 
 | `APERTUS_MODEL` | Default model ID (proposed `apertus-v1-5-8b` for bulk extraction per architecture step 4) |
 | `APERTUS_FAST_MODEL` / `APERTUS_QUALITY_MODEL` | Optional split, pending T05 |
 
-Repository note: `main` currently has **no `.gitignore`**. Until T04 adds one, a local `.env` can be committed by `git add .`. Stage files explicitly.
+Repository note: T04 added a `.gitignore` that excludes `.env` and `.env.*`; keep real keys only there.
 
 ## 6. Opt-in probe checklist (for T05 to automate)
 
