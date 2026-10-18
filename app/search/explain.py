@@ -52,3 +52,14 @@ def reason(*, keyword_rank, dense_rank, matched, query_language, evidence_langua
     if former:
         text = 'Documented as former. ' + text
     return text
+
+
+import re as _re
+
+_EMAIL = _re.compile(r'[\w.+-]+@[\w-]+\.[\w.-]+')
+_PHONE = _re.compile(r'\+?\d[\d \-/().]{7,}\d')
+
+
+def contact_bearing(text: str) -> bool:
+    """EXTRA F5: a sentence that carries an e-mail address or a phone number."""
+    return bool(_EMAIL.search(text) or _PHONE.search(text) and _re.search(r'(tel|phone|fax|telefon|\+41)', text, _re.I))

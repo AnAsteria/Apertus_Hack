@@ -115,6 +115,8 @@ Real 70B bundle (`9a0e0951…`) and the 350 cards served in the development and 
 
 **Finding:** card fields withhold contacts, but an evidence quote can still show an institutional e-mail or phone number, because quotes are byte-identical copies of source sentences. Masking would break quote fidelity. The proposed fix is to **not select contact-only sentences as evidence** for a card, unless the card shows a supported, current official contact. Only public institutional pages were crawled, and no private contact data was inferred. This is a minimisation gap to report, not a legal finding.
 
+**Follow-up implemented on branch `EXTRA`:** a card that has no supported current official-contact field no longer uses contact-bearing sentences (an e-mail, or a phone number next to tel/phone/fax/+41) as quotes when other evidence exists. Development split, in-process on the bundle: Recall@10 unchanged at 0.824, and quotes containing an e-mail went to **0 of 1,273**. Quotes stay byte-identical; only the choice of sentences changes.
+
 ## What is not done
 
 - A real operator contact (see above).

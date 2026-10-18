@@ -11,7 +11,7 @@ from .analysis import analyze,language_of,match_expression,query_terms,words
 from .encoder import OnnxEncoder,digest
 from .ranking import entity_max,reciprocal_rank_fusion,diversify,non_entity_page,DEMOTION
 from .outcome import classify,thresholds
-from .explain import channel_ranks,matched_words,reason as explain_reason
+from .explain import channel_ranks,matched_words,contact_bearing,reason as explain_reason
 from . import rerank as rerank_mod
 from .typehint import preferred_type,BOOST as TYPE_BOOST
 from .acronyms import AcronymTable
@@ -184,6 +184,11 @@ class HybridBackend:
             evidence = list({e['sentence_id']:e for e in evidence}.values())
             if not evidence:
                 continue
+            # EXTRA F5: contacts are shown only through a supported, current official-contact
+            # field; do not surface them through quotes when other evidence exists.
+            if not (item['fields'] or {}).get('official_contact'):
+                kept = [e for e in evidence if not contact_bearing(e['text'])]
+                evidence = kept or evidence
             evidence_language = entry.get('language')
             matched = matched_words(req.query,[e['text'] for e in evidence],evidence_language) if eid in keyword else []
             reason = explain_reason(keyword_rank=keyword_ranks.get(eid),dense_rank=dense_ranks.get(eid),matched=matched,
