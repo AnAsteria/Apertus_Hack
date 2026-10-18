@@ -153,6 +153,15 @@ def test_backend_reports_outcome_and_limits_broad_examples(built,monkeypatch):
     assert low.outcome=='low_confidence' and low.results and any('low confidence' in x for x in low.limitations)
 
 
+def test_cards_carry_traceable_retrieval_data(built):
+    data,directory,encoder,records,_=built
+    card=HybridBackend(directory,encoder=encoder).search(req('laser instruments')).results[0]
+    r=card.retrieval
+    assert r['channels']==['keyword','dense'] and r['keyword_rank']==1 and r['dense_rank']==1
+    assert r['matched_terms']==['laser','instruments'] and r['query_variant']=='original'
+    assert r['evidence_language']=='en' and '"laser"' in card.reason
+
+
 def test_stemming_compounds_and_multilingual_terms():
     assert set(analyze('Krebserkrankungen','de')) & set(query_terms('Krebs'))
     assert analyze('cancers','en')==analyze('cancer','en')
