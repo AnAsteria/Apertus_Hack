@@ -1,52 +1,74 @@
-# Deployment to a Hugging Face Docker Space (T11 preparation)
+# Deployment (Hugging Face Docker Space)
 
-Refs #11. Decision D6: free Hugging Face Space (Docker) for the app, organiser Keera endpoint for Apertus, no paid resources. **Deployed skeleton (2026-10-18):** https://kaktamsdengami-bern-match.hf.space (Space `kaktamsdengami/bern-match`, CPU Upgrade, see D9). Probed from outside: `/healthz` 200, UI 200, `/readyz` 503 and search 503 (no index yet, by design), admin coverage 401 without a token (so the admin secret is set). Real search, restart test and persistence are still open.
+Refs #11, #84 (T33). Live app: https://kaktamsdengami-bern-match.hf.space (Space `kaktamsdengami/bern-match`, CPU Upgrade, $0.03/h from Dimitry's HF credit, decision D9). Apertus runs on the organisers' Keera gateway; nothing model-related is hosted here.
 
-## What is prepared and verified
+## What runs where
 
-| Item | State |
-| --- | --- |
-| `deploy/hf-space/Dockerfile` (user 1000, port 7860, writable data dir) | CI job `hf-space-image` builds it, starts it as uid 1000 and probes `/healthz` 200 and `/readyz` 503. Check the CI run for the result; a green run is the only evidence. |
-| `deploy/hf-space/README.md` (Space header: `sdk: docker`, `app_port: 7860`) | Written from the Hugging Face Docker Spaces docs read on 2026-10-18; not yet accepted by a real Space. |
-| Main image (`Dockerfile`, port 8000) | Built and probed in CI (job `container`). |
+| Piece | Where | Survives a restart? |
+| --- | --- | --- |
+| Code | Space repository, uploaded by `scripts/deploy_space.sh` | yes (the Space rebuilds the image from it) |
+| Search index | built once, stored as `bundle.tar.gz` in the private bucket `kaktamsdengami/bern-match-data` (mounted at `/data`), extracted to local disk on start | yes, restored in seconds |
+| Corpus and T08 knowledge | `/data/corpus.jsonl`, `/data/knowledge/` | yes (inputs for a rebuild) |
+| Feedback and admin jobs | `bernmatch.sqlite` on local disk; snapshot in `/data/state/` every 60 s | yes, minus at most the last 60 s |
+| Secrets | Space settings (`APERTUS_BASE_URL`, `APERTUS_API_KEY`, `BERNMATCH_ADMIN_TOKEN`) | yes, never in Git or the bucket |
 
-## What Hugging Face's docs say (read 2026-10-18)
+Live SQLite files never sit on the mounted bucket: the app writes locally and `app/lifecycle/state_backup.py` copies a consistent snapshot (SQLite online backup, written to a temp file and renamed). On start, `entrypoint.sh` restores the bundle, then the snapshot, then starts the app.
 
-- A Docker Space is configured by the YAML header at the top of the Space's `README.md`; default port is 7860, changeable with `app_port`.
-- The container runs as user ID 1000; create that user and set `WORKDIR` before `COPY`.
-- Variables and secrets set in the Space settings arrive as environment variables at runtime.
-- **Disk is ephemeral**: data written to disk is lost whenever the Space restarts. Persistence needs a Storage Bucket mounted at runtime, or an external store. Datasets and models can also be mounted read-only.
-- Not verified from the docs: the free tier's CPU/RAM/disk limits, cost of a Storage Bucket, sleep-on-inactivity behaviour.
+## Deploy
 
-## Conflict to decide before T11 and T13
-
-Feedback is stored in SQLite under `BERNMATCH_DATA_DIR`, and the index must survive restarts (T11, T13 acceptance). On a free Space the local disk is wiped on restart. Options, none tested:
-
-1. **Bake the index into the image** at build time. Index survives restarts; feedback and admin job records do not (ephemeral).
-2. **Mount a private dataset or model repo read-only** for the index. Index survives; feedback still ephemeral.
-3. **Attach a Storage Bucket** for `BERNMATCH_DATA_DIR`. Everything survives; the price and free-tier availability are unknown and may cost money, which needs explicit authorisation.
-4. **Push feedback snapshots to a private dataset repo** on a schedule. Free, but a restart can lose the latest entries.
-
-Until one is chosen, state in the report that feedback persistence on the hosted demo is limited.
-
-## Steps used to create it (done once, by Dimitry)
-
-1. Create the Space (SDK: Docker, public or private as decided) under the team's Hugging Face account.
-2. In the Space settings add secrets, never in Git: `APERTUS_BASE_URL`, `APERTUS_API_KEY`, `BERNMATCH_ADMIN_TOKEN`; variables: `APERTUS_MODEL`.
-3. Push these files to the Space repository: `deploy/hf-space/README.md` as `README.md`, `deploy/hf-space/Dockerfile` as `Dockerfile`, plus `app/` and `requirements.lock`. The Space builds from that repository, not from GitHub.
-4. Wait for the build, open the Space URL, check `/healthz`, then `/readyz`.
-5. Real search also needs the T06/T09 index in place; until then `/readyz` stays 503 by design.
-
-Record the actual Space URL, build log and restart test in the T11 issue before calling it deployed.
-
-## Updating the Space
-
-From the repository root, after `hf auth login` with a write token:
+From the repository root, with `hf` logged in with write access:
 
 ```bash
-git archive origin/main app config/suppression.json requirements.lock | tar -x -C /tmp/hfspace
-cp deploy/hf-space/Dockerfile deploy/hf-space/README.md /tmp/hfspace/
-hf upload kaktamsdengami/bern-match /tmp/hfspace . --repo-type space
+scripts/deploy_space.sh              # deploys origin/main
 ```
 
-The Space rebuilds on every upload. Never upload `.env`, `data/` or `models/`.
+It uploads exactly that revision (plus `app/REVISION`), waits until `/healthz` reports the new revision, checks `/readyz` is 200 and runs one real search. Exit code 0 means all three passed. The bundle is not touched, so no index rebuild happens. Add `--tag` to also push a `deploy-<UTC time>` tag.
+
+Expect 2-4 minutes. The old container keeps serving while the new image builds, then there is a short gap while the new one starts.
+
+## Rollback
+
+Deploy the previous revision; the index and feedback are unaffected:
+
+```bash
+scripts/deploy_space.sh <previous-sha-or-deploy-tag>
+```
+
+The Space's commit history (`Deploy <sha> (<ref>)`) lists what was deployed when. If the index itself is broken, copy the backup bundle back and restart:
+
+```bash
+hf buckets cp hf://buckets/kaktamsdengami/bern-match-data/backup/bundle-evidence-only.tar.gz hf://buckets/kaktamsdengami/bern-match-data/bundle.tar.gz
+```
+
+## Rebuild the index (about 17 min of 503 on search)
+
+Only needed when the corpus or knowledge files change, or for a build-time rule (for example T37). Delete `/data/bundle.tar.gz` (keep a copy under `backup/` first), then restart the Space. `entrypoint.sh` builds on local disk from `/data/corpus.jsonl` and `/data/knowledge/`, prints a percentage every 30 s in the Space logs, and stores a new bundle. **Check that `bundle.tar.gz` is back in the bucket afterwards** (about 138 MB); without it the next restart rebuilds again.
+
+## Settings and variables
+
+| Setting | Value | Why |
+| --- | --- | --- |
+| Sleep time | never (set 2026-10-18 for judging) | no cold start for the jury. Costs $0.03/h around the clock; set back after judging. |
+| `BERNMATCH_AUTO_PIPELINE` | `1` | build the index when no bundle exists |
+| `APERTUS_MODEL` | `apertus-v1-5-8b` | |
+| `BERNMATCH_ABSTAIN_DENSE` | unset (code default 0.83) | set only while tuning (#82), then remove |
+| `BERNMATCH_RATE_LIMIT_PER_MIN` | unset (default 120 per client per minute on `/api/`) | slows scanners and loops; `0` turns it off. The client is the first `X-Forwarded-For` entry, which can be forged, so this is not an abuse defence |
+| `BERNMATCH_STATE_BACKUP_SECONDS` | unset (default 60) | feedback snapshot interval |
+
+Admin token rotation: create a new random value, replace `BERNMATCH_ADMIN_TOKEN` in the Space secrets (the Space restarts), and hand it only to operators.
+
+## Checks
+
+```bash
+curl -s https://kaktamsdengami-bern-match.hf.space/healthz     # {"status":"ok","revision":"<sha>"}
+curl -s -o /dev/null -w "%{http_code}\n" https://kaktamsdengami-bern-match.hf.space/readyz   # 200
+hf buckets ls kaktamsdengami/bern-match-data -R                # bundle.tar.gz, state/bernmatch.sqlite
+```
+
+The Space logs show public scanner traffic (`/.env`, `secrets.toml`, ...). Those all return 404: only `app/static/` is served and secrets are environment variables, not files.
+
+## Not done yet (T33 acceptance)
+
+- One full deploy and one rollback with the script, recorded here.
+- Restart test on the live Space: feedback written before a restart is readable after it. Covered by `tests/lifecycle/test_state_backup.py` locally; not yet run on the Space.
+- External uptime check from a second network, and cost to date (needs the HF billing page).

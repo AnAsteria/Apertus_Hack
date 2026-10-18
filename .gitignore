@@ -9,3 +9,6 @@ models/
 *.log
 *.sqlite
 *.db
+
+# T33: written by scripts/deploy_space.sh into the staged copy only
+app/REVISION

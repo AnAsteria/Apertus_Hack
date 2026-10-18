@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from .api.admin import router as admin_router
-from .api import enrich
+from .api import enrich, ratelimit
 from .api.enrichment import router as enrichment_router, set_interpreter
 from .api.evidence import router as evidence_router
 from .api.feedback import router as feedback_router
@@ -29,7 +29,17 @@ def index_ready() -> bool:
     return os.path.exists(os.path.join(data_dir(), "READY"))
 
 
+def deployed_revision() -> str | None:
+    """The git revision the deploy script wrote next to the app (T33), if any."""
+    try:
+        with open(os.path.join(os.path.dirname(__file__), "REVISION"), encoding="utf-8") as f:
+            return f.read().strip() or None
+    except OSError:
+        return None
+
+
 app = FastAPI(title="Bern Match", version="0.0.1")
+app.middleware("http")(ratelimit.middleware)
 
 
 @app.exception_handler(RequestValidationError)
@@ -40,8 +50,8 @@ async def _validation(_: Request, exc: RequestValidationError):
 
 @app.get("/healthz")
 def healthz():
-    """Liveness only."""
-    return {"status": "ok"}
+    """Liveness only. `revision` is set when the app was deployed with scripts/deploy_space.sh."""
+    return {"status": "ok", "revision": deployed_revision()}
 
 
 @app.get("/readyz")
