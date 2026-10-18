@@ -1,0 +1,170 @@
+"""T18: asynchronous enrichment over Server-Sent Events (CONTRACTS sections 4 and 6).
+
+Flow, after the first cards from POST /api/v1/search have rendered:
+
+1. POST /api/v1/search/{request_id}/enrichment with the same SearchRequest body
+   (same revision). The context is held in memory only for this session and
+   expires 60 minutes after last use (DECISIONS); it is never written to disk or logs.
+2. GET  /api/v1/search/{request_id}/events?revision=N streams SseEvent records:
+   progress -> interpretation -> complete, or progress -> error.
+
+A newer revision for the same request makes older streams stop with a
+STALE_REVISION error, so late results never overwrite a newer search. Any
+failure is an SSE error event; it never touches the initial search response.
+
+Integration (shared file, owner: Dimitry): `app.include_router(enrichment.router)`
+in app/main.py, and the UI calls step 1 then opens step 2 with fetch/EventSource.
+"""
+from __future__ import annotations
+
+import os
+import re
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FutureTimeout
+from typing import Callable, Iterator
+
+from fastapi import APIRouter, Query
+from fastapi.responses import JSONResponse, StreamingResponse
+
+from ..ai.client import InferenceError
+from ..ai.interpret import Interpretation, interpret
+from ..contracts import (MAX_CONTEXT_CHARS, MAX_NEEDS, MAX_QUERY_CHARS, SCHEMA_VERSION, SearchRequest, SseEvent,
+                         error)
+
+router = APIRouter()
+
+CONTEXT_TTL_S = 3600      # DECISIONS: company context lives in memory, 60 min after last use
+JOB_LIFETIME_S = 600      # DECISIONS: enrichment job lifetime 10 minutes
+INTERPRET_TIMEOUT_S = float(os.environ.get("BERNMATCH_INTERPRET_TIMEOUT_S", "60"))  # first cards are unaffected
+# 70B interpretation took ~47-52 s on the gateway on 2026-10-18 (vs ~5 s earlier): measure in T16.
+REQUEST_ID_RE = re.compile(r"^req_[A-Za-z0-9]{1,64}$")
+
+Interpreter = Callable[[SearchRequest], Interpretation]
+
+
+def _default_interpreter(req: SearchRequest) -> Interpretation:
+    return interpret(req.query, req.company_context, req.needs)
+
+
+_interpreter: Interpreter = _default_interpreter
+_pool = ThreadPoolExecutor(max_workers=4, thread_name_prefix="enrich")
+
+
+def set_interpreter(fn: Interpreter | None) -> None:
+    """Tests and integration may replace the interpreter."""
+    global _interpreter
+    _interpreter = fn or _default_interpreter
+
+
+class Registry:
+    """In-memory, per-process request context. Not persisted anywhere."""
+
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._items: dict[str, dict] = {}
+
+    def _purge(self, now: float) -> None:
+        for rid in [r for r, v in self._items.items() if v["expires"] < now]:
+            del self._items[rid]
+
+    def register(self, request_id: str, req: SearchRequest) -> bool:
+        """False if a newer revision is already registered (the caller is stale)."""
+        now = time.monotonic()
+        with self._lock:
+            self._purge(now)
+            cur = self._items.get(request_id)
+            if cur and cur["request"].revision > req.revision:
+                return False
+            self._items[request_id] = {"request": req, "expires": now + CONTEXT_TTL_S}
+            return True
+
+    def get(self, request_id: str) -> SearchRequest | None:
+        now = time.monotonic()
+        with self._lock:
+            self._purge(now)
+            item = self._items.get(request_id)
+            if item:
+                item["expires"] = now + CONTEXT_TTL_S
+            return item["request"] if item else None
+
+    def latest_revision(self, request_id: str) -> int | None:
+        with self._lock:
+            item = self._items.get(request_id)
+            return item["request"].revision if item else None
+
+    def clear(self) -> None:
+        with self._lock:
+            self._items.clear()
+
+
+registry = Registry()
+
+
+def _sse(request_id: str, revision: int, seq: int, event_type: str, payload: dict) -> str:
+    ev = SseEvent(schema_version=SCHEMA_VERSION, request_id=request_id, revision=revision, event_sequence=seq,
+                  event_type=event_type, payload=payload)
+    return f"event: {event_type}\ndata: {ev.model_dump_json()}\n\n"
+
+
+def _error_payload(code: str, message: str, retryable: bool) -> dict:
+    return {"code": code, "message": message, "retryable": retryable}
+
+
+@router.post("/api/v1/search/{request_id}/enrichment", status_code=202)
+def start_enrichment(request_id: str, req: SearchRequest):
+    if not REQUEST_ID_RE.match(request_id):
+        return JSONResponse(error("BAD_REQUEST", "Unknown request id format."), status_code=400)
+    if (len(req.query) > MAX_QUERY_CHARS or len(req.company_context or "") > MAX_CONTEXT_CHARS
+            or len(req.needs) > MAX_NEEDS):
+        return JSONResponse(error("INPUT_TOO_LARGE", "Input exceeds the configured limit."), status_code=413)
+    if not registry.register(request_id, req):
+        return JSONResponse(error("REVISION_CONFLICT", "A newer revision of this search exists."), status_code=409)
+    return {"schema_version": SCHEMA_VERSION, "request_id": request_id, "revision": req.revision,
+            "events_url": f"/api/v1/search/{request_id}/events?revision={req.revision}"}
+
+
+@router.get("/api/v1/search/{request_id}/events")
+def enrichment_events(request_id: str, revision: int = Query(ge=1)):
+    req = registry.get(request_id)
+    if req is None:
+        return JSONResponse(error("BAD_REQUEST", "No enrichment registered for this search."), status_code=404)
+    if req.revision != revision:
+        return JSONResponse(error("REVISION_CONFLICT", "Revision does not match the registered search."),
+                            status_code=409)
+    return StreamingResponse(_stream(request_id, req), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+def _stream(request_id: str, req: SearchRequest) -> Iterator[str]:
+    rev, seq = req.revision, 0
+    started = time.monotonic()
+    yield _sse(request_id, rev, seq, "progress", {"stage": "interpretation", "state": "started"})
+    seq += 1
+    future = _pool.submit(_interpreter, req)
+    try:
+        result = future.result(timeout=min(INTERPRET_TIMEOUT_S, JOB_LIFETIME_S))
+    except FutureTimeout:
+        future.cancel()
+        yield _sse(request_id, rev, seq, "error",
+                   _error_payload("ENRICHMENT_TIMEOUT", "Interpretation took too long; initial results are unaffected.", True))
+        return
+    except InferenceError as e:
+        yield _sse(request_id, rev, seq, "error",
+                   _error_payload("ENRICHMENT_UNAVAILABLE", "Interpretation is unavailable; initial results are unaffected.",
+                                  e.retryable))
+        return
+    except Exception:  # never leak details (they may contain company text)
+        yield _sse(request_id, rev, seq, "error",
+                   _error_payload("ENRICHMENT_FAILED", "Interpretation failed; initial results are unaffected.", False))
+        return
+    if registry.latest_revision(request_id) != rev:
+        yield _sse(request_id, rev, seq, "error",
+                   _error_payload("STALE_REVISION", "A newer revision replaced this search.", False))
+        return
+    payload = result.payload()
+    payload["decoding_mode"] = result.decoding_mode
+    yield _sse(request_id, rev, seq, "interpretation", payload)
+    seq += 1
+    yield _sse(request_id, rev, seq, "complete", {"elapsed_ms": int((time.monotonic() - started) * 1000)})
