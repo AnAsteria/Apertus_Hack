@@ -1,6 +1,6 @@
 {
- "gold_version": "0.2-draft",
- "status": "DRAFT, NOT FROZEN: 36 queries. 0.2 adds FR/IT/RU variants, development groups I14-I15, evaluation groups I16-I19 (written by Maxim, the T09 retrieval author, from corpus evidence before any run; independence limitation disclosed) and language-variant URLs as accept_also. Needs Ruihan review before freezing.",
+ "gold_version": "0.3",
+ "status": "FROZEN 0.3 (Ruihan, 2026-10-18): 0.2-draft plus one development-split fix, the I03 Adaptive Diabetes Management URL removed (separate activity page that never names AIHN, so it could never score; #76). Evaluation split unchanged and reviewed against the shared corpus (#90); no evaluation-split run existed before this freeze. Previous status: DRAFT, NOT FROZEN: 36 queries. 0.2 adds FR/IT/RU variants, development groups I14-I15, evaluation groups I16-I19 (written by Maxim, the T09 retrieval author, from corpus evidence before any run; independence limitation disclosed) and language-variant URLs as accept_also. Needs Ruihan review before freezing.",
  "pending_from_seeds": {
   "I08": "person/unit boundary needs real person evidence in the corpus",
   "I09": "contact freshness: current contact is unlabelled pending evidence review",
@@ -77,8 +77,7 @@
      "name": "AI in Health and Nutrition (ARTORG)",
      "type": "unit",
      "urls": [
-      "https://www.artorg.unibe.ch/research/aihn/index_eng.html",
-      "https://www.artorg.unibe.ch/research/aihn/research_activities/adaptive_diabetes_management/index_eng.html"
+      "https://www.artorg.unibe.ch/research/aihn/index_eng.html"
      ],
      "names": [
       "AI in Health",
@@ -113,8 +112,7 @@
      "name": "AI in Health and Nutrition (ARTORG)",
      "type": "unit",
      "urls": [
-      "https://www.artorg.unibe.ch/research/aihn/index_eng.html",
-      "https://www.artorg.unibe.ch/research/aihn/research_activities/adaptive_diabetes_management/index_eng.html"
+      "https://www.artorg.unibe.ch/research/aihn/index_eng.html"
      ],
      "names": [
       "AI in Health",
@@ -614,8 +612,7 @@
      "name": "AI in Health and Nutrition (ARTORG)",
      "type": "unit",
      "urls": [
-      "https://www.artorg.unibe.ch/research/aihn/index_eng.html",
-      "https://www.artorg.unibe.ch/research/aihn/research_activities/adaptive_diabetes_management/index_eng.html"
+      "https://www.artorg.unibe.ch/research/aihn/index_eng.html"
      ],
      "names": [
       "AI in Health",
