@@ -100,6 +100,21 @@ Evidence is `fresh` when its content or last-modified date is within **365 days*
 
 **Retire** means adding a suppression entry: serving and the crawler honour it at once. **Purge** removes the stored copies: `python -m app.lifecycle.purge --data-dir data` shows what would go (dry run); add `--apply` to delete the documents, versions, sentences, entities, cached pages, variants and labels of every suppressed URL and VACUUM the database file. A test shows the removed text is no longer in the file's bytes. Run it after every merged suppression entry, and within the 30-day target at the latest. The command does **not** touch derived files (`data/extraction/`, `data/knowledge/`, search indexes, exports) or backups: it lists the derived directories it finds, and those must be rebuilt from the purged corpus by hand. Both Dockerfiles copy `config/suppression.json`; if a deployment forgets to, nothing is suppressed, so check it after every deploy.
 
+## Personal-data audit of what is served (EXTRA F5, #145, 2026-10-18)
+
+Real 70B bundle (`9a0e0951…`) and the 350 cards served in the development and evaluation runs on the live Space:
+
+| Item | Count |
+|---|---|
+| Distinct e-mail addresses in stored sentences | 313 (mostly `unibe.ch`, `insel.ch`, institute subdomains, `dcberne.com`) |
+| Stored sentences with an e-mail or phone-like string | 6,971 of 148,404 |
+| Persons in the index | 559 (all with status `unknown` or `former`; none `current`) |
+| **Cards with an official-contact field served** | **0** (contacts are shown only for `current` persons) |
+| Served quotes (2,754) containing an e-mail | 15 |
+| Served quotes containing a phone-like string | 51 (noisy pattern: it also matches year ranges and numbers) |
+
+**Finding:** card fields withhold contacts, but an evidence quote can still show an institutional e-mail or phone number, because quotes are byte-identical copies of source sentences. Masking would break quote fidelity. The proposed fix is to **not select contact-only sentences as evidence** for a card, unless the card shows a supported, current official contact. Only public institutional pages were crawled, and no private contact data was inferred. This is a minimisation gap to report, not a legal finding.
+
 ## What is not done
 
 - A real operator contact (see above).
