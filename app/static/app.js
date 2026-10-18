@@ -26,7 +26,7 @@ var FRESHNESS = { fresh: ["Recent source", "The source page was updated recently
 var TYPES = [["", "Anything"], ["person", "People"], ["unit", "Groups"], ["project", "Projects"],
              ["infrastructure", "Infrastructure"], ["service", "Services"]];
 var EXAMPLES = [["DE", "Messung des Blutzuckers ohne Nadel für eine Smartwatch"],
-                ["EN", "continuous glucose monitoring sensors"], ["FR", "robotique pour la rééducation"]];
+                ["EN", "glucose sensors"], ["FR", "robotique pour la rééducation"]];
 var FIELD_LABELS = { role: "Role", affiliation: "Affiliation", part_of: "Part of", led_by: "Led by", leads: "Leads",
                      members: "Members", includes: "Includes", expertise: "Expertise", projects: "Projects",
                      infrastructure: "Infrastructure", services: "Services",
@@ -441,7 +441,7 @@ function rerankCards(results) {
     var card = renderCard(r, 0);
     card.classList.remove("appear");
     var was = oldRank[r.entity_id];
-    var note = !was ? "new with Apertus expansion" : was > r.rank ? "↑ moved up from " + was : was < r.rank ? "↓ moved down from " + was : "";
+    var note = !was ? "✦ Found by Apertus" : was > r.rank ? "✦ Moved up by Apertus (was #" + was + ")" : was < r.rank ? "✦ Moved down by Apertus (was #" + was + ")" : "";
     if (note) { card.classList.add("moved"); card.querySelector(".tags").appendChild(el("span", "badge moved-badge", note)); }
     out.appendChild(card);
     if (still) return;
@@ -588,8 +588,13 @@ function needNote(text) {
   var box = document.getElementById("needs");
   clearNode(box);
   box.hidden = false;
-  box.appendChild(el("p", "meta" + (/^Interpreting/.test(text) ? " busy" : ""), text.replace(/^Interpreting/, "Apertus is analysing") ));
+  var busy = /^Interpreting/.test(text);
+  box.appendChild(aiHead(busy ? "Working on your request" : "Apertus"));
+  box.appendChild(el("p", "meta" + (busy ? " busy" : ""),
+    busy ? "Reading your request and searching the terms researchers use: synonyms, technical terms, other languages. The results below are already usable and will update." : text));
 }
+
+var refineOpen = false; // keep "Refine" open while the analyst edits needs
 
 function button(label, onclick, cls) {
   var b = el("button", cls || "small", label);
@@ -604,6 +609,28 @@ function renderNeeds(payload) {
   box.hidden = false;
   box.appendChild(aiHead("How Apertus read your request"));
   if (payload.synthetic || payload.decoding_mode === "synthetic") box.appendChild(el("p", "synthetic", "SYNTHETIC fixture interpretation: not a real model output."));
+  // The headline: the other wordings Apertus searched, so different terms still find the experts.
+  if (payload.expanded_queries && payload.expanded_queries.length) {
+    box.appendChild(el("p", "meta", "Also searched as (the terms researchers use; added to the search, never to your requirements):"));
+    var also = el("div", "also");
+    payload.expanded_queries.forEach(function (q) {
+      var chip = el("span", "wording");
+      chip.appendChild(el("span", "lang", q.language));
+      chip.appendChild(document.createTextNode(q.text));
+      chip.title = "expands: " + q.source;
+      also.appendChild(chip);
+    });
+    box.appendChild(also);
+  }
+  if (payload.clarification) {
+    box.appendChild(el("p", "reason", "To focus the search: " + payload.clarification));
+  }
+  var refine = el("details", "refine");
+  refine.open = refineOpen;
+  refine.addEventListener("toggle", function () { refineOpen = refine.open; });
+  refine.appendChild(el("summary", null, "Refine what the company needs (" + userNeeds.length + ")"));
+  box.appendChild(refine);
+  box = refine; // the editing tools live inside "Refine"
   box.appendChild(el("h3", null, "Your needs (editable)"));
   var list = el("ul", "needlist");
   userNeeds.forEach(function (n, i) {
@@ -635,15 +662,6 @@ function renderNeeds(payload) {
     });
     box.appendChild(sl);
   }
-  if (payload.expanded_queries && payload.expanded_queries.length) {
-    box.appendChild(el("h3", null, "Alternative wording (read-only; added to recall, never to requirements)"));
-    var chips = el("p");
-    payload.expanded_queries.forEach(function (q) { var chip = el("span", "badge", q.language + ": " + q.text); chip.title = "expands: " + q.source; chips.appendChild(chip); });
-    box.appendChild(chips);
-  }
-  if (payload.clarification) {
-    box.appendChild(el("p", "reason", "To focus the search: " + payload.clarification));
-  }
   var add = el("input"); add.type = "text"; add.placeholder = "Add a need"; add.maxLength = 300; add.id = "newneed";
   box.appendChild(add);
   box.appendChild(button("Add", function () { addNeed(add.value, payload); }));
@@ -668,7 +686,9 @@ function renderAssessment(a) {
   var old = card.querySelector(".assessment");
   if (old) card.removeChild(old);
   var box = el("div", "assessment");
-  var head = el("p", "meta", "AI-generated assessment (Apertus), not source text");
+  var head = el("p", "meta");
+  head.appendChild(el("span", "ai-tag", "✦ Apertus"));
+  head.appendChild(document.createTextNode(" AI-generated assessment (Apertus), not source text"));
   box.appendChild(head);
   var cat = el("p", "reason");
   cat.appendChild(el("span", "badge cat-" + a.category, CATEGORY_LABELS[a.category] || a.category));
@@ -692,7 +712,9 @@ function renderAssessment(a) {
   if (a.unresolved_questions && a.unresolved_questions.length) {
     box.appendChild(el("p", "meta", "Open questions: " + a.unresolved_questions.join(" | ")));
   }
-  card.appendChild(box);
+  // Right under the badges, so the AI's verdict is the first thing read on the card.
+  var tags = card.querySelector(".tags");
+  if (tags && tags.nextSibling) card.insertBefore(box, tags.nextSibling); else card.appendChild(box);
   card.classList.remove("flash");
   void card.offsetWidth; // restart the highlight animation
   card.classList.add("flash");
@@ -806,6 +828,6 @@ function runSearch(needs) {
 initHero();
 document.getElementById("form").addEventListener("submit", function (ev) {
   ev.preventDefault();
-  userNeeds = []; suggestedNeeds = [];   // a fresh question starts fresh needs
+  userNeeds = []; suggestedNeeds = []; refineOpen = false;   // a fresh question starts fresh needs
   runSearch([]);
 });

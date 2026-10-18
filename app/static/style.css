@@ -79,7 +79,16 @@ textarea { width: 100%; padding: .9rem 1rem; font: inherit; font-size: 1.1rem; b
 .steps li { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: .85rem 1rem; font-size: .88rem; color: var(--muted); display: flex; gap: .65rem; align-items: flex-start; }
 .steps li span { flex-shrink: 0; display: inline-grid; place-items: center; width: 1.5rem; height: 1.5rem; border-radius: 50%; font-size: .75rem; font-weight: 700;
   color: var(--accent); background: var(--quote-bg); }
-.steps li:last-child span { color: var(--ai); background: var(--ai-bg); }
+.steps li:not(:first-child) span { color: var(--ai); background: var(--ai-bg); }
+.steps li:not(:first-child) { border-color: var(--ai-line); }
+.eyebrow .ai-tag { margin: 0 .3rem 0 0; }
+.also { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; margin: .35rem 0 .6rem; }
+.also .wording { font-size: .85rem; padding: .25rem .7rem; border-radius: 99px; background: var(--panel); border: 1px solid var(--ai-line); }
+.also .wording .lang { font-size: .7rem; font-weight: 700; color: var(--ai); margin-right: .35rem; text-transform: uppercase; }
+.needs details.refine { margin-top: .5rem; }
+.needs details.refine > summary { cursor: pointer; color: var(--ai); font-weight: 600; font-size: .9rem; width: fit-content; }
+.badge.moved-badge { color: var(--ai); font-weight: 600; }
+.assessment { margin: .6rem 0 .4rem; }
 
 button { font: inherit; cursor: pointer; }
 button.primary { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; border: 0; border-radius: 12px; padding: .7rem 1.5rem; font-weight: 650;
