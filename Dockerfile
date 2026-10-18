@@ -1,7 +1,8 @@
 FROM python:3.12-slim
 WORKDIR /srv
 COPY requirements.lock .
-RUN pip install --no-cache-dir -r requirements.lock
+COPY app/search/requirements.txt app/search/requirements.txt
+RUN pip install --no-cache-dir -r requirements.lock -r app/search/requirements.txt
 COPY app ./app
 COPY config/suppression.json ./config/suppression.json
 ENV BERNMATCH_DATA_DIR=/data

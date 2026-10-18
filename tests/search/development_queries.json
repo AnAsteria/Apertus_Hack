@@ -1,0 +1,791 @@
+{
+  "kind": "development_only",
+  "source": "T14 development groups, with agent-authored FR/IT/RU variants; no evaluation-split queries",
+  "queries": [
+    {
+      "query_id": "I01-en",
+      "intent_group_id": "I01",
+      "split": "development",
+      "text": "Research partners studying why cancers resist treatment",
+      "language": "en",
+      "requested_type": "unit",
+      "category": "lay",
+      "expected": [
+        {
+          "name": "Cancer Therapy Resistance (DBMR)",
+          "type": "unit",
+          "urls": [
+            "https://www.dbmr.unibe.ch/research/research_programs/index_eng.html"
+          ],
+          "names": [
+            "Cancer Therapy Resistance",
+            "CTR"
+          ]
+        }
+      ],
+      "provenance": [
+        {
+          "url": "https://www.dbmr.unibe.ch/research/research_programs/index_eng.html",
+          "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+        }
+      ]
+    },
+    {
+      "query_id": "I01-de",
+      "intent_group_id": "I01",
+      "split": "development",
+      "text": "Forschungspartner für Therapieresistenz bei Krebs",
+      "language": "de",
+      "requested_type": "unit",
+      "category": "cross_lingual",
+      "expected": [
+        {
+          "name": "Cancer Therapy Resistance (DBMR)",
+          "type": "unit",
+          "urls": [
+            "https://www.dbmr.unibe.ch/research/research_programs/index_eng.html"
+          ],
+          "names": [
+            "Cancer Therapy Resistance",
+            "CTR"
+          ]
+        }
+      ],
+      "provenance": [
+        {
+          "url": "https://www.dbmr.unibe.ch/research/research_programs/index_eng.html",
+          "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+        }
+      ],
+      "notes": "German query, English evidence"
+    },
+    {
+      "query_id": "I03-en",
+      "intent_group_id": "I03",
+      "split": "development",
+      "text": "AI decision support for adapting insulin therapy",
+      "language": "en",
+      "requested_type": "unit",
+      "category": "professional",
+      "expected": [
+        {
+          "name": "AI in Health and Nutrition (ARTORG)",
+          "type": "unit",
+          "urls": [
+            "https://www.artorg.unibe.ch/research/aihn/index_eng.html",
+            "https://www.artorg.unibe.ch/research/aihn/research_activities/adaptive_diabetes_management/index_eng.html"
+          ],
+          "names": [
+            "AI in Health",
+            "AIHN"
+          ]
+        }
+      ],
+      "provenance": [
+        {
+          "url": "https://www.artorg.unibe.ch/research/aihn/index_eng.html",
+          "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+        },
+        {
+          "url": "https://www.artorg.unibe.ch/research/aihn/research_activities/adaptive_diabetes_management/index_eng.html",
+          "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+        }
+      ]
+    },
+    {
+      "query_id": "I03-de",
+      "intent_group_id": "I03",
+      "split": "development",
+      "text": "KI-Entscheidungsunterstützung zur Anpassung der Insulintherapie",
+      "language": "de",
+      "requested_type": "unit",
+      "category": "cross_lingual",
+      "expected": [
+        {
+          "name": "AI in Health and Nutrition (ARTORG)",
+          "type": "unit",
+          "urls": [
+            "https://www.artorg.unibe.ch/research/aihn/index_eng.html",
+            "https://www.artorg.unibe.ch/research/aihn/research_activities/adaptive_diabetes_management/index_eng.html"
+          ],
+          "names": [
+            "AI in Health",
+            "AIHN"
+          ]
+        }
+      ],
+      "provenance": [
+        {
+          "url": "https://www.artorg.unibe.ch/research/aihn/index_eng.html",
+          "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+        },
+        {
+          "url": "https://www.artorg.unibe.ch/research/aihn/research_activities/adaptive_diabetes_management/index_eng.html",
+          "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+        }
+      ]
+    },
+    {
+      "query_id": "I05-en",
+      "intent_group_id": "I05",
+      "split": "development",
+      "text": "Pilot research on measuring glucose without needle pricks",
+      "language": "en",
+      "requested_type": "project",
+      "category": "lay",
+      "expected": [
+        {
+          "name": "SPN-005 painless glucose monitoring pilot (DCB)",
+          "type": "project",
+          "urls": [
+            "https://www.dcberne.com/en/project/spn-005-pilot-study-on-painless-glucose-monitoring/",
+            "https://www.dcberne.com/de/project/spn-005-pilotstudie-zur-schmerzfreien-blutzuckermessung/"
+          ],
+          "names": [
+            "SPN-005"
+          ]
+        }
+      ],
+      "provenance": [
+        {
+          "url": "https://www.dcberne.com/en/project/spn-005-pilot-study-on-painless-glucose-monitoring/",
+          "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+        },
+        {
+          "url": "https://www.dcberne.com/de/project/spn-005-pilotstudie-zur-schmerzfreien-blutzuckermessung/",
+          "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+        }
+      ]
+    },
+    {
+      "query_id": "I05-de",
+      "intent_group_id": "I05",
+      "split": "development",
+      "text": "Pilotforschung zur Glukosemessung ohne Fingerstich",
+      "language": "de",
+      "requested_type": "project",
+      "category": "cross_lingual",
+      "expected": [
+        {
+          "name": "SPN-005 painless glucose monitoring pilot (DCB)",
+          "type": "project",
+          "urls": [
+            "https://www.dcberne.com/en/project/spn-005-pilot-study-on-painless-glucose-monitoring/",
+            "https://www.dcberne.com/de/project/spn-005-pilotstudie-zur-schmerzfreien-blutzuckermessung/"
+          ],
+          "names": [
+            "SPN-005"
+          ]
+        }
+      ],
+      "provenance": [
+        {
+          "url": "https://www.dcberne.com/en/project/spn-005-pilot-study-on-painless-glucose-monitoring/",
+          "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+        },
+        {
+          "url": "https://www.dcberne.com/de/project/spn-005-pilotstudie-zur-schmerzfreien-blutzuckermessung/",
+          "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+        }
+      ],
+      "notes": "Language-filtered subsets (DE evidence only / EN only) are T16's job"
+    },
+    {
+      "query_id": "I12-en",
+      "intent_group_id": "I12",
+      "split": "development",
+      "text": "Find a unit researching cancer and inflammation pharmacology",
+      "language": "en",
+      "requested_type": "unit",
+      "category": "cross_lingual",
+      "expected": [
+        {
+          "name": "Institute of Pharmacology",
+          "type": "unit",
+          "urls": [
+            "https://www.pki.unibe.ch/"
+          ],
+          "names": [
+            "Pharmacology",
+            "Pharmakologie",
+            "PKI"
+          ]
+        }
+      ],
+      "provenance": [
+        {
+          "url": "https://www.pki.unibe.ch/",
+          "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+        }
+      ],
+      "notes": "English query, German evidence"
+    },
+    {
+      "query_id": "I12-de",
+      "intent_group_id": "I12",
+      "split": "development",
+      "text": "Forschungsgruppe für Pharmakologie von Krebs und Entzündungen",
+      "language": "de",
+      "requested_type": "unit",
+      "category": "professional",
+      "expected": [
+        {
+          "name": "Institute of Pharmacology",
+          "type": "unit",
+          "urls": [
+            "https://www.pki.unibe.ch/"
+          ],
+          "names": [
+            "Pharmacology",
+            "Pharmakologie",
+            "PKI"
+          ]
+        }
+      ],
+      "provenance": [
+        {
+          "url": "https://www.pki.unibe.ch/",
+          "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+        }
+      ]
+    },
+    {
+      "query_id": "I13-en",
+      "intent_group_id": "I13",
+      "split": "development",
+      "text": "Which platform offers access to nucleic-acid sequencing technologies?",
+      "language": "en",
+      "requested_type": "infrastructure",
+      "category": "professional",
+      "expected": [
+        {
+          "name": "NGS Platform",
+          "type": "infrastructure",
+          "accept_types": [
+            "service"
+          ],
+          "urls": [
+            "https://www.ngs.unibe.ch/"
+          ],
+          "names": [
+            "NGS",
+            "Sequencing"
+          ]
+        }
+      ],
+      "provenance": [
+        {
+          "url": "https://www.ngs.unibe.ch/",
+          "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+        }
+      ],
+      "notes": "Access/price/availability not established by the source; accepted type fixed here: infrastructure or service"
+    },
+    {
+      "query_id": "I01-fr",
+      "intent_group_id": "I01",
+      "split": "development",
+      "text": "Partenaires de recherche étudiant la résistance des cancers aux traitements",
+      "language": "fr",
+      "requested_type": "unit",
+      "category": "lay",
+      "expected": [
+        {
+          "name": "Cancer Therapy Resistance (DBMR)",
+          "type": "unit",
+          "urls": [
+            "https://www.dbmr.unibe.ch/research/research_programs/index_eng.html"
+          ],
+          "names": [
+            "Cancer Therapy Resistance",
+            "CTR"
+          ]
+        }
+      ],
+      "provenance": [
+        {
+          "url": "https://www.dbmr.unibe.ch/research/research_programs/index_eng.html",
+          "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+        }
+      ],
+      "notes": "Agent-authored development variant requiring human review; same intent partition. Not a held-out evaluation result."
+    },
+    {
+      "query_id": "I01-it",
+      "intent_group_id": "I01",
+      "split": "development",
+      "text": "Partner di ricerca sulla resistenza dei tumori alle terapie",
+      "language": "it",
+      "requested_type": "unit",
+      "category": "lay",
+      "expected": [
+        {
+          "name": "Cancer Therapy Resistance (DBMR)",
+          "type": "unit",
+          "urls": [
+            "https://www.dbmr.unibe.ch/research/research_programs/index_eng.html"
+          ],
+          "names": [
+            "Cancer Therapy Resistance",
+            "CTR"
+          ]
+        }
+      ],
+      "provenance": [
+        {
+          "url": "https://www.dbmr.unibe.ch/research/research_programs/index_eng.html",
+          "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+        }
+      ],
+      "notes": "Agent-authored development variant requiring human review; same intent partition. Not a held-out evaluation result."
+    },
+    {
+      "query_id": "I01-ru",
+      "intent_group_id": "I01",
+      "split": "development",
+      "text": "Исследовательские партнёры по устойчивости опухолей к лечению",
+      "language": "ru",
+      "requested_type": "unit",
+      "category": "lay",
+      "expected": [
+        {
+          "name": "Cancer Therapy Resistance (DBMR)",
+          "type": "unit",
+          "urls": [
+            "https://www.dbmr.unibe.ch/research/research_programs/index_eng.html"
+          ],
+          "names": [
+            "Cancer Therapy Resistance",
+            "CTR"
+          ]
+        }
+      ],
+      "provenance": [
+        {
+          "url": "https://www.dbmr.unibe.ch/research/research_programs/index_eng.html",
+          "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+        }
+      ],
+      "notes": "Agent-authored development variant requiring human review; same intent partition. Not a held-out evaluation result."
+    },
+    {
+      "query_id": "I03-fr",
+      "intent_group_id": "I03",
+      "split": "development",
+      "text": "Aide à la décision par IA pour adapter le traitement par insuline",
+      "language": "fr",
+      "requested_type": "unit",
+      "category": "professional",
+      "expected": [
+        {
+          "name": "AI in Health and Nutrition (ARTORG)",
+          "type": "unit",
+          "urls": [
+            "https://www.artorg.unibe.ch/research/aihn/index_eng.html",
+            "https://www.artorg.unibe.ch/research/aihn/research_activities/adaptive_diabetes_management/index_eng.html"
+          ],
+          "names": [
+            "AI in Health",
+            "AIHN"
+          ]
+        }
+      ],
+      "provenance": [
+        {
+          "url": "https://www.artorg.unibe.ch/research/aihn/index_eng.html",
+          "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+        },
+        {
+          "url": "https://www.artorg.unibe.ch/research/aihn/research_activities/adaptive_diabetes_management/index_eng.html",
+          "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+        }
+      ],
+      "notes": "Agent-authored development variant requiring human review; same intent partition. Not a held-out evaluation result."
+    },
+    {
+      "query_id": "I03-it",
+      "intent_group_id": "I03",
+      "split": "development",
+      "text": "Supporto decisionale con IA per adattare la terapia insulinica",
+      "language": "it",
+      "requested_type": "unit",
+      "category": "professional",
+      "expected": [
+        {
+          "name": "AI in Health and Nutrition (ARTORG)",
+          "type": "unit",
+          "urls": [
+            "https://www.artorg.unibe.ch/research/aihn/index_eng.html",
+            "https://www.artorg.unibe.ch/research/aihn/research_activities/adaptive_diabetes_management/index_eng.html"
+          ],
+          "names": [
+            "AI in Health",
+            "AIHN"
+          ]
+        }
+      ],
+      "provenance": [
+        {
+          "url": "https://www.artorg.unibe.ch/research/aihn/index_eng.html",
+          "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+        },
+        {
+          "url": "https://www.artorg.unibe.ch/research/aihn/research_activities/adaptive_diabetes_management/index_eng.html",
+          "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+        }
+      ],
+      "notes": "Agent-authored development variant requiring human review; same intent partition. Not a held-out evaluation result."
+    },
+    {
+      "query_id": "I03-ru",
+      "intent_group_id": "I03",
+      "split": "development",
+      "text": "Поддержка решений с помощью ИИ для адаптации инсулинотерапии",
+      "language": "ru",
+      "requested_type": "unit",
+      "category": "professional",
+      "expected": [
+        {
+          "name": "AI in Health and Nutrition (ARTORG)",
+          "type": "unit",
+          "urls": [
+            "https://www.artorg.unibe.ch/research/aihn/index_eng.html",
+            "https://www.artorg.unibe.ch/research/aihn/research_activities/adaptive_diabetes_management/index_eng.html"
+          ],
+          "names": [
+            "AI in Health",
+            "AIHN"
+          ]
+        }
+      ],
+      "provenance": [
+        {
+          "url": "https://www.artorg.unibe.ch/research/aihn/index_eng.html",
+          "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+        },
+        {
+          "url": "https://www.artorg.unibe.ch/research/aihn/research_activities/adaptive_diabetes_management/index_eng.html",
+          "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+        }
+      ],
+      "notes": "Agent-authored development variant requiring human review; same intent partition. Not a held-out evaluation result."
+    },
+    {
+      "query_id": "I05-fr",
+      "intent_group_id": "I05",
+      "split": "development",
+      "text": "Étude pilote sur la mesure du glucose sans piqûre au doigt",
+      "language": "fr",
+      "requested_type": "project",
+      "category": "lay",
+      "expected": [
+        {
+          "name": "SPN-005 painless glucose monitoring pilot (DCB)",
+          "type": "project",
+          "urls": [
+            "https://www.dcberne.com/en/project/spn-005-pilot-study-on-painless-glucose-monitoring/",
+            "https://www.dcberne.com/de/project/spn-005-pilotstudie-zur-schmerzfreien-blutzuckermessung/"
+          ],
+          "names": [
+            "SPN-005"
+          ]
+        }
+      ],
+      "provenance": [
+        {
+          "url": "https://www.dcberne.com/en/project/spn-005-pilot-study-on-painless-glucose-monitoring/",
+          "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+        },
+        {
+          "url": "https://www.dcberne.com/de/project/spn-005-pilotstudie-zur-schmerzfreien-blutzuckermessung/",
+          "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+        }
+      ],
+      "notes": "Agent-authored development variant requiring human review; same intent partition. Not a held-out evaluation result."
+    },
+    {
+      "query_id": "I05-it",
+      "intent_group_id": "I05",
+      "split": "development",
+      "text": "Studio pilota sulla misurazione del glucosio senza punture al dito",
+      "language": "it",
+      "requested_type": "project",
+      "category": "lay",
+      "expected": [
+        {
+          "name": "SPN-005 painless glucose monitoring pilot (DCB)",
+          "type": "project",
+          "urls": [
+            "https://www.dcberne.com/en/project/spn-005-pilot-study-on-painless-glucose-monitoring/",
+            "https://www.dcberne.com/de/project/spn-005-pilotstudie-zur-schmerzfreien-blutzuckermessung/"
+          ],
+          "names": [
+            "SPN-005"
+          ]
+        }
+      ],
+      "provenance": [
+        {
+          "url": "https://www.dcberne.com/en/project/spn-005-pilot-study-on-painless-glucose-monitoring/",
+          "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+        },
+        {
+          "url": "https://www.dcberne.com/de/project/spn-005-pilotstudie-zur-schmerzfreien-blutzuckermessung/",
+          "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+        }
+      ],
+      "notes": "Agent-authored development variant requiring human review; same intent partition. Not a held-out evaluation result."
+    },
+    {
+      "query_id": "I05-ru",
+      "intent_group_id": "I05",
+      "split": "development",
+      "text": "Пилотное исследование измерения глюкозы без прокола пальца",
+      "language": "ru",
+      "requested_type": "project",
+      "category": "lay",
+      "expected": [
+        {
+          "name": "SPN-005 painless glucose monitoring pilot (DCB)",
+          "type": "project",
+          "urls": [
+            "https://www.dcberne.com/en/project/spn-005-pilot-study-on-painless-glucose-monitoring/",
+            "https://www.dcberne.com/de/project/spn-005-pilotstudie-zur-schmerzfreien-blutzuckermessung/"
+          ],
+          "names": [
+            "SPN-005"
+          ]
+        }
+      ],
+      "provenance": [
+        {
+          "url": "https://www.dcberne.com/en/project/spn-005-pilot-study-on-painless-glucose-monitoring/",
+          "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+        },
+        {
+          "url": "https://www.dcberne.com/de/project/spn-005-pilotstudie-zur-schmerzfreien-blutzuckermessung/",
+          "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+        }
+      ],
+      "notes": "Agent-authored development variant requiring human review; same intent partition. Not a held-out evaluation result."
+    },
+    {
+      "query_id": "I12-fr",
+      "intent_group_id": "I12",
+      "split": "development",
+      "text": "Unité de recherche en pharmacologie du cancer et de l'inflammation",
+      "language": "fr",
+      "requested_type": "unit",
+      "category": "cross_lingual",
+      "expected": [
+        {
+          "name": "Institute of Pharmacology",
+          "type": "unit",
+          "urls": [
+            "https://www.pki.unibe.ch/"
+          ],
+          "names": [
+            "Pharmacology",
+            "Pharmakologie",
+            "PKI"
+          ]
+        }
+      ],
+      "provenance": [
+        {
+          "url": "https://www.pki.unibe.ch/",
+          "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+        }
+      ],
+      "notes": "Agent-authored development variant requiring human review; same intent partition. Not a held-out evaluation result."
+    },
+    {
+      "query_id": "I12-it",
+      "intent_group_id": "I12",
+      "split": "development",
+      "text": "Unità di ricerca sulla farmacologia del cancro e dell'infiammazione",
+      "language": "it",
+      "requested_type": "unit",
+      "category": "cross_lingual",
+      "expected": [
+        {
+          "name": "Institute of Pharmacology",
+          "type": "unit",
+          "urls": [
+            "https://www.pki.unibe.ch/"
+          ],
+          "names": [
+            "Pharmacology",
+            "Pharmakologie",
+            "PKI"
+          ]
+        }
+      ],
+      "provenance": [
+        {
+          "url": "https://www.pki.unibe.ch/",
+          "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+        }
+      ],
+      "notes": "Agent-authored development variant requiring human review; same intent partition. Not a held-out evaluation result."
+    },
+    {
+      "query_id": "I12-ru",
+      "intent_group_id": "I12",
+      "split": "development",
+      "text": "Подразделение по фармакологии рака и воспаления",
+      "language": "ru",
+      "requested_type": "unit",
+      "category": "cross_lingual",
+      "expected": [
+        {
+          "name": "Institute of Pharmacology",
+          "type": "unit",
+          "urls": [
+            "https://www.pki.unibe.ch/"
+          ],
+          "names": [
+            "Pharmacology",
+            "Pharmakologie",
+            "PKI"
+          ]
+        }
+      ],
+      "provenance": [
+        {
+          "url": "https://www.pki.unibe.ch/",
+          "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+        }
+      ],
+      "notes": "Agent-authored development variant requiring human review; same intent partition. Not a held-out evaluation result."
+    },
+    {
+      "query_id": "I13-de",
+      "intent_group_id": "I13",
+      "split": "development",
+      "text": "Plattform für den Zugang zu Technologien zur Nukleinsäuresequenzierung",
+      "language": "de",
+      "requested_type": "infrastructure",
+      "category": "professional",
+      "expected": [
+        {
+          "name": "NGS Platform",
+          "type": "infrastructure",
+          "accept_types": [
+            "service"
+          ],
+          "urls": [
+            "https://www.ngs.unibe.ch/"
+          ],
+          "names": [
+            "NGS",
+            "Sequencing"
+          ]
+        }
+      ],
+      "provenance": [
+        {
+          "url": "https://www.ngs.unibe.ch/",
+          "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+        }
+      ],
+      "notes": "Agent-authored development variant requiring human review; same intent partition. Not a held-out evaluation result."
+    },
+    {
+      "query_id": "I13-fr",
+      "intent_group_id": "I13",
+      "split": "development",
+      "text": "Plateforme donnant accès aux technologies de séquençage des acides nucléiques",
+      "language": "fr",
+      "requested_type": "infrastructure",
+      "category": "professional",
+      "expected": [
+        {
+          "name": "NGS Platform",
+          "type": "infrastructure",
+          "accept_types": [
+            "service"
+          ],
+          "urls": [
+            "https://www.ngs.unibe.ch/"
+          ],
+          "names": [
+            "NGS",
+            "Sequencing"
+          ]
+        }
+      ],
+      "provenance": [
+        {
+          "url": "https://www.ngs.unibe.ch/",
+          "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+        }
+      ],
+      "notes": "Agent-authored development variant requiring human review; same intent partition. Not a held-out evaluation result."
+    },
+    {
+      "query_id": "I13-it",
+      "intent_group_id": "I13",
+      "split": "development",
+      "text": "Piattaforma per accedere alle tecnologie di sequenziamento degli acidi nucleici",
+      "language": "it",
+      "requested_type": "infrastructure",
+      "category": "professional",
+      "expected": [
+        {
+          "name": "NGS Platform",
+          "type": "infrastructure",
+          "accept_types": [
+            "service"
+          ],
+          "urls": [
+            "https://www.ngs.unibe.ch/"
+          ],
+          "names": [
+            "NGS",
+            "Sequencing"
+          ]
+        }
+      ],
+      "provenance": [
+        {
+          "url": "https://www.ngs.unibe.ch/",
+          "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+        }
+      ],
+      "notes": "Agent-authored development variant requiring human review; same intent partition. Not a held-out evaluation result."
+    },
+    {
+      "query_id": "I13-ru",
+      "intent_group_id": "I13",
+      "split": "development",
+      "text": "Платформа доступа к технологиям секвенирования нуклеиновых кислот",
+      "language": "ru",
+      "requested_type": "infrastructure",
+      "category": "professional",
+      "expected": [
+        {
+          "name": "NGS Platform",
+          "type": "infrastructure",
+          "accept_types": [
+            "service"
+          ],
+          "urls": [
+            "https://www.ngs.unibe.ch/"
+          ],
+          "names": [
+            "NGS",
+            "Sequencing"
+          ]
+        }
+      ],
+      "provenance": [
+        {
+          "url": "https://www.ngs.unibe.ch/",
+          "note": "T02 seed (docs/evaluation-seeds.md), reviewed by Maxim; NOT yet reviewed by Ruihan"
+        }
+      ],
+      "notes": "Agent-authored development variant requiring human review; same intent partition. Not a held-out evaluation result."
+    }
+  ]
+}

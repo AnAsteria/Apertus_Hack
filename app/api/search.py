@@ -6,6 +6,8 @@ tested before the backend exists. It is never on by default and the response say
 import json
 import os
 import uuid
+import threading
+import time
 from typing import Optional, Protocol
 
 from fastapi import APIRouter
@@ -40,18 +42,40 @@ class FixtureBackend:
 
 
 _backend: Optional[SearchBackend] = None
+_disk_backend = None
+_disk_key = None
+_load_lock = threading.Lock()
 
 
 def set_backend(backend: Optional[SearchBackend]) -> None:
     """Called by the T09 integration to plug in real retrieval."""
-    global _backend
+    global _backend, _disk_backend, _disk_key
     _backend = backend
+    _disk_backend = _disk_key = None
 
 
 def get_backend() -> Optional[SearchBackend]:
     if _backend is not None:
         return _backend
-    return FixtureBackend() if os.environ.get("BERNMATCH_FIXTURE_MODE") == "1" else None
+    if os.environ.get("BERNMATCH_FIXTURE_MODE") == "1":
+        return FixtureBackend()
+    from ..storage.indexes import current_generation
+    current = current_generation(os.environ.get("BERNMATCH_DATA_DIR", "data"))
+    if current is None:
+        return None
+    directory, manifest = current
+    key = (str(directory.resolve()), manifest["fingerprint"])
+    global _disk_backend, _disk_key
+    with _load_lock:
+        if key != _disk_key:
+            try:
+                from ..search.backend import HybridBackend
+                loaded = HybridBackend(directory)
+            except Exception:
+                # Fixed public error below; no source/company/exception text.
+                return None
+            _disk_backend, _disk_key = loaded, key
+        return _disk_backend
 
 
 def index_ready() -> bool:
@@ -60,6 +84,7 @@ def index_ready() -> bool:
 
 @router.post("/api/v1/search")
 def search(req: SearchRequest):
+    started = time.perf_counter()
     if (len(req.query) > MAX_QUERY_CHARS or len(req.company_context or "") > MAX_CONTEXT_CHARS
             or len(req.needs) > MAX_NEEDS):
         return JSONResponse(error("INPUT_TOO_LARGE", "Input exceeds the configured limit."), status_code=413)
@@ -71,4 +96,7 @@ def search(req: SearchRequest):
     if backend is None:
         # Never invent results.
         return JSONResponse(error("NOT_IMPLEMENTED", "Retrieval is not implemented yet."), status_code=501)
-    return enrich.apply_state(serving.apply(backend.search(req).model_dump()), req)
+    response = backend.search(req)
+    data = enrich.apply_state(serving.apply(response.model_dump()), req)
+    data["timing_ms"] = (data.get("timing_ms") or {}) | {"request_total": (time.perf_counter()-started)*1000}
+    return data

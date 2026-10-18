@@ -3,7 +3,8 @@
     python -m app.grounding --data-dir data --extraction data/extraction/apertus-v1-5-70b.jsonl
 
 Writes a handoff for T09/T11 under <data-dir>/knowledge/ (git-ignored):
-entities.jsonl, claims.jsonl, cards.jsonl ({entity_id, fields}) and report.json.
+entities.jsonl, claims.jsonl, cards.jsonl ({entity_id, fields}), report.json, and
+knowledge.json ({"entities", "claims"}) for `python -m app.search build --knowledge-file`.
 """
 from __future__ import annotations
 
@@ -71,6 +72,11 @@ def run(data_dir: str, extraction_path: str | None, *, client: ApertusClient | N
         with open(os.path.join(out_dir, f"{name}.jsonl"), "w", encoding="utf-8") as f:
             for row in rows:
                 f.write(json.dumps(row, ensure_ascii=False) + "\n")
+    # T09 handoff: `python -m app.search build --knowledge-file <data-dir>/knowledge/knowledge.json`.
+    # All claims are included; the index build keeps only supported ones.
+    with open(os.path.join(out_dir, "knowledge.json"), "w", encoding="utf-8") as f:
+        json.dump({"entities": [e.model_dump() for e in entities], "claims": [c.model_dump() for c in claims]},
+                  f, ensure_ascii=False)
     summary = {
         "pages": len(pages), "entities": len(entities), "claims": len(claims),
         "cards_with_fields": sum(1 for c in cards if c["fields"]),
