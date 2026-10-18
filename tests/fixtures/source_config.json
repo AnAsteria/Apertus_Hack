@@ -1,0 +1,28 @@
+{
+ "schema_version": "1",
+ "source_id": "example",
+ "label": "Example institute",
+ "start_urls": [
+  "https://example.org/research/"
+ ],
+ "allowed_domains": [
+  "example.org"
+ ],
+ "allowed_paths": [
+  "/research/"
+ ],
+ "languages": [
+  "de",
+  "en"
+ ],
+ "max_pages": 20,
+ "max_depth": 2,
+ "requests_per_second": 0.5,
+ "focus_areas": [
+  "diabetes",
+  "oncology",
+  "neurology",
+  "medtech"
+ ],
+ "refresh_default_hours": 24
+}

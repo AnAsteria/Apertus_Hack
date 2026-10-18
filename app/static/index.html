@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bern Match</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 48rem; margin: 2rem auto; padding: 0 1rem; }
+    .banner { background: #fff3cd; border: 1px solid #e0c36a; padding: .75rem 1rem; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <h1>Bern Match</h1>
+  <p class="banner">UI shell only. Search is not implemented yet; the workspace is built in T10.</p>
+  <p id="status">Checking readiness&hellip;</p>
+  <script>
+    fetch("/readyz").then(function (r) {
+      document.getElementById("status").textContent =
+        r.ok ? "Search indexes are ready." : "Search indexes are not ready.";
+    }).catch(function () {
+      document.getElementById("status").textContent = "Server not reachable.";
+    });
+  </script>
+</body>
+</html>
