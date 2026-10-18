@@ -116,3 +116,12 @@ def test_card_field_labels_cover_the_t08_card_fields():
     for name in ("official_contact", "services", "role", "leads", "led_by", "members", "part_of", "includes"):
         assert name + ":" in js, name  # a T08 field the UI would otherwise silently not show
     assert "Official contact (role only, not expertise)" in js  # D1: a contact is labelled as a contact
+
+
+def test_ui_renders_assessments_as_labelled_generated_text_on_matching_cards_only():
+    js = open(os.path.join(os.path.dirname(__file__), "..", "..", "app", "static", "app.js"), encoding="utf-8").read()
+    assert 'addEventListener("assessment"' in js and "function renderAssessment" in js
+    assert "AI-generated assessment (Apertus), not source text" in js  # never presented as source text
+    assert "data-entity" in js and "card.dataset.entity" in js        # matched by entity_id, unknown ids ignored
+    assert "/api/v1/evidence/" in js                                    # citations link to exact stored sentences
+    assert "innerHTML" not in js
