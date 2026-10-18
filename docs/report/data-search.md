@@ -10,14 +10,14 @@ Each page version is immutable (`ver_` = hash of document, cleaned-text hash and
 
 Apertus 70B extracted facts from the 799 routed person/unit/project/service/infrastructure pages; entity resolution and support checks kept **4,289 supported claims on 2,543 indexed entities (674 with card fields)** (T07/T08, #7, #8). Cards show only supported fields; a field always cites its sentence.
 
-**What is not indexed, and why (E4, #140; details in `app/ingest/FINAL_VERIFICATION.md`).** Of 3,563 page attempts, 2,826 parsed into 2,811 unique documents. 739 were not indexed:
+**What is not indexed, and why (E4, #140; details in `app/ingest/FINAL_VERIFICATION.md`).** Of 3,563 page attempts, 2,826 parsed into 2,811 unique documents. Of the 737 attempts that did not parse, 9 were cached alias reuses, and 728 were not indexed:
 - no usable text after cleaning (439, mostly JavaScript-rendered or navigation-only pages; there is no browser rendering);
 - unsupported media types (141);
 - HTTP 404 (91);
 - outside the configured scope (19);
 - robots-disallowed (15, respected);
 - scanned or empty PDFs (12, no OCR);
-- other (12).
+- other (11: HTTP 401/500, an invalid PDF, a redirect limit, oversized responses).
 
 **25 of 41 sources hit their page budget** (200 for focus sources, 50 for others), so their coverage is a bounded sample, not the full site. 8,058 queue entries were left unfetched. Sources with the most unsupported responses: DCB (114 of 200 attempts), BCPM (95), PKI (69) and IBMM (46). An answer of "not found" therefore always means "not found in this indexed snapshot".
 
