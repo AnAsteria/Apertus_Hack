@@ -32,8 +32,10 @@ function renderEvidence(ev) {
 
 function renderFields(fields) {
   var dl = el("dl", "fields");
-  var labels = { affiliation: "Affiliation", expertise: "Expertise", contact: "Contact",
-                 projects: "Projects", infrastructure: "Infrastructure / services" };
+  var labels = { role: "Role", affiliation: "Affiliation", part_of: "Part of", led_by: "Led by", leads: "Leads",
+                 members: "Members", includes: "Includes", expertise: "Expertise", projects: "Projects",
+                 infrastructure: "Infrastructure", services: "Services",
+                 official_contact: "Official contact (role only, not expertise)", contact: "Official contact (role only, not expertise)" };
   Object.keys(labels).forEach(function (k) {
     var vals = (fields && fields[k]) || [];
     dl.appendChild(el("dt", null, labels[k]));
@@ -97,7 +99,7 @@ function renderNeeds(payload) {
   var box = document.getElementById("needs");
   clearNode(box);
   box.hidden = false;
-  if (payload.synthetic) box.appendChild(el("p", "synthetic", "SYNTHETIC fixture interpretation: not a real model output."));
+  if (payload.synthetic || payload.decoding_mode === "synthetic") box.appendChild(el("p", "synthetic", "SYNTHETIC fixture interpretation: not a real model output."));
   box.appendChild(el("h3", null, "Your needs (editable)"));
   var list = el("ul", "needlist");
   userNeeds.forEach(function (n, i) {
@@ -132,14 +134,11 @@ function renderNeeds(payload) {
   if (payload.expanded_queries && payload.expanded_queries.length) {
     box.appendChild(el("h3", null, "Alternative wording (read-only; added to recall, never to requirements)"));
     var chips = el("p");
-    payload.expanded_queries.forEach(function (q) { chips.appendChild(el("span", "badge", q.language + ": " + q.text)); });
+    payload.expanded_queries.forEach(function (q) { var chip = el("span", "badge", q.language + ": " + q.text); chip.title = "expands: " + q.source; chips.appendChild(chip); });
     box.appendChild(chips);
   }
   if (payload.clarification) {
-    box.appendChild(el("p", "reason", payload.clarification.question));
-    payload.clarification.options.forEach(function (o) {
-      box.appendChild(button(o, function () { addNeed(o, payload); }));
-    });
+    box.appendChild(el("p", "reason", "To focus the search: " + payload.clarification));
   }
   var add = el("input"); add.type = "text"; add.placeholder = "Add a need"; add.maxLength = 300; add.id = "newneed";
   box.appendChild(add);
@@ -155,32 +154,42 @@ function addNeed(text, payload) {
   renderNeeds(payload);
 }
 
-function openEvents(requestId, myRevision) {
+function startEnrichment(body, requestId, myRevision) {
   closeEvents();
   needNote("Interpreting your request… (results above are already usable)");
-  var es = new EventSource("/api/v1/search/" + encodeURIComponent(requestId) + "/events");
-  eventSource = es;
-  function parse(e) {
-    var d = JSON.parse(e.data);
-    return d.revision === revision && myRevision === revision ? d : null; // discard stale events
-  }
-  es.addEventListener("interpretation", function (e) {
-    var d = parse(e);
-    if (!d) return;
-    // Keep edits the analyst already made on a re-run; only first interpretation seeds the lists.
-    if (!userNeeds.length) {
-      userNeeds = d.payload.needs.filter(function (n) { return n.origin === "user"; });
+  fetch("/api/v1/search/" + encodeURIComponent(requestId) + "/enrichment", {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body)
+  }).then(function (r) { return r.ok ? r.json() : null; }).then(function (start) {
+    if (myRevision !== revision) return;
+    if (!start) { needNote("AI interpretation is unavailable. The results above are unaffected."); return; }
+    var es = new EventSource(start.events_url);
+    eventSource = es;
+    function parse(e) {
+      var d = JSON.parse(e.data);
+      return d.revision === revision && myRevision === revision ? d : null; // discard stale events
     }
-    suggestedNeeds = d.payload.needs.filter(function (n) { return n.origin === "suggested"; });
-    renderNeeds(d.payload);
-  });
-  es.addEventListener("complete", function () { closeEvents(); });
-  es.addEventListener("error", function (e) {
-    if (e.data) {
+    es.addEventListener("interpretation", function (e) {
       var d = parse(e);
-      if (d) needNote("AI interpretation is unavailable. The results above are unaffected.");
-    }
-    closeEvents(); // no replay: the analyst can search again
+      if (!d) return;
+      var q = document.getElementById("query").value.trim();
+      // Keep edits the analyst already made; the first interpretation seeds the lists.
+      if (!userNeeds.length) {
+        userNeeds = d.payload.needs.filter(function (n) { return n.origin === "user"; });
+        if (!userNeeds.length && q) userNeeds = [{ schema_version: "1", need_id: "u0", text: q, origin: "user", kind: "problem" }];
+      }
+      suggestedNeeds = d.payload.needs.filter(function (n) { return n.origin === "suggested"; });
+      renderNeeds(d.payload);
+    });
+    es.addEventListener("complete", function () { closeEvents(); });
+    es.addEventListener("error", function (e) {
+      if (e.data) {
+        var d = parse(e);
+        if (d && d.payload.code !== "STALE_REVISION") needNote("AI interpretation is unavailable. The results above are unaffected.");
+      }
+      closeEvents(); // no replay: the analyst can search again
+    });
+  }).catch(function () {
+    if (myRevision === revision) needNote("AI interpretation is unavailable. The results above are unaffected.");
   });
 }
 
@@ -194,12 +203,13 @@ function runSearch(needs) {
   closeEvents();
   setStatus("Searching…", "loading");
   clearResults();
+  var body = { schema_version: "1", query: query, revision: myRevision,
+               entity_type: type || null, company_context: null, needs: needs || [],
+               enrichment_requested: interpret };
   fetch("/api/v1/search", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ schema_version: "1", query: query, revision: myRevision,
-                           entity_type: type || null, company_context: null, needs: needs || [],
-                           enrichment_requested: interpret })
+    body: JSON.stringify(body)
   }).then(function (r) {
     return r.json().then(function (body) { return { ok: r.ok, status: r.status, body: body }; });
   }).then(function (res) {
@@ -216,7 +226,7 @@ function runSearch(needs) {
     var lim = document.getElementById("limitations");
     clearNode(lim);
     b.limitations.forEach(function (l) { lim.appendChild(el("li", null, l)); });
-    if (b.enrichment_state === "pending") openEvents(b.request_id, myRevision);
+    if (b.enrichment_state === "pending") startEnrichment(body, b.request_id, myRevision);
     else if (b.enrichment_state === "unavailable") needNote("AI interpretation is not available right now. The results above are unaffected.");
     else document.getElementById("needs").hidden = true;
   }).catch(function () {
