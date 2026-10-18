@@ -20,6 +20,8 @@ step proves the absence of errors.
 from __future__ import annotations
 
 import logging
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import Callable, Literal
 
@@ -33,6 +35,7 @@ log = logging.getLogger("bernmatch.grounding")
 
 JUDGE_PROMPT_VERSION = "j1"
 JUDGE_BATCH = 12
+_REPORT_LOCK = threading.Lock()
 RULE_PREDICATES = frozenset({"name", "official_contact", "role"})
 PERSON_SUBJECT_PREDICATES = frozenset({"leader", "member_of", "role"})
 
@@ -161,9 +164,12 @@ def check_claims(claims: list[Claim], entities: dict[str, Entity], lookup: Sente
     if to_judge:
         client = client or get_client()
         model = model or client.config.quality_model
-        for i in range(0, len(to_judge), JUDGE_BATCH):
-            batch = to_judge[i:i + JUDGE_BATCH]
-            verdicts = _judge(batch, entities, client, model, report)
+        batches = [to_judge[i:i + JUDGE_BATCH] for i in range(0, len(to_judge), JUDGE_BATCH)]
+        # Batches are independent; run them up to the client's concurrency cap (the client
+        # also enforces it). Report counters are only updated here, in batch order.
+        with ThreadPoolExecutor(max_workers=max(1, client.config.max_concurrency)) as pool:
+            results = list(pool.map(lambda b: _judge(b, entities, client, model, report), batches))
+        for batch, verdicts in zip(batches, results):
             for n, (c, _) in enumerate(batch, start=1):
                 v = verdicts.get(n)
                 if v is None:
@@ -192,9 +198,10 @@ def _judge(batch: list[tuple[Claim, list[str]]], entities: dict[str, Entity], cl
     except InferenceError as e:
         log.warning("support judge unavailable code=%s batch=%d", e.code, len(batch))
         return {}
-    report.judge_calls += res.attempts
-    report.prompt_tokens += res.usage.prompt_tokens
-    report.completion_tokens += res.usage.completion_tokens
+    with _REPORT_LOCK:
+        report.judge_calls += res.attempts
+        report.prompt_tokens += res.usage.prompt_tokens
+        report.completion_tokens += res.usage.completion_tokens
     out: dict[int, str] = {}
     for v in res.value.verdicts:
         if 1 <= v.item <= len(batch) and v.item not in out:  # first verdict per item wins
