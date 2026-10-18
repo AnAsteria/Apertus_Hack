@@ -17,6 +17,8 @@ Worker `maxim-T09`; Refs #9. Implements the accepted T06 passage/stub vertical s
 
 - **Answer policy (T31, `app/search/outcome.py`):** every response carries an `outcome`. `no_evidence` when nothing passes abstention; `too_broad` when the request has at most one topic word and the cards are spread over at least four sources (five examples plus institution / type / rephrase suggestions); `low_confidence` when the best dense similarity is below `BERNMATCH_CONFIDENT_DENSE` (default 0.885) or only keyword matching ran; otherwise `confident`. Topic words exclude quantifiers, request verbs and generic role nouns in EN/DE/FR/IT.
 
+- **Traceable results (T36, `app/search/explain.py`):** each card's `retrieval` adds `channels`, `keyword_rank`, `dense_rank`, `matched_terms` (query words whose stem occurs in the cited evidence), `evidence_language` and `query_variant`, and `reason` is built from them (e.g. 'Found by keyword match on "insulin" (keyword rank 3) and multilingual meaning similarity (similarity rank 1) in stored source text. German request, English evidence.'). Deterministic, from stored text and retrieval signals only; no probabilities.
+
 ## Operator commands
 
 Python 3.12; install inside an isolated environment alongside the root requirements:

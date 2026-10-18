@@ -11,6 +11,7 @@ from .analysis import analyze,language_of,match_expression,query_terms,words
 from .encoder import OnnxEncoder,digest
 from .ranking import entity_max,reciprocal_rank_fusion,diversify,non_entity_page,DEMOTION
 from .outcome import classify,thresholds
+from .explain import channel_ranks,matched_words,reason as explain_reason
 
 
 def freshness(evidence, now=None):
@@ -128,6 +129,7 @@ class HybridBackend:
             representatives[eid] = self.vectors[vector_id]
         selected = diversify(fused,representatives,limit=MAX_RESULTS)
         timing['rank'] = (time.perf_counter()-t)*1000
+        keyword_ranks,dense_ranks = channel_ranks(keyword),channel_ranks(dense)
         results = []
         for eid in selected:
             item = self.entities[eid]; entity = item['entity']
@@ -144,16 +146,19 @@ class HybridBackend:
             evidence = list({e['sentence_id']:e for e in evidence}.values())
             if not evidence:
                 continue
-            reason = ('Matched stored source text by keyword retrieval and multilingual similarity.' if eid in keyword and eid in dense
-                      else 'Matched stored source text by keyword retrieval.' if eid in keyword
-                      else 'Matched stored source text by multilingual similarity.')
-            if entity['status']=='former':
-                reason = 'Documented as former; '+reason
+            evidence_language = entry.get('language')
+            matched = matched_words(req.query,[e['text'] for e in evidence],evidence_language) if eid in keyword else []
+            reason = explain_reason(keyword_rank=keyword_ranks.get(eid),dense_rank=dense_ranks.get(eid),matched=matched,
+                                    query_language=query_language,evidence_language=evidence_language,
+                                    demoted=eid in demoted,former=entity['status']=='former')
             results.append(Result(entity_id=eid,entity_type=entity['entity_type'],rank=len(results)+1,
                 display_name=entity['name'],fields=item['fields'],reason=reason,evidence=evidence,
                 freshness=freshness(evidence),retrieval={'bm25':keyword.get(eid,(None,None))[0],
                 'dense':dense.get(eid,(None,None))[0],'rrf':fused[eid],'aggregation':'max_before_rrf',
                 'entry_kind':entry['kind'],'demoted_listing_page':eid in demoted,'query_language':query_language,'mode':self.mode,
+                'keyword_rank':keyword_ranks.get(eid),'dense_rank':dense_ranks.get(eid),'matched_terms':matched,
+                'evidence_language':evidence_language,'channels':[c for c,ranks in (('keyword',keyword_ranks),('dense',dense_ranks)) if eid in ranks],
+                'query_variant':'original',
                 'resolution_state':entity['resolution_state'],'entity_status':entity['status'],
                 'model':self.manifest['model']['repo'],'generation':self.manifest['generation']}))
         return self._response(req,results,limitations,enrichment,start,timing,dense_ok=dense_ok,best_dense=best_dense,abstain=self.abstain_dense)

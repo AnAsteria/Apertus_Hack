@@ -65,8 +65,9 @@ def test_full_flow_events_are_ordered_and_contract_valid(client):
     rid, url = start(client)
     evs = parse_sse(client.get(url).text)
     # T19 adds an assessment stage; with no inference key it is reported as skipped.
-    assert [t for t, _ in evs] == ["progress", "interpretation", "progress", "complete"]
-    assert evs[2][1]["payload"] == {"stage": "assessment", "state": "skipped", "reason": "inference_disabled"}
+    # T30 inserts the enriched ranking over the expansions right after the interpretation.
+    assert [t for t, _ in evs] == ["progress", "interpretation", "reranked", "progress", "complete"]
+    assert evs[3][1]["payload"] == {"stage": "assessment", "state": "skipped", "reason": "inference_disabled"}
     for _, d in evs:
         SseEvent(**d)
         assert d["request_id"] == rid and d["revision"] == 1
@@ -132,3 +133,30 @@ def test_a_new_search_clears_the_previous_limitations_before_any_result_or_error
     start = js.index("function runSearch(")
     fetch_at = js.index('fetch("/api/v1/search"', start)
     assert 'clearNode(document.getElementById("limitations"))' in js[start:fetch_at]
+
+
+def test_reranked_event_carries_validated_cards_and_failure_keeps_stream_alive(client):
+    rid, url = start(client)
+    evs = dict(parse_sse(client.get(url).text))
+    payload = evs["reranked"]["payload"]
+    assert payload["results"] and payload["expanded_queries"]
+    assert [r["rank"] for r in payload["results"]] == list(range(1, len(payload["results"]) + 1))
+    assert all(r["evidence"] for r in payload["results"])
+    enrichment.registry.clear()
+
+    def broken(req, expansions):
+        raise RuntimeError("company text must not leak")
+    enrichment.set_reranker(broken)
+    try:
+        rid, url = start(client)
+        text = client.get(url).text
+        kinds = [k for k, _ in parse_sse(text)]
+        assert "reranked" not in kinds and kinds[-1] == "complete"
+        assert "RERANK_FAILED" in text and "company text" not in text
+    finally:
+        enrichment.set_reranker(None)
+
+
+def test_ui_replaces_cards_on_reranked_event():
+    js = open(os.path.join(os.path.dirname(__file__), "..", "..", "app", "static", "app.js"), encoding="utf-8").read()
+    assert 'addEventListener("reranked"' in js and "renderCard(r)" in js

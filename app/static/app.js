@@ -218,6 +218,15 @@ function startEnrichment(body, requestId, myRevision) {
       suggestedNeeds = d.payload.needs.filter(function (n) { return n.origin === "suggested"; });
       renderNeeds(d.payload);
     });
+    es.addEventListener("reranked", function (e) {
+      // T30: validated ranking over the original query plus Apertus expansions replaces the cards.
+      var d = parse(e);
+      if (!d || !d.payload.results.length) return;
+      var out = clearResults();
+      d.payload.results.forEach(function (r) { out.appendChild(renderCard(r)); });
+      setStatus(d.payload.results.length + " result(s), updated with Apertus query expansion (" +
+                d.payload.expanded_queries.join(", ") + ")", "");
+    });
     es.addEventListener("assessment", function (e) {
       var d = parse(e);
       if (d) renderAssessment(d.payload);
