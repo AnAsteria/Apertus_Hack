@@ -2,7 +2,7 @@
 from app.contracts import Result, SearchResponse
 from app.search.outcome import classify, topic_terms
 
-LIMITS = {'confident_dense': .88, 'broad_max_terms': 1, 'broad_max_gap': .02, 'broad_min_hosts': 4}
+LIMITS = {'confident_dense': .885, 'broad_max_terms': 1, 'broad_max_gap': 1.0, 'broad_min_hosts': 4}
 
 
 def card(i, host, dense, etype='unit'):
@@ -36,11 +36,18 @@ def test_specific_request_is_not_broad_even_when_spread():
     assert run('insulin dosing decision support', results, .9)[0] == 'confident'
 
 
-def test_broad_word_with_clear_winner_is_not_broad():
-    # A large score gap means one page clearly answers even a one-word request.
+def test_single_specific_word_from_few_sources_is_not_broad():
+    # One topic word is broad only when the cards scatter across many institutions.
+    results = [card(i, 'artorg.unibe.ch' if i % 2 else 'dbmr.unibe.ch', .9) for i in range(1, 11)]
+    assert run('optogenetics', results, .9)[0] == 'confident'
+
+
+def test_spread_gap_check_still_available_when_configured():
     hosts = ['a.unibe.ch', 'b.unibe.ch', 'c.unibe.ch', 'd.unibe.ch', 'e.unibe.ch']
     results = [card(1, hosts[0], .93)] + [card(i, hosts[i % 5], .86) for i in range(2, 11)]
-    assert run('pharmacology', results, .93)[0] == 'confident'
+    assert run('pharmacology', results, .93)[0] == 'too_broad'
+    assert classify('pharmacology', results, dense_ok=True, best_dense=.93, abstain_dense=.865,
+                    limits={**LIMITS, 'broad_max_gap': .02})[0] == 'confident'
 
 
 def test_uncertain_band_is_low_confidence():
