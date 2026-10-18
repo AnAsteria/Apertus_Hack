@@ -379,6 +379,8 @@ function renderCard(r, index) {
   var card = el("article", "card appear src-" + src.key);
   card.style.animationDelay = Math.min(index || 0, 10) * 60 + "ms";
   card.dataset.entity = r.entity_id;
+  // Same host form as the server's "Only <host>" suggestion (lower case, no "www.").
+  try { card.dataset.host = new URL(r.evidence[0].url).hostname.toLowerCase().replace(/^www\./, ""); } catch (e) { card.dataset.host = ""; }
   var head = el("div", "card-head");
   var title = el("h3");
   title.appendChild(el("span", "rank", r.rank + "."));
@@ -515,15 +517,74 @@ function renderOutcome(b) {
   box.appendChild(el("h2", null, info[0]));
   box.appendChild(el("p", null, info[1]));
   var chips = el("div", "chips");
+  var notes = [];
   (b.suggestions || []).forEach(function (s) {
-    chips.appendChild(button(s.label, function () { applySuggestion(s); }, "chip"));
+    if (s.kind === "coverage") { notes.push(s.label); return; } // information, not an action
+    chips.appendChild(button(s.label, function () { applySuggestion(s, box); }, "chip"));
   });
   if (chips.firstChild) box.appendChild(chips);
+  notes.forEach(function (n) { box.appendChild(el("p", "meta", n)); });
 }
 
-function applySuggestion(s) {
+// A fresh search with new request text, as if the analyst had typed it and pressed Search.
+function rerunWith(text) {
+  document.getElementById("query").value = text;
+  userNeeds = []; suggestedNeeds = []; refineOpen = false;
+  runSearch([]);
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+// A small inline box: type, press Enter or the button, and the search runs again.
+function inlineAsk(container, placeholder, initial, buttonLabel, onSubmit, focus) {
+  var old = container.querySelector(".ask");
+  if (old) old.parentNode.removeChild(old);
+  var form = el("form", "ask");
+  var input = el("input"); input.type = "text"; input.maxLength = 300; input.placeholder = placeholder; input.value = initial || "";
+  input.setAttribute("aria-label", placeholder);
+  form.appendChild(input);
+  var go = el("button", "primary", buttonLabel); go.type = "submit";
+  form.appendChild(go);
+  form.appendChild(button("Cancel", function () { container.removeChild(form); }));
+  form.addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var v = input.value.trim();
+    if (v) onSubmit(v);
+  });
+  container.appendChild(form);
+  if (focus !== false) input.focus(); // only when the analyst opened the box themselves
+  return form;
+}
+
+function addToRequest(extra) {
+  var q = document.getElementById("query").value.trim();
+  rerunWith(q ? q + ", " + extra : extra);
+}
+
+function filterInstitution(host, label) {
+  var shown = 0;
+  Array.prototype.forEach.call(document.querySelectorAll("#results .card"), function (c) {
+    var on = !host || c.dataset.host === host;
+    c.hidden = !on; if (on) shown += 1;
+  });
+  var status = document.getElementById("status");
+  if (!host) { setStatus("", ""); return; }
+  setStatus("Showing " + shown + " result" + (shown === 1 ? "" : "s") + " from " + label + ".", "");
+  status.appendChild(document.createTextNode(" "));
+  status.appendChild(button("Show all", function () { filterInstitution(null); }));
+}
+
+function applySuggestion(s, box) {
   if (s.kind === "entity_type") { setType(s.value || ""); runSearch([]); }
-  else if (s.kind === "rephrase" && s.value) { document.getElementById("query").value = s.value; runSearch([]); }
+  else if (s.kind === "institution" && s.value) filterInstitution(s.value, s.label.replace(/^Only /, ""));
+  else if (s.kind === "rephrase" && s.value) rerunWith(s.value);
+  else if (s.kind === "rephrase") {
+    // "Add ..." / "Describe ..." add to the request; anything else rewrites it.
+    var adds = /^(add|describe)\b/i.test(s.label);
+    inlineAsk(box, adds ? "e.g. a method, disease, technology or product" : "Rewrite your request",
+              adds ? "" : document.getElementById("query").value.trim(),
+              adds ? "Add and search" : "Search again",
+              adds ? addToRequest : rerunWith);
+  }
 }
 
 function setType(value) {
@@ -596,6 +657,26 @@ function needNote(text) {
 
 var refineOpen = false; // keep "Refine" open while the analyst edits needs
 
+// Apertus' clarifying question, answerable in one click: its "e.g." options become chips,
+// and a box takes any other answer. Either one is added to the request and the search runs again.
+function renderClarification(text) {
+  var wrap = el("div", "clarify");
+  var m = /\s*\((?:e\.g\.|z\.\s?B\.|p\.\s?ex\.)[,:]?\s*([^)]*)\)/i.exec(text);
+  var question = m ? text.replace(m[0], "") : text;
+  wrap.appendChild(el("p", "reason", "To focus the search: " + question.trim()));
+  if (m) {
+    var chips = el("div", "chips");
+    m[1].split(/,|;|\bor\b|\boder\b|\bou\b/).map(function (s) { return s.trim(); })
+      .filter(function (s) { return s && !/^(etc|usw|usw\.|etc\.)\.?$/i.test(s) && s.length <= 60; })
+      .forEach(function (opt) { chips.appendChild(button(opt, function () { addToRequest(opt); }, "chip")); });
+    if (chips.firstChild) wrap.appendChild(chips);
+  }
+  var ask = inlineAsk(wrap, "Or type your answer", "", "Add and search", addToRequest, false);
+  var cancel = ask.querySelector("button.small");
+  if (cancel) cancel.hidden = true; // no Cancel: the box is part of the question
+  return wrap;
+}
+
 function button(label, onclick, cls) {
   var b = el("button", cls || "small", label);
   b.type = "button";
@@ -622,9 +703,7 @@ function renderNeeds(payload) {
     });
     box.appendChild(also);
   }
-  if (payload.clarification) {
-    box.appendChild(el("p", "reason", "To focus the search: " + payload.clarification));
-  }
+  if (payload.clarification) box.appendChild(renderClarification(payload.clarification));
   var refine = el("details", "refine");
   refine.open = refineOpen;
   refine.addEventListener("toggle", function () { refineOpen = refine.open; });
@@ -795,8 +874,7 @@ function startEnrichment(body, requestId, myRevision) {
       if (resultsShown) rerankCards(d.payload.results); // direct results already on screen (fallback)
       else showApertusResults(d.payload.results);
       renderSummary({ results: d.payload.results }, lastQuery, performance.now() - searchStarted, true);
-      setStatus("Ranked by Apertus, also searching " + d.payload.expanded_queries.length + " other wording" +
-                (d.payload.expanded_queries.length === 1 ? "" : "s") + " (listed above).", "ap");
+      setStatus("Ranked by Apertus, using the other wordings listed above.", "ap");
     });
     es.addEventListener("progress", function (e) {
       var d = parse(e);
