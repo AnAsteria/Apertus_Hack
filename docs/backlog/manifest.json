@@ -1,0 +1,567 @@
+{
+  "repository": "AnAsteria/Apertus_Hack",
+  "inspected_at": "2026-10-18T14:05:38+02:00",
+  "deadline": "2026-10-19T14:30:00+02:00",
+  "milestones": {
+    "V1": [
+      "V1 — Working vertical slice",
+      "2026-10-18T18:00:00+02:00",
+      "Real permitted pages from all three sources → immutable evidence → persistent BM25+dense indexes → hybrid API/cards; inference config probed; externally accessible initial deployment and restart demonstrated. All task acceptance gates, not code count, required."
+    ],
+    "V2": [
+      "V2 — Reliable and measured Core",
+      "2026-10-19T08:00:00+02:00",
+      "Integrated multilingual/absence/grounding/fairness/lifecycle/feedback/admin checks, measured Core performance/cost and full local network-blocked unseen query including Apertus 8B. Missing evidence keeps gate open."
+    ],
+    "V3": [
+      "V3 — Apertus enrichment and comparisons",
+      "2026-10-19T10:30:00+02:00",
+      "Editable requirements and batched validated streamed enrichment preserve fast path; complete required ablations/cross-encoder subset and actual partner review/fixes. Tier labels remain independent of milestone."
+    ],
+    "V4": [
+      "V4 — Verified release and submission",
+      "2026-10-19T14:30:00+02:00",
+      "Public final smoke test, honest measured report, ≤10-slide pitch PDF, ≤6-page report PDF, ≤2-minute public video/backup, required PDF ZIP and actual submission confirmation. Stretch remains deferred unless Core accepted and buffer protected."
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T01",
+      "slug": "contracts",
+      "title": "Ratify contracts, stack and shared ownership",
+      "iteration": "V1",
+      "tier": "core",
+      "area": "infra",
+      "stream": "C",
+      "deps": [],
+      "hours": 2,
+      "arch": "1, 3, 9",
+      "contracts": "1–9",
+      "files": "docs/CONTRACTS.md; docs/DECISIONS.md; shared schemas (after approval)",
+      "steps": "Review the proposed contracts and minimal stack with the team. Name one contract owner and one dispatcher/integration owner (roles may be held by the same developer). Freeze v1 schemas, repository boundaries, error semantics, metric definitions and pending lifecycle decisions before coding. Record approvals and deviations; do not pretend this proposal is already approved.",
+      "acceptance": "Team approval and named roles are recorded; every cross-workstream record/API has an owner and version; fixtures can be implemented independently; freshness/removal defaults are explicitly accepted or remain blocking their dependent work. Check architecture compatibility and all contract references.",
+      "blocker": "No dependency; documentation review is immediately actionable. Implementation remains gated on explicit plan approval.",
+      "spec": "docs/tasks/T01-contracts.md"
+    },
+    {
+      "id": "T02",
+      "slug": "source-inventory",
+      "title": "Audit source inventory and real-page evaluation seeds",
+      "iteration": "V1",
+      "tier": "core",
+      "area": "data",
+      "stream": "A",
+      "deps": [],
+      "hours": 2,
+      "arch": "1–3, 16",
+      "contracts": "2, 3, 9",
+      "files": "docs/sources.md; docs/evaluation-seeds.md",
+      "steps": "Locate the supplied inventory or document its absence; inspect public seed pages and robots for UniBE, ARTORG and Diabetes Center Berne without bypassing controls. Propose bounded URLs/paths, focus-area tags, HTML/text-PDF examples and unsupported cases. Collect source-grounded query/entity candidates without scoring a system.",
+      "acceptance": "A reproducible source manifest covers all three institutions or identifies exact missing inventory/access; seed evidence URLs and language/type are recorded; no invented source matches or crawl coverage. Review allowed paths and unsupported formats. Full acceptance requires confirmed inventory.",
+      "blocker": "Missing organiser inventory may block final acceptance; discovery can start without application code.",
+      "spec": "docs/tasks/T02-source-inventory.md"
+    },
+    {
+      "id": "T03",
+      "slug": "access-audit",
+      "title": "Audit endpoint, hosting and local-hardware access",
+      "iteration": "V1",
+      "tier": "core",
+      "area": "infra",
+      "stream": "B",
+      "deps": [],
+      "hours": 1.5,
+      "arch": "4, 14, 15",
+      "contracts": "6, 9",
+      "files": "docs/access-readiness.md",
+      "steps": "Inventory CSCS/Keera access, endpoint/model names, judging continuity, structured-output/streaming expectations, hosting access, and local 8B hardware/storage. Choose one concrete hosting target with the dispatcher from existing authorised resources; propose a single-container persistent-volume deployment. Prepare model/dependency download plan and opt-in probe checklist. Record only secret variable names, never values. No purchase, provisioning or billing acceptance.",
+      "acceptance": "A redacted access matrix names actual available resources or explicit blockers; one deployment path is selected if access exists; local memory/model-license/download feasibility and required approvals are recorded. An unavailable resource remains a blocker, not a fabricated pass.",
+      "blocker": "Read-only audit is immediately actionable; live access/hardware may remain external blockers.",
+      "spec": "docs/tasks/T03-access-audit.md"
+    },
+    {
+      "id": "T04",
+      "slug": "scaffold",
+      "title": "Create contract-first application and CI skeleton",
+      "iteration": "V1",
+      "tier": "core",
+      "area": "infra",
+      "stream": "C",
+      "deps": [
+        "T01"
+      ],
+      "hours": 3,
+      "arch": "7, 12, 14",
+      "contracts": "1–9",
+      "files": "app/main.py; app/contracts.py; tests/contracts/; pyproject.toml; .gitignore; Dockerfile; CI configuration",
+      "steps": "Implement the approved Python/FastAPI single-server skeleton, SQLite repository interface, static UI shell and deterministic fixtures. Add contract validation, health/readiness distinction, reproducible dependency locking/container startup and proportionate CI. Ignore local data, models, .env and logs. Do not implement retrieval or inference here.",
+      "acceptance": "Clean environment starts documented container; deterministic contract tests validate fixture/error/version behavior; CI uses no paid/live inference; readiness is false until required corpus/index assets are loaded; no secrets in tracked files. Record exact commands, not assumed install success.",
+      "blocker": "Plan approval and T01 contract ratification required.",
+      "spec": "docs/tasks/T04-scaffold.md"
+    },
+    {
+      "id": "T05",
+      "slug": "inference-adapter",
+      "title": "Configure and probe replaceable CSCS/Keera inference",
+      "iteration": "V1",
+      "tier": "core",
+      "area": "ai",
+      "stream": "B",
+      "deps": [
+        "T03",
+        "T04"
+      ],
+      "hours": 3,
+      "arch": "4, 7, 10, 14, 15",
+      "contracts": "1, 6, 9",
+      "files": "app/ai/client.py; app/ai/config.py; .env.example; tests/ai/; docs/inference.md",
+      "steps": "Configure endpoint, API key and 8B/optional 70B model IDs server-side. Add replaceable local endpoint, connectivity and available-model opt-in smoke tests, actual structured-decoding and streaming probes, timeouts, bounded retry/backoff, concurrency limits and token/latency instrumentation. Keep credentials out of client bundles/logs. Implement deterministic fake endpoint tests; live API tests require opt-in and fictional input. Document validated JSON retry fallback as weaker than backend-constrained decoding.",
+      "acceptance": "Actual endpoint probe report distinguishes unsupported/unknown features; malformed output, rate limits, timeout and unavailable inference fail safely; keyword path does not depend on adapter. Inspect built client/static assets and logs for secret leakage. No live paid call in routine CI. Full live acceptance blocks if endpoint credentials are unavailable.",
+      "blocker": "Requires usable authorised endpoint credentials for live gate; no confidential profiles.",
+      "spec": "docs/tasks/T05-inference-adapter.md"
+    },
+    {
+      "id": "T06",
+      "slug": "ingestion",
+      "title": "Implement bounded initial crawl and immutable evidence storage",
+      "iteration": "V1",
+      "tier": "core",
+      "area": "data",
+      "stream": "A",
+      "deps": [
+        "T02",
+        "T04"
+      ],
+      "hours": 5,
+      "arch": "1–3, 6",
+      "contracts": "2, 3, 9",
+      "files": "app/ingest/; app/storage/corpus.py; config/sources/; tests/ingest/",
+      "steps": "Load YAML registry; discover via sitemaps/internal links within allowlists, robots and domain rate limits; fetch public HTML/text PDFs once. Store URL/redirect/hash/fetch/content dates, versioned passages and sentence IDs with PDF page numbers. Clean boilerplate, link language variants, classify cheaply and route eligible entity pages. Keep other usable passages searchable. Report focus/outside-focus counts and scanned/JS/failed exclusions.",
+      "acceptance": "Run bounded real-source ingestion with all three configured sources; verify stable same-version sentences and different changed-content versions, exact text/page provenance, scope/rate/robots behavior and unsupported reports. Restart reuses corpus without crawling. Contract tests plus a few meaningful parser/version fixtures; do not claim full coverage from a sample.",
+      "blocker": "Confirmed inventory/allowed seeds from T02; network access for ingestion.",
+      "spec": "docs/tasks/T06-ingestion.md"
+    },
+    {
+      "id": "T07",
+      "slug": "extraction",
+      "title": "Extract evidence-backed structured facts with Apertus 8B",
+      "iteration": "V1",
+      "tier": "core",
+      "area": "ai",
+      "stream": "B",
+      "deps": [
+        "T05",
+        "T06"
+      ],
+      "hours": 4,
+      "arch": "3, 4, 11",
+      "contracts": "3–6",
+      "files": "app/ai/extract.py; app/ai/schemas.py; tests/ai/extraction/",
+      "steps": "Route person/group/project/infrastructure/service pages to batched 8B extraction; cache by content hash plus model/schema/prompt configuration. Require schema-constrained decoding when supported; otherwise bounded validation/retry and quarantine with explicit fallback flag. Return IDs, not model quotes; keep absent fields empty and group expertise separate from members. Source content is untrusted data.",
+      "acceptance": "Real-page sample extraction preserves role/affiliation/evidence; invalid JSON/schema, unknown sentence/version IDs and prompt-like source text do not create accepted facts. Unsupported backend constraints are disclosed. Record token/timing/retry counts without company text.",
+      "blocker": "Live 8B endpoint and T05 probe; fallback is not equivalent constrained decoding.",
+      "spec": "docs/tasks/T07-extraction.md"
+    },
+    {
+      "id": "T08",
+      "slug": "entities-grounding",
+      "title": "Resolve entities and validate semantic grounding",
+      "iteration": "V1",
+      "tier": "core",
+      "area": "ai",
+      "stream": "B",
+      "deps": [
+        "T07"
+      ],
+      "hours": 4,
+      "arch": "5, 11, 12",
+      "contracts": "3–5",
+      "files": "app/entities/; app/grounding/; tests/entities/; tests/grounding/",
+      "steps": "Resolve canonical profiles/identifiers and corroborated names/affiliations; preserve ambiguity/conflicts. Build explicit claims and relations, leader/contact versus expertise distinctions and current/former contact state. Resolve exact evidence text in code; separately check relation/support and qualify or remove unsupported claims. Provide indexed-corpus absence language.",
+      "acceptance": "Test duplicate/ambiguous identities, cross-version IDs, valid-but-unsupported evidence, exact quotation rendering and group-to-member non-transfer. Review real source examples for semantic support and professional-contact minimisation. Valid IDs alone must not count as supported interpretation.",
+      "blocker": "No inference of unrecorded contacts or expertise.",
+      "spec": "docs/tasks/T08-entities-grounding.md"
+    },
+    {
+      "id": "T09",
+      "slug": "hybrid-search",
+      "title": "Build persistent multilingual hybrid retrieval and fair ranking",
+      "iteration": "V1",
+      "tier": "core",
+      "area": "search",
+      "stream": "A",
+      "deps": [
+        "T06",
+        "T08"
+      ],
+      "hours": 5,
+      "arch": "6, 7, 9, 11",
+      "contracts": "3–5",
+      "files": "app/search/; app/storage/indexes.py; tests/search/",
+      "steps": "Persist multilingual embeddings/vector arrays and BM25 keyword index for profiles and original passages. Use reciprocal-rank fusion, max entity aggregation and relevance-aware MMR as proposed v1 choices; tune only on development queries. Deduplicate and respect requested type, at most ten entities. Return exact supporting evidence and deterministic relevance reasons without LLM calls. No per-query crawl.",
+      "acceptance": "Restart reuses indexes; a prolific duplicate-page entity cannot win through score summation; type and ten-entity limits hold. Check DE→EN and EN→DE real evidence, absence/near-match behavior and retrieval under slow/unavailable Apertus. Instrument first-card path for later median/p95 measurement.",
+      "blocker": "Local multilingual model weights must be available; selected model pinned by T01.",
+      "spec": "docs/tasks/T09-hybrid-search.md"
+    },
+    {
+      "id": "T10",
+      "slug": "workspace",
+      "title": "Build inspectable search cards and non-blocking API workspace",
+      "iteration": "V1",
+      "tier": "core",
+      "area": "ui",
+      "stream": "C",
+      "deps": [
+        "T04"
+      ],
+      "hours": 4,
+      "arch": "7, 11, 12",
+      "contracts": "4–7",
+      "files": "app/api/search.py; app/static/; tests/ui/",
+      "steps": "Build English text/paste-only workspace against synthetic v1 fixtures before backend readiness. Wire search endpoint when T09 integrates; show all supported card fields, exact evidence/URLs, source date versus fetch date, limitations and up to ten entities. Use deterministic reasons while enrichment is absent. Add empty/error/loading states without blocking simple searches on clarification.",
+      "acceptance": "Fixture contract checks and browser walkthrough cover supported/missing fields, evidence expansion, separate dates, no upload, and endpoint failure states. Integration acceptance requires real T09 results; do not mark fixture-only cards as working search.",
+      "blocker": "Can develop fixtures after T04; final real-data acceptance requires T09.",
+      "spec": "docs/tasks/T10-workspace.md"
+    },
+    {
+      "id": "T11",
+      "slug": "initial-deployment",
+      "title": "Integrate vertical slice and deploy early",
+      "iteration": "V1",
+      "tier": "core",
+      "area": "infra",
+      "stream": "C",
+      "deps": [
+        "T03",
+        "T05",
+        "T09",
+        "T10"
+      ],
+      "hours": 3,
+      "arch": "1–7, 9, 11, 12, 14",
+      "contracts": "1–9",
+      "files": "docs/deployment.md; deploy/; tests/integration/; shared app/main.py via integration owner",
+      "steps": "Integrate real-page ingestion→indexes→API→cards and deploy on the single existing authorised host selected in T03. Persist corpus/indexes on a mounted volume; configure server-side secrets, health/readiness, useful redacted logs and protected admin/refresh routes. Document startup, restart, rollback/redeploy and persistence. No paid provisioning or billing acceptance.",
+      "acceptance": "External browser/client reaches public URL and searches real sources; restart preserves evidence/indexes; inference failure leaves search usable; no key in browser bundle/logs; admin trigger refuses unauthorised access. Record URL, revision and smoke-test evidence. If no authorised host exists, prepare container and document exact access blocker without claiming deployment.",
+      "blocker": "Host/credentials/persistent storage access and integration owner; hosting cannot be replaced by localhost proof.",
+      "spec": "docs/tasks/T11-initial-deployment.md"
+    },
+    {
+      "id": "T12",
+      "slug": "lifecycle",
+      "title": "Implement freshness, manual refresh, retirement and suppression",
+      "iteration": "V2",
+      "tier": "core",
+      "area": "data",
+      "stream": "A",
+      "deps": [
+        "T09"
+      ],
+      "hours": 4,
+      "arch": "5, 6, 12, 14",
+      "contracts": "2, 3, 7, 9",
+      "files": "app/lifecycle/; app/storage/removal.py; docs/data-policy.md; tests/lifecycle/",
+      "steps": "Implement documented freshness threshold, separate fetch/content dates, manual changed-content refresh, transient failure retry and confirmed retirement propagation to serving indexes. Add removal-request route/process and suppression pre-ingestion, copy/cache/backup expiration policy, former-contact exclusion and session/log retention rules. Represent production daily/default and selected hourly settings without building a full MVP scheduler.",
+      "acceptance": "Real/controlled refresh demonstrates changed evidence, stable historical citation identity, unavailable removed evidence, retry without premature deletion, suppression across re-ingestion and former-staff filtering. Verify expiration/redaction behavior and update README removal route. Exact policy values need recorded approval, not invented legal claims.",
+      "blocker": "Freshness/retention/removal-confirmation decisions and reachable operator route from T01.",
+      "spec": "docs/tasks/T12-lifecycle.md"
+    },
+    {
+      "id": "T13",
+      "slug": "feedback-admin",
+      "title": "Persist analyst feedback and protected operator administration",
+      "iteration": "V2",
+      "tier": "core",
+      "area": "ui",
+      "stream": "C",
+      "deps": [
+        "T11",
+        "T12"
+      ],
+      "hours": 4,
+      "arch": "12, 14",
+      "contracts": "7, 9",
+      "files": "app/api/admin.py; app/api/feedback.py; app/static/admin/; tests/admin/; tests/feedback/",
+      "steps": "Add needs edits, select/exclude, relevance and wrong-fact feedback persistence tied to request/result/claim. Build non-ML admin source configuration, coverage, failed jobs, redacted logs, freshness and bounded manual refresh. Protect writes/refresh with server-side admin authentication and appropriate browser request protection. No automatic retraining or scheduler.",
+      "acceptance": "Feedback survives restart with identifiers and revisions; admin reads useful coverage/failure status; unauthorised refresh/config changes are refused; logs redact company input; requests stay text-only. Check contract errors, feedback persistence, admin access and browser flow against real search.",
+      "blocker": "T12 lifecycle interfaces; admin secret supplied securely at deployment.",
+      "spec": "docs/tasks/T13-feedback-admin.md"
+    },
+    {
+      "id": "T14",
+      "slug": "evaluation-harness",
+      "title": "Build grouped gold set and reproducible evaluation harness",
+      "iteration": "V2",
+      "tier": "core",
+      "area": "eval",
+      "stream": "B",
+      "deps": [
+        "T01",
+        "T02",
+        "T04"
+      ],
+      "hours": 4,
+      "arch": "15, 16",
+      "contracts": "3–6, 8",
+      "files": "evaluation/; tests/evaluation/; docs/evaluation-protocol.md",
+      "steps": "Create 30–50 real source-grounded queries with expected entities defined before runs and split by underlying intent. Include lay/professional/synonym, both language directions, partial/absent/misleading cases. Define person/unit equivalence with affiliation checks. Implement metrics and config runners, including cross-encoder subset. Freeze protocol and gold versions; synthetic fixtures test scoring only.",
+      "acceptance": "Harness calculates entity Recall@10, link coverage, sampled support with n, field accuracy/completeness, abstention, institutional exposure, median/p95 latency, tokens/query and indexing time. Gold has provenance and no paraphrase leakage. Unit tests use independently computed metric examples; report harness acceptance separately from measured results.",
+      "blocker": "Real source seeds; partner gold review requested separately, not assumed.",
+      "spec": "docs/tasks/T14-evaluation-harness.md"
+    },
+    {
+      "id": "T15",
+      "slug": "offline-proof",
+      "title": "Preload local assets and prove air-gapped unseen querying",
+      "iteration": "V2",
+      "tier": "core",
+      "area": "infra",
+      "stream": "A",
+      "deps": [
+        "T03",
+        "T05",
+        "T09"
+      ],
+      "hours": 5,
+      "arch": "14",
+      "contracts": "2–6, 9",
+      "files": "docs/offline.md; deploy/offline/; evidence/offline/",
+      "steps": "Begin model/runtime/dependency downloads as soon as T03 access permits, before full application integration. Preload corpus, local embedding weights/tokenizer, indexes, evidence, Apertus 8B weights/tokenizer/runtime and UI/support assets. Record hardware, model licenses/quantisation and versions. Block outbound traffic by documented mechanism, run a new uncached query with local inference and capture isolation and successful operation.",
+      "acceptance": "Recording/logs show network blocked, unseen query, local embedding/index/evidence and actual local Apertus execution, with measured timings. No mocked inference/cached answers; no remote telemetry/runtime fetch. Offline snapshot querying does not prove offline crawl. Missing local 8B is a blocker and explicit unmet gate.",
+      "blocker": "Suitable authorised local hardware/model access and preload bandwidth; start preparation early, not at V2 end.",
+      "spec": "docs/tasks/T15-offline-proof.md"
+    },
+    {
+      "id": "T16",
+      "slug": "core-benchmarks",
+      "title": "Execute Core measurements and cost worksheet",
+      "iteration": "V2",
+      "tier": "core",
+      "area": "eval",
+      "stream": "B",
+      "deps": [
+        "T11",
+        "T12",
+        "T14"
+      ],
+      "hours": 4,
+      "arch": "9, 15, 16",
+      "contracts": "5, 8, 9",
+      "files": "evaluation/results/core/; docs/MEASUREMENTS.md; docs/costs.md",
+      "steps": "Run frozen BM25, dense and hybrid benchmarks plus semantic/field review. Measure first-card median/p95, indexing time, 8B prefill/generation, tokens, retries, batching, embeddings and concurrent load. Build transparent measured-versus-estimated cost worksheet including allocated monthly hosting/electricity and unconfirmed Keera pricing. Reserve expansion/assessment full run for T20.",
+      "acceptance": "Publish revision/config/corpus/hardware/run counts, raw redacted outputs, metric denominators and failures. Target <3s initial cards remains a target until measured. Do not reuse illustrative throughput/prices as observations. Actual benchmark execution is required; harness alone is insufficient.",
+      "blocker": "Authorised live measurement access; no routine paid CI inference.",
+      "spec": "docs/tasks/T16-core-benchmarks.md"
+    },
+    {
+      "id": "T17",
+      "slug": "core-release",
+      "title": "Verify reliable Core release gate",
+      "iteration": "V2",
+      "tier": "core",
+      "area": "eval",
+      "stream": "C",
+      "deps": [
+        "T13",
+        "T15",
+        "T16"
+      ],
+      "hours": 3,
+      "arch": "1–7, 9, 11, 12, 14–17",
+      "contracts": "1–9",
+      "files": "docs/releases/V2.md; tests/release/",
+      "steps": "Review integrated Core end-to-end coverage, all three sources/focus reporting, immutable citations and semantic support, entity fairness, multilingual/absence cases, feedback, freshness/removal, secret/admin protection, public hosting and offline proof. Confirm no per-query crawl and no LLM dependency on initial cards. Record unresolved Core defects explicitly.",
+      "acceptance": "On integrated branch run task/release checks with exact results and a live integration demonstration. Core can be accepted only with all listed gates evidenced; targets missed are documented deviations requiring explicit decision. Do not claim full evaluation complete before T20; this gate authorises Stretch only for accepted implemented Core, with final evaluation still mandatory.",
+      "blocker": "Unmet Core requirements keep gate open; no silent scope reduction.",
+      "spec": "docs/tasks/T17-core-release.md"
+    },
+    {
+      "id": "T18",
+      "slug": "interpretation",
+      "title": "Add editable needs and multilingual expansion asynchronously",
+      "iteration": "V3",
+      "tier": "second-layer",
+      "area": "ai",
+      "stream": "B",
+      "deps": [
+        "T05",
+        "T11"
+      ],
+      "hours": 4,
+      "arch": "8",
+      "contracts": "4, 6",
+      "files": "app/ai/interpret.py; app/api/enrichment.py; tests/ai/interpretation/",
+      "steps": "Interpret product/problem/competencies/type/constraints with schema-constrained output and editable user/suggested provenance. Expand German/English terms without adding requirements; broad-query clarification only. Run after initial retrieval, revision-bind results and expose SSE job progress; cooperate with UI owner for shared workspace edits.",
+      "acceptance": "Test edits/constraints, malformed outputs, stale request revisions and broad-versus-simple queries. First cards render while interpretation times out; schema fallback is labelled weaker. Real bilingual examples plus deterministic contract tests required.",
+      "blocker": "V1 initial cards remain independent; UI shared changes require owner approval.",
+      "spec": "docs/tasks/T18-interpretation.md"
+    },
+    {
+      "id": "T19",
+      "slug": "assessment",
+      "title": "Add bounded batched assessments and streamed validated enrichment",
+      "iteration": "V3",
+      "tier": "second-layer",
+      "area": "ai",
+      "stream": "B",
+      "deps": [
+        "T08",
+        "T18"
+      ],
+      "hours": 4,
+      "arch": "10, 11, 12",
+      "contracts": "5, 6",
+      "files": "app/ai/assess.py; tests/ai/assessment/; UI changes through C owner",
+      "steps": "Assess bounded candidate batches with 8B, not one call per result. Return direct/related/insufficient, need coverage, business explanation, sentence IDs and unresolved questions. Stream progress/validated assessments through agreed events, reject unsupported claims and late revisions. Optional 70B requires measured justification; no ranking-only value claim.",
+      "acceptance": "Contract/grounding/error tests and real batched run demonstrate exact evidence and semantic support. Endpoint slowness cannot delay initial cards. Measure batch tokens and completion latency against <15s target without claiming guarantee. Client shows partial progress and unavailable enrichment safely.",
+      "blocker": "T18 transport and T08 grounding; live inference access for real gate.",
+      "spec": "docs/tasks/T19-assessment.md"
+    },
+    {
+      "id": "T20",
+      "slug": "full-ablations",
+      "title": "Execute full Apertus and cross-encoder evaluation",
+      "iteration": "V3",
+      "tier": "core",
+      "area": "eval",
+      "stream": "B",
+      "deps": [
+        "T16",
+        "T19"
+      ],
+      "hours": 4,
+      "arch": "15, 16",
+      "contracts": "5, 6, 8",
+      "files": "evaluation/results/full/; docs/MEASUREMENTS.md",
+      "steps": "Run BM25→dense→hybrid→hybrid+expansion→+assessment on frozen grouped holdout; compare an open cross-encoder on a declared subset. Measure explanation/need-coverage/category quality separately from ranking and embedding contribution. Include enriched median/p95, tokens, concurrency and cost; record failures and missing comparisons explicitly.",
+      "acceptance": "Reproducible raw outputs and report include all required metrics/sample sizes plus full configuration and subset rationale. Keep gold/person-unit rules fixed; no tuning on holdout. If Second layer is deferred, leave this Core evidence issue blocked with missing comparisons rather than manufacture results.",
+      "blocker": "Second layer availability is a dependency of Core evaluation, not a tier reclassification.",
+      "spec": "docs/tasks/T20-full-ablations.md"
+    },
+    {
+      "id": "T21",
+      "slug": "partner-review",
+      "title": "Obtain partner review and integrate bounded fixes",
+      "iteration": "V3",
+      "tier": "core",
+      "area": "eval",
+      "stream": "C",
+      "deps": [
+        "T11",
+        "T14"
+      ],
+      "hours": 3,
+      "arch": "16, 17",
+      "contracts": "4, 5, 7, 8",
+      "files": "docs/partner-review.md; specific fixes by module owner",
+      "steps": "Arrange partner session through an authorised human contact; do not send messages without authorisation. Review small expected-match set, business usability, partial matches, contact freshness and feedback. Log decisions and route fixes to module owners with dispatcher grants; rerun affected checks and gold changes transparently.",
+      "acceptance": "Record actual review timing/feedback and integrated fix evidence, or explicit unavailable-review blocker. No invented endorsement. Changes to gold require provenance and new evaluation version; do not contaminate frozen holdout silently.",
+      "blocker": "Partner availability and permission for outreach; no automatic messaging.",
+      "spec": "docs/tasks/T21-partner-review.md"
+    },
+    {
+      "id": "T22",
+      "slug": "artifact-preparation",
+      "title": "Prepare pitch, report, demo and attribution early",
+      "iteration": "V4",
+      "tier": "core",
+      "area": "submission",
+      "stream": "C",
+      "deps": [
+        "T01"
+      ],
+      "hours": 4,
+      "arch": "17",
+      "contracts": "8, 9",
+      "files": "submission/; docs/submission.md; docs/attribution.md",
+      "steps": "Start before final iteration: outline fictional-company story, ≤2-minute video/backup, ≤10-slide pitch PDF including minimisation/removal/retention, ≤6-page technical-report PDF and evidence placeholders. Map every jury criterion to real evidence; inventory dependencies/model licenses and authoritative Apertus provenance/opt-out references. Draft submission checklist and required PDF ZIP manifest; never prefill fake results.",
+      "acceptance": "Review outlines and attribution inventory early; final deliverables are produced from real T16/T20/T25 evidence before T26. Check PDF page counts, video duration/playback, real-source citations and labelled unknowns. Early placeholders are visibly incomplete; this issue cannot close merely on outlines.",
+      "blocker": "Preparation starts V1; final acceptance needs measured results, final deployment and actual artifacts.",
+      "spec": "docs/tasks/T22-artifact-preparation.md"
+    },
+    {
+      "id": "T23",
+      "slug": "brief",
+      "title": "Optional one-page brief with tracked provenance edits",
+      "iteration": "V4",
+      "tier": "stretch",
+      "area": "ui",
+      "stream": "C",
+      "deps": [
+        "T17",
+        "T19"
+      ],
+      "hours": 3,
+      "arch": "13",
+      "contracts": "5–7",
+      "files": "app/export/brief.py; app/static/brief/; tests/export/",
+      "steps": "Only after accepted Core and explicit scope reactivation, export a personalised one-page brief from selected validated results with practical relevance/open discussion points and optional references. Track analyst prose separately from source-backed facts; revalidate generated additions.",
+      "acceptance": "Inspect exported one-page PDF and edits/provenance; no invented capability or source fact. Export failures preserve search. Meaningful renderer/content checks only. Defer by default under current time pressure.",
+      "blocker": "Deferred; dispatcher may activate only after Core acceptance and delivery buffer protected.",
+      "spec": "docs/tasks/T23-brief.md"
+    },
+    {
+      "id": "T24",
+      "slug": "email",
+      "title": "Optional email draft last, never automatic sending",
+      "iteration": "V4",
+      "tier": "stretch",
+      "area": "ui",
+      "stream": "C",
+      "deps": [
+        "T23"
+      ],
+      "hours": 1,
+      "arch": "13",
+      "contracts": "6, 7",
+      "files": "app/export/email.py; tests/export/email/",
+      "steps": "Generate reviewable email text from selected validated matches after brief acceptance, preserving analyst/source distinction. No sending integration, new contacts or invented facts.",
+      "acceptance": "Draft-only UI and tests show no send action; supported claims survive editing and source references stay inspectable. Do not begin while higher-tier release work remains.",
+      "blocker": "Deferred last in scope order.",
+      "spec": "docs/tasks/T24-email.md"
+    },
+    {
+      "id": "T25",
+      "slug": "final-deployment",
+      "title": "Verify final hosting, release evidence and repository readiness",
+      "iteration": "V4",
+      "tier": "core",
+      "area": "infra",
+      "stream": "C",
+      "deps": [
+        "T17",
+        "T20",
+        "T21"
+      ],
+      "hours": 3,
+      "arch": "14, 16, 17",
+      "contracts": "1–9",
+      "files": "docs/releases/final.md; docs/deployment.md; README.md; attribution updates",
+      "steps": "Redeploy integrated release on authorised host; independently smoke-test public URL, secrets/admin protections, persistence/restart and error logs. Verify startup/rollback instructions, public repository accessibility, implemented-versus-planned README and attribution/model docs. Recheck offline evidence applies to shipped revision or disclose differences. No unapproved paid provisioning.",
+      "acceptance": "Outside-environment public search/links work with fictional input; no sensitive logs or browser secrets; core acceptance and actual full evaluation evidence linked; unresolved limitations disclosed. Record final revision/URL/time and rollback readiness. Missing partner/hosting gates remain explicit blockers.",
+      "blocker": "Public hosting/repository permissions; all Core release evidence.",
+      "spec": "docs/tasks/T25-final-deployment.md"
+    },
+    {
+      "id": "T26",
+      "slug": "submission",
+      "title": "Package final artifacts and confirm submission before deadline",
+      "iteration": "V4",
+      "tier": "core",
+      "area": "submission",
+      "stream": "C",
+      "deps": [
+        "T22",
+        "T25"
+      ],
+      "hours": 2,
+      "arch": "17",
+      "contracts": "8, 9",
+      "files": "submission/manifest.md; submission/final.zip; docs/submission.md",
+      "steps": "Finalize measured pitch/report/video and playable recorded backup. ZIP required PDFs; verify pitch ≤10 slides, report ≤6 pages, video ≤2 minutes and public video/repository/application access. Run same lay-query baseline with scope caveat, evidence inspection, partial/absent case, cross-lingual demo, bounded YAML extension and metrics/offline proof. Follow organiser submission process and capture receipt before 19 October 14:30 Europe/Zurich.",
+      "acceptance": "Checklist includes actual page/duration checks, public accessibility, archive contents and last app smoke test. Capture actual submission receipt/confirmation; never close on a prepared ZIP alone. Reserve 13:30–14:30 Zurich buffer; no unsupported deployment/quality/offline claims.",
+      "blocker": "Organiser submission route and any required human submitter access; no confirmation means not submitted.",
+      "spec": "docs/tasks/T26-submission.md"
+    }
+  ]
+}
