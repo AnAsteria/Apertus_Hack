@@ -337,6 +337,7 @@ def test_live_suppression_matches_alias_before_ranking(built,tmp_path,monkeypatc
     assert not any(x.entity_id=='ent_canonical' for x in response.results)
 
 
+@pytest.mark.skipif(os.name == 'nt', reason='creating symlinks needs elevated rights on Windows; the serving target is Linux')
 def test_query_bundle_preserves_exact_evidence_route(built,tmp_path,monkeypatch):
     import tarfile
     from app.search.bundle import package_bundle
@@ -358,3 +359,31 @@ def test_query_bundle_preserves_exact_evidence_route(built,tmp_path,monkeypatch)
         assert response.status_code==200
         assert response.json()['text']==sentence.text
         assert client.get(f'/api/v1/evidence/wrong-version/{sentence.sentence_id}').status_code==410
+
+
+def test_t08_text_entities_are_indexed_with_card_field_names(tmp_path):
+    # T08 finds a person in page text: no T06 passage links to them, only supported claims.
+    r=record(text='Prof. Anna Example leads the laser precision lab and studies biomedical optics.')
+    unit=r['entities'][0]
+    pair=EvidencePair(version_id=r['version'].version_id,sentence_id=r['sentences'][0].sentence_id)
+    person=Entity(schema_version='1',entity_id='ent_anna',entity_type='person',name='Anna Example',status='unknown',
+                  resolution_state='uncertain',claim_ids=['clm_lead','clm_exp','clm_name'])
+    unit2=unit.model_copy(update={'claim_ids':['clm_proj']})
+    claims=[Claim(schema_version='1',claim_id='clm_lead',subject_entity_id='ent_anna',predicate='leader',
+                  object_entity_id=unit.entity_id,evidence=[pair],support='supported'),
+            Claim(schema_version='1',claim_id='clm_exp',subject_entity_id='ent_anna',predicate='expertise',
+                  value='biomedical optics',evidence=[pair],support='supported'),
+            Claim(schema_version='1',claim_id='clm_name',subject_entity_id='ent_anna',predicate='name',
+                  value='Anna Example',evidence=[pair],support='supported'),
+            Claim(schema_version='1',claim_id='clm_proj',subject_entity_id=unit.entity_id,predicate='project',
+                  value='laser precision lab',evidence=[pair],support='supported')]
+    encoder=FixtureEncoder(tmp_path/'model'); data=tmp_path/'data'
+    build_index([r],data,encoder,extra_entities=[person,unit2],claims=claims)
+    backend=HybridBackend(current_generation(data)[0],encoder=encoder)
+    results={x.entity_id:x for x in backend.search(req('biomedical optics')).results}
+    assert 'ent_anna' in results  # retained and searchable without a passage link
+    assert {k:[v.value for v in vs] for k,vs in results['ent_anna'].fields.items()} == {
+        'leads':[unit.name],'expertise':['biomedical optics']}
+    # Same sentence as Anna, so MMR may diversify the unit out of this query; check its stored card.
+    unit_fields={k:[v['value'] for v in vs] for k,vs in backend.entities[unit.entity_id]['fields'].items()}
+    assert unit_fields == {'led_by':['Anna Example'],'projects':['laser precision lab']}

@@ -101,10 +101,12 @@ def prepare(records, extra_entities=(), claims=()):
                 first_evidence.setdefault(eid,passage.sentence_ids)
     retained = {}
     for eid in sorted(entities):
-        if canonical(eid) != eid or eid not in first_evidence:
+        # T08 entities found in page text (e.g. people named on an award page) have no T06
+        # passage link; keep them when supported claims give them stored evidence.
+        if canonical(eid) != eid or (eid not in first_evidence and not claim_refs.get(eid)):
             continue
         entity = entities[eid]
-        refs = list(dict.fromkeys(claim_refs.get(eid,[]) or first_evidence[eid]))
+        refs = list(dict.fromkeys(claim_refs.get(eid,[]) or first_evidence.get(eid,[])))
         profile = entity.name+'\n'+'\n'.join(v['value'] for values in fields.get(eid,{}).values() for v in values)
         language = versions[sentences[refs[0]].version_id].language
         entries.append({'kind':'profile','language':language,'sentence_ids':refs,'entity_ids':[eid]})
@@ -149,6 +151,9 @@ def build_index(records, data_dir, encoder, *, extra_entities=(), claims=(), pro
             assert db.execute('PRAGMA integrity_check').fetchone()[0] == 'ok'
             db.commit()
             db.execute('VACUUM')
+        # `with sqlite3.connect()` commits but does not close: an open handle makes the later
+        # os.replace(stage, final) fail on Windows (WinError 5). Linux hides the bug.
+        db.close()
         vectors,owners,reused_windows,encoded_entries = encode_reusing(texts,encoder,existing,progress)
         vectors = np.asarray(vectors,dtype=np.float32)
         owners = np.asarray(owners,dtype=np.int32)
@@ -161,7 +166,7 @@ def build_index(records, data_dir, encoder, *, extra_entities=(), claims=(), pro
         np.save(stage/'vectors.npy',vectors,allow_pickle=False)
         np.save(stage/'vector_entries.npy',owners,allow_pickle=False)
         shutil.copytree(encoder.root,stage/'model')
-        assets = {str(p.relative_to(stage)):{'bytes':p.stat().st_size,'sha256':digest(p)}
+        assets = {p.relative_to(stage).as_posix():{'bytes':p.stat().st_size,'sha256':digest(p)}
                   for p in sorted(stage.rglob('*')) if p.is_file()}
         manifest = {'index_version':INDEX_VERSION,'fingerprint':fingerprint,'generation':name,
                     'model':encoder.manifest,'embedding_recipe':RECIPE,'reused_windows':reused_windows,'encoded_entries':encoded_entries,'counts':{'versions':len(versions),'sentences':len(sentences),
