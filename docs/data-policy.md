@@ -23,6 +23,24 @@ Only public information from the configured UniBE, ARTORG and Diabetes Center Be
 5. **Retire from serving:** the affected entities, claims and index entries stop appearing in results at once (target: the next index rebuild or the retire action). A citation to removed evidence returns HTTP 410 `EVIDENCE_REMOVED`, never replacement text.
 6. Tell the requester what was done, and what could not be done (for example, copies the source site itself still publishes).
 
+**Operator commands (EXTRA F4, #144).** These were checked on the real index on 2026-10-18, with a temporary entry and in-process (#12):
+
+```bash
+# 1. add the entry (reason_category: removal_request; confirmed_at / confirmed_by_role are required)
+$EDITOR config/suppression.json
+# 2. check that the list is valid before deploying (an invalid list fails loudly at load)
+python -c "from app.lifecycle.suppression import load; load('config/suppression.json'); print('ok')"
+# 3. deploy main (the serving filter and the 410 route read the list at query time; no index rebuild needed)
+scripts/deploy_space.sh main
+# 4. verify: the page no longer appears; its evidence returns 410
+curl -s https://kaktamsdengami-bern-match.hf.space/api/v1/evidence/<version_id>/<sentence_id>   # → 410 EVIDENCE_REMOVED
+# 5. stored copies: dry run first, then apply; derived files are removed by the next rebuild
+python -m app.lifecycle.purge --data-dir <corpus dir>          # dry run
+python -m app.lifecycle.purge --data-dir <corpus dir> --apply
+```
+
+Observed in the 2026-10-18 check: before the entry, the person's card was in the results. With the entry, the card was gone (10 other cards), and its sentence returned `410 EVIDENCE_REMOVED` (200 without the entry). The purge step has not been run on the real corpus, because there has been no real request.
+
 Out of scope: judging whether the source site must remove its own page. We only control our copy and our index.
 
 ## Suppression list format
