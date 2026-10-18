@@ -100,3 +100,16 @@ def test_ui_hides_empty_fields_and_shows_one_not_stated_line():
 def test_ui_respects_reduced_motion_and_dark_mode():
     css = _static("style.css")
     assert "prefers-reduced-motion" in css and "prefers-color-scheme: dark" in css
+
+
+def test_ui_does_not_highlight_function_words():
+    import json, subprocess, shutil
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node not installed")
+    js = _static("app.js")
+    start = js.index("var STOP_WORDS")
+    end = js.index("\n}\n", js.index("function termsOf")) + 3
+    script = js[start:end] + "\nconsole.log(JSON.stringify(termsOf('Bildgebung in der Herzchirurgie')));"
+    out = subprocess.run([node, "-e", script], capture_output=True, text=True, check=True).stdout
+    assert json.loads(out) == ["bildgebung", "herzchirurgie"]
