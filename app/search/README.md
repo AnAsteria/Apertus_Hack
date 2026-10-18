@@ -110,3 +110,7 @@ Measured in-process on an Apple M1 (arm64, `onnx/model_qint8_arm64.onnx`, SHA-25
 | evaluation (n = 17, one disclosed T20 configuration, no tuning) | 0.647 | **0.706** | 51 ms → 1,560 ms |
 
 Evaluation: I11-ru and I18-fr become hits, I02-it becomes a miss. Top 50 gave the same development result with higher latency. The price is about 1.5 s on the fast path on the M1. On the x86 Space, use the x86 int8 file (`model_qint8_avx512_vnni.onnx` or `model_quint8_avx2.onnx`) and measure there before enabling it. A background second pass, like the T30 `reranked` event, would keep first cards at about 60 ms.
+
+## Soft entity-type hint (EXTRA A3, #121, 2026-10-18): measured, not better, off by default
+
+`app/search/typehint.py` maps cue words in EN/DE/FR/IT/RU (researcher, Forscherin, platform, Projekt, …) to a soft preference: in "Anything" mode, the fused score of matching entities is multiplied by 1.5. It never filters. Enable it with `BERNMATCH_TYPE_HINT=1`. Development split in Anything mode: Recall@10 0.765 with and without the hint (the cues fire correctly on I05, I13, I14, but those were already hits; the development split has no person query). On four ad hoc person probes, persons move to the top (e.g. "professor for medical image analysis" → Mauricio Reyes), but several surfaced persons have weak evidence ("Dr.", "Field of work"), so relevance is not shown. Kept **off by default**.

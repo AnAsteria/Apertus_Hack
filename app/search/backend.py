@@ -13,6 +13,7 @@ from .ranking import entity_max,reciprocal_rank_fusion,diversify,non_entity_page
 from .outcome import classify,thresholds
 from .explain import channel_ranks,matched_words,reason as explain_reason
 from . import rerank as rerank_mod
+from .typehint import preferred_type,BOOST as TYPE_BOOST
 
 
 def freshness(evidence, now=None):
@@ -125,6 +126,12 @@ class HybridBackend:
                    self.entities[eid]['entity']['canonical_profiles'])}
         for eid in demoted:
             fused[eid] *= DEMOTION
+        type_hint = preferred_type(req.query) if req.entity_type is None and os.environ.get('BERNMATCH_TYPE_HINT','0')=='1' else None
+        if type_hint:
+            # EXTRA A3: soft preference only; nothing is filtered out.
+            for eid in fused:
+                if self.entities[eid]['entity']['entity_type']==type_hint:
+                    fused[eid] *= TYPE_BOOST
         reranked = False
         if self.reranker is not None and fused:
             # EXTRA A1: cross-encoder over the best fused candidates; text = name + best passage.
@@ -183,7 +190,7 @@ class HybridBackend:
                 'entry_kind':entry['kind'],'demoted_listing_page':eid in demoted,'query_language':query_language,'mode':self.mode,
                 'keyword_rank':keyword_ranks.get(eid),'dense_rank':dense_ranks.get(eid),'matched_terms':matched,
                 'evidence_language':evidence_language,'channels':[c for c,ranks in (('keyword',keyword_ranks),('dense',dense_ranks)) if eid in ranks],
-                'query_variant':'original','reranked':reranked,
+                'query_variant':'original','reranked':reranked,'type_hint':type_hint,
                 'resolution_state':entity['resolution_state'],'entity_status':entity['status'],
                 'model':self.manifest['model']['repo'],'generation':self.manifest['generation']}))
         return self._response(req,results,limitations,enrichment,start,timing,dense_ok=dense_ok,best_dense=best_dense,abstain=self.abstain_dense)
