@@ -1,0 +1,2649 @@
+{
+  "measurement_kind": "bounded live final-profile inventory crawl; not complete site coverage or search-quality evaluation",
+  "integrated_revision": "372b59c",
+  "parser": "t06-v4",
+  "started_at": "2026-10-18T14:21:09.216410+00:00",
+  "completed_at": "2026-10-18T14:42:22.451719+00:00",
+  "duration_seconds": 1273.2582355829945,
+  "environment": {
+    "python": "3.12.14",
+    "machine": "arm64",
+    "platform": "macOS 15.7.9"
+  },
+  "operator": {
+    "concurrent_sources": 8,
+    "source_host_sets_disjoint": true,
+    "requests_per_second_per_host": 0.5,
+    "profile": "final",
+    "max_pages_override": null,
+    "focus_sources": 14,
+    "outside_focus_sources": 27,
+    "focus_page_ceiling": 200,
+    "outside_focus_page_ceiling": 50,
+    "maximum_total_page_slots": 4150,
+    "focus_depth": 4,
+    "outside_focus_depth": 2
+  },
+  "inventory": {
+    "input_rows": 42,
+    "included_sources": 41,
+    "sources_with_documents": 41,
+    "excluded": {
+      "geo2.unibe.ch": "Previously audited Home placeholder; no usable discovery seed. Not permanently retired."
+    },
+    "input_note_discrepancy": "Workbook Notes claims 71 subdomains; supplied table contains 42. No missing rows invented."
+  },
+  "counts": {
+    "discovered": 3563,
+    "page_slots": 3563,
+    "fetched": 3419,
+    "new_versions": 2811,
+    "parsed": 2826,
+    "outside_focus_pages": 1971,
+    "unsupported": 593,
+    "failed": 135,
+    "network_requests": 3643,
+    "retries": 4,
+    "remaining_discovered": 8058,
+    "unchanged_versions": 15,
+    "reused": 9
+  },
+  "event_reasons": {
+    "no_usable_text": 439,
+    "http_404": 91,
+    "outside_scope": 19,
+    "response_too_large": 6,
+    "unsupported_media_type": 141,
+    "redirect_limit": 1,
+    "scanned_or_empty_pdf": 12,
+    "robots_disallowed": 15,
+    "http_500": 2,
+    "invalid_pdf": 1,
+    "http_401": 1
+  },
+  "source_budget_exceeded": false,
+  "fatal_source_exceptions": 0,
+  "sources_at_page_budget": 25,
+  "stored_corpus": {
+    "verified_at": "2026-10-18T14:43:45.163977+00:00",
+    "duration_seconds": 32.78066562497406,
+    "counts": {
+      "documents": 2811,
+      "sentences": 148404,
+      "passages": 19141,
+      "pdf_documents": 366,
+      "pdf_pages_with_sentences": 3080,
+      "stored_versions": 2811,
+      "uncertain_entities": 2827
+    },
+    "languages": {
+      "de": 1058,
+      "en": 1710,
+      "fr": 22,
+      "unknown": 21
+    },
+    "source_documents": {
+      "unibe-psy": 30,
+      "unibe-mediarelations": 34,
+      "unibe-soz": 41,
+      "unibe-medizin": 172,
+      "unibe-philnat": 47,
+      "unibe": 45,
+      "unibe-vetsuisse": 48,
+      "unibe-math": 34,
+      "unibe-aiub": 40,
+      "unibe-physik": 48,
+      "unibe-phinst": 29,
+      "unibe-biology": 35,
+      "unibe-iee": 36,
+      "unibe-ips": 39,
+      "unibe-izb": 27,
+      "unibe-geo": 45,
+      "unibe-cde": 50,
+      "unibe-oeschger": 46,
+      "unibe-bcpm": 71,
+      "unibe-dbmr": 176,
+      "unibe-ngs": 10,
+      "unibe-iml": 42,
+      "unibe-tki": 66,
+      "unibe-irm": 46,
+      "unibe-ifik": 156,
+      "unibe-ispm": 185,
+      "unibe-ikim": 106,
+      "unibe-img": 33,
+      "unibe-ibmm": 84,
+      "unibe-pki": 127,
+      "artorg": 166,
+      "unibe-inf": 36,
+      "unibe-itp": 29,
+      "unibe-iap": 30,
+      "unibe-dcbp": 46,
+      "unibe-csh": 49,
+      "unibe-mic": 177,
+      "unibe-strada": 27,
+      "unibe-neuroscience": 189,
+      "unibe-ita-vetsuisse": 29,
+      "dcb": 85
+    },
+    "checks": {
+      "document_and_version_identifiers": 2811,
+      "exact_sentence_lookups": 148404,
+      "passage_entity_integrity_documents": 2811,
+      "artorg_dual_label_documents": 166,
+      "cross_version_rejection": 1,
+      "cached_text_hash_and_substrings_documents": 2811,
+      "socket_network_disabled": true,
+      "sqlite_integrity_ok": true,
+      "no_search_READY_marker": true
+    },
+    "stored_evidence_fingerprint_sha256": "d90a53dbeb3e8f05d958be0c330a2cc446bbc1cb12eff68dae9332cf45685272",
+    "python": "3.12.14",
+    "machine": "arm64"
+  },
+  "cache_only_replay": {
+    "mode": "fresh-process final-profile replay; cached pages only; network attempts explicitly blocked",
+    "duration_seconds": 4.61137383399182,
+    "actual_network_requests": 0,
+    "uncached_attempts_blocked": 880,
+    "versions_before": 2811,
+    "versions_after": 2811,
+    "counts": {
+      "discovered": 3723,
+      "page_slots": 3723,
+      "reused": 2843,
+      "outside_focus_pages": 1979,
+      "failed": 880,
+      "network_requests": 0,
+      "retries": 0,
+      "remaining_discovered": 15295
+    },
+    "per_source": [
+      {
+        "source_id": "unibe",
+        "counts": {
+          "discovered": 50,
+          "page_slots": 50,
+          "reused": 46,
+          "outside_focus_pages": 35,
+          "failed": 4,
+          "network_requests": 0,
+          "retries": 0,
+          "remaining_discovered": 715
+        },
+        "uncached_attempts_blocked": 4
+      },
+      {
+        "source_id": "unibe-mediarelations",
+        "counts": {
+          "discovered": 50,
+          "page_slots": 50,
+          "reused": 34,
+          "outside_focus_pages": 26,
+          "failed": 16,
+          "network_requests": 0,
+          "retries": 0,
+          "remaining_discovered": 506
+        },
+        "uncached_attempts_blocked": 16
+      },
+      {
+        "source_id": "unibe-philnat",
+        "counts": {
+          "discovered": 50,
+          "page_slots": 50,
+          "reused": 47,
+          "outside_focus_pages": 40,
+          "failed": 3,
+          "network_requests": 0,
+          "retries": 0,
+          "remaining_discovered": 675
+        },
+        "uncached_attempts_blocked": 3
+      },
+      {
+        "source_id": "unibe-medizin",
+        "counts": {
+          "discovered": 200,
+          "page_slots": 200,
+          "reused": 175,
+          "outside_focus_pages": 101,
+          "failed": 25,
+          "network_requests": 0,
+          "retries": 0,
+          "remaining_discovered": 611
+        },
+        "uncached_attempts_blocked": 25
+      },
+      {
+        "source_id": "unibe-vetsuisse",
+        "counts": {
+          "discovered": 50,
+          "page_slots": 50,
+          "reused": 48,
+          "outside_focus_pages": 39,
+          "failed": 2,
+          "network_requests": 0,
+          "retries": 0,
+          "remaining_discovered": 732
+        },
+        "uncached_attempts_blocked": 2
+      },
+      {
+        "source_id": "unibe-soz",
+        "counts": {
+          "discovered": 50,
+          "page_slots": 50,
+          "reused": 41,
+          "outside_focus_pages": 39,
+          "failed": 9,
+          "network_requests": 0,
+          "retries": 0,
+          "remaining_discovered": 472
+        },
+        "uncached_attempts_blocked": 9
+      },
+      {
+        "source_id": "unibe-psy",
+        "counts": {
+          "discovered": 50,
+          "page_slots": 50,
+          "reused": 30,
+          "outside_focus_pages": 20,
+          "failed": 20,
+          "network_requests": 0,
+          "retries": 0,
+          "remaining_discovered": 174
+        },
+        "uncached_attempts_blocked": 20
+      },
+      {
+        "source_id": "unibe-math",
+        "counts": {
+          "discovered": 50,
+          "page_slots": 50,
+          "reused": 36,
+          "outside_focus_pages": 36,
+          "failed": 14,
+          "network_requests": 0,
+          "retries": 0,
+          "remaining_discovered": 116
+        },
+        "uncached_attempts_blocked": 14
+      },
+      {
+        "source_id": "unibe-aiub",
+        "counts": {
+          "discovered": 50,
+          "page_slots": 50,
+          "reused": 40,
+          "outside_focus_pages": 37,
+          "failed": 10,
+          "network_requests": 0,
+          "retries": 0,
+          "remaining_discovered": 408
+        },
+        "uncached_attempts_blocked": 10
+      },
+      {
+        "source_id": "unibe-physik",
+        "counts": {
+          "discovered": 50,
+          "page_slots": 50,
+          "reused": 48,
+          "outside_focus_pages": 44,
+          "failed": 2,
+          "network_requests": 0,
+          "retries": 0,
+          "remaining_discovered": 431
+        },
+        "uncached_attempts_blocked": 2
+      },
+      {
+        "source_id": "unibe-phinst",
+        "counts": {
+          "discovered": 50,
+          "page_slots": 50,
+          "reused": 29,
+          "outside_focus_pages": 29,
+          "failed": 21,
+          "network_requests": 0,
+          "retries": 0,
+          "remaining_discovered": 76
+        },
+        "uncached_attempts_blocked": 21
+      },
+      {
+        "source_id": "unibe-biology",
+        "counts": {
+          "discovered": 50,
+          "page_slots": 50,
+          "reused": 36,
+          "outside_focus_pages": 34,
+          "failed": 14,
+          "network_requests": 0,
+          "retries": 0,
+          "remaining_discovered": 158
+        },
+        "uncached_attempts_blocked": 14
+      },
+      {
+        "source_id": "unibe-iee",
+        "counts": {
+          "discovered": 50,
+          "page_slots": 50,
+          "reused": 36,
+          "outside_focus_pages": 33,
+          "failed": 14,
+          "network_requests": 0,
+          "retries": 0,
+          "remaining_discovered": 151
+        },
+        "uncached_attempts_blocked": 14
+      },
+      {
+        "source_id": "unibe-ips",
+        "counts": {
+          "discovered": 50,
+          "page_slots": 50,
+          "reused": 39,
+          "outside_focus_pages": 39,
+          "failed": 11,
+          "network_requests": 0,
+          "retries": 0,
+          "remaining_discovered": 300
+        },
+        "uncached_attempts_blocked": 11
+      },
+      {
+        "source_id": "unibe-izb",
+        "counts": {
+          "discovered": 50,
+          "page_slots": 50,
+          "reused": 27,
+          "outside_focus_pages": 18,
+          "failed": 23,
+          "network_requests": 0,
+          "retries": 0,
+          "remaining_discovered": 221
+        },
+        "uncached_attempts_blocked": 23
+      },
+      {
+        "source_id": "unibe-geo",
+        "counts": {
+          "discovered": 50,
+          "page_slots": 50,
+          "reused": 45,
+          "outside_focus_pages": 45,
+          "failed": 5,
+          "network_requests": 0,
+          "retries": 0,
+          "remaining_discovered": 419
+        },
+        "uncached_attempts_blocked": 5
+      },
+      {
+        "source_id": "unibe-cde",
+        "counts": {
+          "discovered": 50,
+          "page_slots": 50,
+          "reused": 50,
+          "outside_focus_pages": 50,
+          "network_requests": 0,
+          "retries": 0,
+          "remaining_discovered": 648
+        },
+        "uncached_attempts_blocked": 0
+      },
+      {
+        "source_id": "unibe-oeschger",
+        "counts": {
+          "discovered": 50,
+          "page_slots": 50,
+          "reused": 46,
+          "outside_focus_pages": 46,
+          "failed": 4,
+          "network_requests": 0,
+          "retries": 0,
+          "remaining_discovered": 412
+        },
+        "uncached_attempts_blocked": 4
+      },
+      {
+        "source_id": "unibe-bcpm",
+        "counts": {
+          "discovered": 200,
+          "page_slots": 200,
+          "reused": 71,
+          "outside_focus_pages": 45,
+          "failed": 129,
+          "network_requests": 0,
+          "retries": 0,
+          "remaining_discovered": 440
+        },
+        "uncached_attempts_blocked": 129
+      },
+      {
+        "source_id": "unibe-dbmr",
+        "counts": {
+          "discovered": 200,
+          "page_slots": 200,
+          "reused": 176,
+          "outside_focus_pages": 87,
+          "failed": 24,
+          "network_requests": 0,
+          "retries": 0,
+          "remaining_discovered": 679
+        },
+        "uncached_attempts_blocked": 24
+      },
+      {
+        "source_id": "unibe-ngs",
+        "counts": {
+          "discovered": 23,
+          "page_slots": 23,
+          "reused": 10,
+          "outside_focus_pages": 9,
+          "failed": 13,
+          "network_requests": 0,
+          "retries": 0,
+          "remaining_discovered": 0
+        },
+        "uncached_attempts_blocked": 13
+      },
+      {
+        "source_id": "unibe-tki",
+        "counts": {
+          "discovered": 99,
+          "page_slots": 99,
+          "reused": 70,
+          "outside_focus_pages": 38,
+          "failed": 29,
+          "network_requests": 0,
+          "retries": 0,
+          "remaining_discovered": 0
+        },
+        "uncached_attempts_blocked": 29
+      },
+      {
+        "source_id": "unibe-iml",
+        "counts": {
+          "discovered": 50,
+          "page_slots": 50,
+          "reused": 45,
+          "outside_focus_pages": 39,
+          "failed": 5,
+          "network_requests": 0,
+          "retries": 0,
+          "remaining_discovered": 949
+        },
+        "uncached_attempts_blocked": 5
+      },
+      {
+        "source_id": "unibe-irm",
+        "counts": {
+          "discovered": 50,
+          "page_slots": 50,
+          "reused": 46,
+          "outside_focus_pages": 33,
+          "failed": 4,
+          "network_requests": 0,
+          "retries": 0,
+          "remaining_discovered": 343
+        },
+        "uncached_attempts_blocked": 4
+      },
+      {
+        "source_id": "unibe-ifik",
+        "counts": {
+          "discovered": 200,
+          "page_slots": 200,
+          "reused": 158,
+          "outside_focus_pages": 140,
+          "failed": 42,
+          "network_requests": 0,
+          "retries": 0,
+          "remaining_discovered": 503
+        },
+        "uncached_attempts_blocked": 42
+      },
+      {
+        "source_id": "unibe-ispm",
+        "counts": {
+          "discovered": 200,
+          "page_slots": 200,
+          "reused": 188,
+          "outside_focus_pages": 128,
+          "failed": 12,
+          "network_requests": 0,
+          "retries": 0,
+          "remaining_discovered": 842
+        },
+        "uncached_attempts_blocked": 12
+      },
+      {
+        "source_id": "unibe-ikim",
+        "counts": {
+          "discovered": 136,
+          "page_slots": 136,
+          "reused": 107,
+          "outside_focus_pages": 85,
+          "failed": 29,
+          "network_requests": 0,
+          "retries": 0,
+          "remaining_discovered": 0
+        },
+        "uncached_attempts_blocked": 29
+      },
+      {
+        "source_id": "unibe-img",
+        "counts": {
+          "discovered": 50,
+          "page_slots": 50,
+          "reused": 33,
+          "outside_focus_pages": 29,
+          "failed": 17,
+          "network_requests": 0,
+          "retries": 0,
+          "remaining_discovered": 188
+        },
+        "uncached_attempts_blocked": 17
+      },
+      {
+        "source_id": "unibe-ibmm",
+        "counts": {
+          "discovered": 137,
+          "page_slots": 137,
+          "reused": 90,
+          "outside_focus_pages": 76,
+          "failed": 47,
+          "network_requests": 0,
+          "retries": 0,
+          "remaining_discovered": 0
+        },
+        "uncached_attempts_blocked": 47
+      },
+      {
+        "source_id": "unibe-pki",
+        "counts": {
+          "discovered": 200,
+          "page_slots": 200,
+          "reused": 127,
+          "outside_focus_pages": 67,
+          "failed": 73,
+          "network_requests": 0,
+          "retries": 0,
+          "remaining_discovered": 456
+        },
+        "uncached_attempts_blocked": 73
+      },
+      {
+        "source_id": "artorg",
+        "counts": {
+          "discovered": 200,
+          "page_slots": 200,
+          "reused": 166,
+          "outside_focus_pages": 75,
+          "failed": 34,
+          "network_requests": 0,
+          "retries": 0,
+          "remaining_discovered": 612
+        },
+        "uncached_attempts_blocked": 34
+      },
+      {
+        "source_id": "unibe-inf",
+        "counts": {
+          "discovered": 50,
+          "page_slots": 50,
+          "reused": 36,
+          "outside_focus_pages": 31,
+          "failed": 14,
+          "network_requests": 0,
+          "retries": 0,
+          "remaining_discovered": 305
+        },
+        "uncached_attempts_blocked": 14
+      },
+      {
+        "source_id": "unibe-itp",
+        "counts": {
+          "discovered": 50,
+          "page_slots": 50,
+          "reused": 29,
+          "outside_focus_pages": 29,
+          "failed": 21,
+          "network_requests": 0,
+          "retries": 0,
+          "remaining_discovered": 70
+        },
+        "uncached_attempts_blocked": 21
+      },
+      {
+        "source_id": "unibe-iap",
+        "counts": {
+          "discovered": 50,
+          "page_slots": 50,
+          "reused": 30,
+          "outside_focus_pages": 25,
+          "failed": 20,
+          "network_requests": 0,
+          "retries": 0,
+          "remaining_discovered": 58
+        },
+        "uncached_attempts_blocked": 20
+      },
+      {
+        "source_id": "unibe-dcbp",
+        "counts": {
+          "discovered": 50,
+          "page_slots": 50,
+          "reused": 46,
+          "outside_focus_pages": 41,
+          "failed": 4,
+          "network_requests": 0,
+          "retries": 0,
+          "remaining_discovered": 608
+        },
+        "uncached_attempts_blocked": 4
+      },
+      {
+        "source_id": "unibe-csh",
+        "counts": {
+          "discovered": 50,
+          "page_slots": 50,
+          "reused": 49,
+          "outside_focus_pages": 42,
+          "failed": 1,
+          "network_requests": 0,
+          "retries": 0,
+          "remaining_discovered": 404
+        },
+        "uncached_attempts_blocked": 1
+      },
+      {
+        "source_id": "unibe-mic",
+        "counts": {
+          "discovered": 200,
+          "page_slots": 200,
+          "reused": 182,
+          "outside_focus_pages": 160,
+          "failed": 18,
+          "network_requests": 0,
+          "retries": 0,
+          "remaining_discovered": 752
+        },
+        "uncached_attempts_blocked": 18
+      },
+      {
+        "source_id": "unibe-strada",
+        "counts": {
+          "discovered": 28,
+          "page_slots": 28,
+          "reused": 28,
+          "outside_focus_pages": 22,
+          "network_requests": 0,
+          "retries": 0,
+          "remaining_discovered": 0
+        },
+        "uncached_attempts_blocked": 0
+      },
+      {
+        "source_id": "unibe-neuroscience",
+        "counts": {
+          "discovered": 200,
+          "page_slots": 200,
+          "reused": 189,
+          "outside_focus_pages": 39,
+          "failed": 11,
+          "network_requests": 0,
+          "retries": 0,
+          "remaining_discovered": 700
+        },
+        "uncached_attempts_blocked": 11
+      },
+      {
+        "source_id": "unibe-ita-vetsuisse",
+        "counts": {
+          "discovered": 50,
+          "page_slots": 50,
+          "reused": 29,
+          "outside_focus_pages": 24,
+          "failed": 21,
+          "network_requests": 0,
+          "retries": 0,
+          "remaining_discovered": 0
+        },
+        "uncached_attempts_blocked": 21
+      },
+      {
+        "source_id": "dcb",
+        "counts": {
+          "discovered": 200,
+          "page_slots": 200,
+          "reused": 85,
+          "outside_focus_pages": 4,
+          "failed": 115,
+          "network_requests": 0,
+          "retries": 0,
+          "remaining_discovered": 161
+        },
+        "uncached_attempts_blocked": 115
+      }
+    ],
+    "limitation": "This explicitly forbids network. Uncached URLs, including previous failures, cannot be refreshed or recovered; zero actual HTTP is not a claim that an unrestricted repeat of an incomplete crawl would make zero requests."
+  },
+  "export": {
+    "records": 2811,
+    "bytes": 60518422,
+    "sha256": "e3d8a1702624f50dc5c2a345620fdc945a2ff7dd86aef2d27f51995ca75d1c58",
+    "stored_evidence_fingerprint_sha256": "d90a53dbeb3e8f05d958be0c330a2cc446bbc1cb12eff68dae9332cf45685272",
+    "fresh_process_export_matches_stored_evidence": true,
+    "network_forbidden": true
+  },
+  "tests": {
+    "command": "PYTHONDONTWRITEBYTECODE=1 /private/tmp/bernmatch-ingest-venv/bin/python -m pytest -q -p no:cacheprovider",
+    "passed": 87,
+    "skipped": 1,
+    "ingestion_cases_executed": 23,
+    "skip_reason": "Opt-in live inference test not enabled",
+    "warnings": [
+      "Upstream Starlette/AnyIO deprecation"
+    ],
+    "pip_check": "No broken requirements found"
+  },
+  "inputs_sha256": {
+    "config/sources/unibe_inventory.csv": "9678e92e1b12f8e268da8deb9c9e6762cdc59b02802fd2e6c470d58a2506da86",
+    "config/sources/crawl_profiles.json": "795252a07e6c566d66f4e93f21a817075a6662cbf103db63874809fa1ee43bc6",
+    "config/sources/generated/registry.json": "b64cc9feb17d211f1a7d45d3ac3a0facab8d64934bb7401f2de527392178218a"
+  },
+  "per_source": [
+    {
+      "source_id": "artorg",
+      "tier": "focus",
+      "profile": "final",
+      "started_at": "2026-10-18T14:30:41.196412+00:00",
+      "completed_at": "2026-10-18T14:38:03.524655+00:00",
+      "duration_seconds": 442.337645,
+      "counts": {
+        "discovered": 200,
+        "page_slots": 200,
+        "fetched": 193,
+        "new_versions": 166,
+        "parsed": 166,
+        "outside_focus_pages": 75,
+        "unsupported": 27,
+        "failed": 7,
+        "network_requests": 202,
+        "retries": 0,
+        "remaining_discovered": 605
+      },
+      "languages": {
+        "en": 161,
+        "de": 5
+      },
+      "page_types": {
+        "unit": 49,
+        "other": 47,
+        "directory": 42,
+        "person": 25,
+        "service": 2,
+        "infrastructure": 1
+      },
+      "focus_keyword_counts": {
+        "diabetes": 15,
+        "oncology": 14,
+        "neurology": 32,
+        "medtech": 72
+      },
+      "unique_active_documents": 166,
+      "limits": {
+        "max_pages": 200,
+        "max_depth": 4,
+        "requests_per_second": 0.5
+      },
+      "event_reasons": {
+        "no_usable_text": 27,
+        "http_404": 1,
+        "outside_scope": 5,
+        "response_too_large": 1
+      }
+    },
+    {
+      "source_id": "dcb",
+      "tier": "focus",
+      "profile": "final",
+      "started_at": "2026-10-18T14:35:14.756967+00:00",
+      "completed_at": "2026-10-18T14:42:22.445761+00:00",
+      "duration_seconds": 427.69668,
+      "counts": {
+        "discovered": 200,
+        "page_slots": 200,
+        "fetched": 199,
+        "new_versions": 85,
+        "parsed": 85,
+        "outside_focus_pages": 4,
+        "unsupported": 114,
+        "failed": 1,
+        "network_requests": 203,
+        "retries": 0,
+        "remaining_discovered": 446
+      },
+      "languages": {
+        "en": 55,
+        "de": 30
+      },
+      "page_types": {
+        "project": 5,
+        "directory": 53,
+        "unit": 18,
+        "service": 1,
+        "other": 8
+      },
+      "focus_keyword_counts": {
+        "diabetes": 81,
+        "medtech": 12,
+        "oncology": 4,
+        "neurology": 6
+      },
+      "unique_active_documents": 85,
+      "limits": {
+        "max_pages": 200,
+        "max_depth": 4,
+        "requests_per_second": 0.5
+      },
+      "event_reasons": {
+        "unsupported_media_type": 83,
+        "no_usable_text": 31,
+        "response_too_large": 1
+      }
+    },
+    {
+      "source_id": "unibe",
+      "tier": "outside_focus",
+      "profile": "final",
+      "started_at": "2026-10-18T14:21:09.246127+00:00",
+      "completed_at": "2026-10-18T14:23:16.158691+00:00",
+      "duration_seconds": 126.914943,
+      "counts": {
+        "discovered": 50,
+        "page_slots": 50,
+        "fetched": 49,
+        "new_versions": 45,
+        "parsed": 45,
+        "outside_focus_pages": 34,
+        "unsupported": 4,
+        "failed": 1,
+        "network_requests": 59,
+        "retries": 0,
+        "remaining_discovered": 348
+      },
+      "languages": {
+        "de": 39,
+        "fr": 3,
+        "en": 3
+      },
+      "page_types": {
+        "directory": 30,
+        "other": 11,
+        "unit": 2,
+        "infrastructure": 1,
+        "person": 1
+      },
+      "focus_keyword_counts": {
+        "oncology": 4,
+        "diabetes": 4,
+        "neurology": 6,
+        "medtech": 4
+      },
+      "unique_active_documents": 45,
+      "limits": {
+        "max_pages": 50,
+        "max_depth": 2,
+        "requests_per_second": 0.5
+      },
+      "event_reasons": {
+        "no_usable_text": 4,
+        "redirect_limit": 1
+      }
+    },
+    {
+      "source_id": "unibe-aiub",
+      "tier": "outside_focus",
+      "profile": "final",
+      "started_at": "2026-10-18T14:22:48.396318+00:00",
+      "completed_at": "2026-10-18T14:24:43.177229+00:00",
+      "duration_seconds": 114.78306,
+      "counts": {
+        "discovered": 50,
+        "page_slots": 50,
+        "fetched": 47,
+        "new_versions": 40,
+        "parsed": 40,
+        "outside_focus_pages": 37,
+        "failed": 3,
+        "unsupported": 7,
+        "network_requests": 51,
+        "retries": 0,
+        "remaining_discovered": 141
+      },
+      "languages": {
+        "de": 34,
+        "en": 6
+      },
+      "page_types": {
+        "unit": 6,
+        "directory": 13,
+        "other": 19,
+        "service": 2
+      },
+      "focus_keyword_counts": {
+        "medtech": 3
+      },
+      "unique_active_documents": 40,
+      "limits": {
+        "max_pages": 50,
+        "max_depth": 2,
+        "requests_per_second": 0.5
+      },
+      "event_reasons": {
+        "http_404": 1,
+        "no_usable_text": 2,
+        "outside_scope": 2,
+        "unsupported_media_type": 5
+      }
+    },
+    {
+      "source_id": "unibe-bcpm",
+      "tier": "focus",
+      "profile": "final",
+      "started_at": "2026-10-18T14:24:43.852444+00:00",
+      "completed_at": "2026-10-18T14:31:48.513053+00:00",
+      "duration_seconds": 424.669173,
+      "counts": {
+        "discovered": 200,
+        "page_slots": 200,
+        "fetched": 166,
+        "new_versions": 71,
+        "parsed": 71,
+        "outside_focus_pages": 45,
+        "unsupported": 95,
+        "failed": 34,
+        "network_requests": 201,
+        "retries": 0,
+        "remaining_discovered": 396
+      },
+      "languages": {
+        "en": 71
+      },
+      "page_types": {
+        "unit": 3,
+        "directory": 22,
+        "other": 36,
+        "infrastructure": 2,
+        "service": 1,
+        "person": 7
+      },
+      "focus_keyword_counts": {
+        "oncology": 23,
+        "neurology": 7,
+        "medtech": 2
+      },
+      "unique_active_documents": 71,
+      "limits": {
+        "max_pages": 200,
+        "max_depth": 4,
+        "requests_per_second": 0.5
+      },
+      "event_reasons": {
+        "no_usable_text": 95,
+        "http_404": 34
+      }
+    },
+    {
+      "source_id": "unibe-biology",
+      "tier": "outside_focus",
+      "profile": "final",
+      "started_at": "2026-10-18T14:22:59.634338+00:00",
+      "completed_at": "2026-10-18T14:24:50.117363+00:00",
+      "duration_seconds": 110.485093,
+      "counts": {
+        "discovered": 38,
+        "page_slots": 38,
+        "fetched": 38,
+        "new_versions": 35,
+        "parsed": 36,
+        "outside_focus_pages": 34,
+        "unsupported": 2,
+        "unchanged_versions": 1,
+        "network_requests": 42,
+        "retries": 0,
+        "remaining_discovered": 0
+      },
+      "languages": {
+        "de": 29,
+        "en": 7
+      },
+      "page_types": {
+        "other": 21,
+        "directory": 15
+      },
+      "focus_keyword_counts": {
+        "medtech": 2
+      },
+      "unique_active_documents": 35,
+      "limits": {
+        "max_pages": 50,
+        "max_depth": 2,
+        "requests_per_second": 0.5
+      },
+      "event_reasons": {
+        "scanned_or_empty_pdf": 2
+      }
+    },
+    {
+      "source_id": "unibe-cde",
+      "tier": "outside_focus",
+      "profile": "final",
+      "started_at": "2026-10-18T14:24:32.708221+00:00",
+      "completed_at": "2026-10-18T14:26:28.241793+00:00",
+      "duration_seconds": 115.535737,
+      "counts": {
+        "discovered": 50,
+        "page_slots": 50,
+        "fetched": 50,
+        "new_versions": 50,
+        "parsed": 50,
+        "outside_focus_pages": 50,
+        "network_requests": 51,
+        "retries": 0,
+        "remaining_discovered": 222
+      },
+      "languages": {
+        "en": 49,
+        "de": 1
+      },
+      "page_types": {
+        "unit": 7,
+        "directory": 27,
+        "service": 1,
+        "project": 1,
+        "other": 13,
+        "person": 1
+      },
+      "focus_keyword_counts": {},
+      "unique_active_documents": 50,
+      "limits": {
+        "max_pages": 50,
+        "max_depth": 2,
+        "requests_per_second": 0.5
+      },
+      "event_reasons": {}
+    },
+    {
+      "source_id": "unibe-csh",
+      "tier": "outside_focus",
+      "profile": "final",
+      "started_at": "2026-10-18T14:33:49.494197+00:00",
+      "completed_at": "2026-10-18T14:35:37.245651+00:00",
+      "duration_seconds": 107.753467,
+      "counts": {
+        "discovered": 50,
+        "page_slots": 50,
+        "fetched": 49,
+        "new_versions": 49,
+        "parsed": 49,
+        "outside_focus_pages": 42,
+        "failed": 1,
+        "network_requests": 51,
+        "retries": 0,
+        "remaining_discovered": 133
+      },
+      "languages": {
+        "en": 41,
+        "de": 6,
+        "fr": 2
+      },
+      "page_types": {
+        "unit": 8,
+        "directory": 24,
+        "other": 17
+      },
+      "focus_keyword_counts": {
+        "medtech": 7
+      },
+      "unique_active_documents": 49,
+      "limits": {
+        "max_pages": 50,
+        "max_depth": 2,
+        "requests_per_second": 0.5
+      },
+      "event_reasons": {
+        "outside_scope": 1
+      }
+    },
+    {
+      "source_id": "unibe-dbmr",
+      "tier": "focus",
+      "profile": "final",
+      "started_at": "2026-10-18T14:24:46.878504+00:00",
+      "completed_at": "2026-10-18T14:32:34.150453+00:00",
+      "duration_seconds": 467.28095,
+      "counts": {
+        "discovered": 200,
+        "page_slots": 200,
+        "fetched": 192,
+        "new_versions": 176,
+        "parsed": 176,
+        "outside_focus_pages": 87,
+        "unsupported": 16,
+        "failed": 8,
+        "network_requests": 199,
+        "retries": 0,
+        "remaining_discovered": 678
+      },
+      "languages": {
+        "en": 174,
+        "unknown": 1,
+        "de": 1
+      },
+      "page_types": {
+        "directory": 105,
+        "unit": 11,
+        "service": 3,
+        "other": 56,
+        "infrastructure": 1
+      },
+      "focus_keyword_counts": {
+        "diabetes": 15,
+        "oncology": 58,
+        "neurology": 41,
+        "medtech": 3
+      },
+      "unique_active_documents": 176,
+      "limits": {
+        "max_pages": 200,
+        "max_depth": 4,
+        "requests_per_second": 0.5
+      },
+      "event_reasons": {
+        "no_usable_text": 16,
+        "http_404": 5,
+        "outside_scope": 1,
+        "robots_disallowed": 2
+      }
+    },
+    {
+      "source_id": "unibe-dcbp",
+      "tier": "outside_focus",
+      "profile": "final",
+      "started_at": "2026-10-18T14:33:31.208023+00:00",
+      "completed_at": "2026-10-18T14:35:26.523013+00:00",
+      "duration_seconds": 115.31716,
+      "counts": {
+        "discovered": 50,
+        "page_slots": 50,
+        "fetched": 50,
+        "new_versions": 46,
+        "parsed": 46,
+        "outside_focus_pages": 41,
+        "unsupported": 4,
+        "network_requests": 51,
+        "retries": 0,
+        "remaining_discovered": 237
+      },
+      "languages": {
+        "de": 44,
+        "en": 2
+      },
+      "page_types": {
+        "other": 10,
+        "directory": 11,
+        "person": 23,
+        "service": 1,
+        "unit": 1
+      },
+      "focus_keyword_counts": {
+        "oncology": 5
+      },
+      "unique_active_documents": 46,
+      "limits": {
+        "max_pages": 50,
+        "max_depth": 2,
+        "requests_per_second": 0.5
+      },
+      "event_reasons": {
+        "no_usable_text": 4
+      }
+    },
+    {
+      "source_id": "unibe-geo",
+      "tier": "outside_focus",
+      "profile": "final",
+      "started_at": "2026-10-18T14:24:01.634649+00:00",
+      "completed_at": "2026-10-18T14:25:47.105321+00:00",
+      "duration_seconds": 105.472633,
+      "counts": {
+        "discovered": 50,
+        "page_slots": 50,
+        "fetched": 50,
+        "new_versions": 45,
+        "parsed": 45,
+        "outside_focus_pages": 45,
+        "unsupported": 5,
+        "network_requests": 51,
+        "retries": 0,
+        "remaining_discovered": 84
+      },
+      "languages": {
+        "de": 39,
+        "en": 6
+      },
+      "page_types": {
+        "unit": 13,
+        "directory": 9,
+        "other": 20,
+        "person": 3
+      },
+      "focus_keyword_counts": {},
+      "unique_active_documents": 45,
+      "limits": {
+        "max_pages": 50,
+        "max_depth": 2,
+        "requests_per_second": 0.5
+      },
+      "event_reasons": {
+        "no_usable_text": 5
+      }
+    },
+    {
+      "source_id": "unibe-iap",
+      "tier": "outside_focus",
+      "profile": "final",
+      "started_at": "2026-10-18T14:32:43.309631+00:00",
+      "completed_at": "2026-10-18T14:33:54.560708+00:00",
+      "duration_seconds": 71.252417,
+      "counts": {
+        "discovered": 34,
+        "page_slots": 34,
+        "fetched": 34,
+        "new_versions": 30,
+        "parsed": 30,
+        "outside_focus_pages": 25,
+        "unsupported": 4,
+        "network_requests": 35,
+        "retries": 0,
+        "remaining_discovered": 0
+      },
+      "languages": {
+        "en": 30
+      },
+      "page_types": {
+        "unit": 8,
+        "directory": 6,
+        "other": 16
+      },
+      "focus_keyword_counts": {
+        "neurology": 3,
+        "medtech": 1,
+        "oncology": 3
+      },
+      "unique_active_documents": 30,
+      "limits": {
+        "max_pages": 50,
+        "max_depth": 2,
+        "requests_per_second": 0.5
+      },
+      "event_reasons": {
+        "no_usable_text": 4
+      }
+    },
+    {
+      "source_id": "unibe-ibmm",
+      "tier": "focus",
+      "profile": "final",
+      "started_at": "2026-10-18T14:29:00.945731+00:00",
+      "completed_at": "2026-10-18T14:33:57.020361+00:00",
+      "duration_seconds": 296.080096,
+      "counts": {
+        "discovered": 137,
+        "page_slots": 137,
+        "fetched": 130,
+        "new_versions": 84,
+        "parsed": 84,
+        "unsupported": 46,
+        "outside_focus_pages": 76,
+        "reused": 6,
+        "failed": 1,
+        "network_requests": 140,
+        "retries": 0,
+        "remaining_discovered": 0
+      },
+      "languages": {
+        "en": 88,
+        "de": 2
+      },
+      "page_types": {
+        "unit": 17,
+        "person": 59,
+        "other": 12,
+        "directory": 1,
+        "service": 1
+      },
+      "focus_keyword_counts": {
+        "oncology": 7,
+        "neurology": 8,
+        "medtech": 2,
+        "diabetes": 2
+      },
+      "unique_active_documents": 84,
+      "limits": {
+        "max_pages": 200,
+        "max_depth": 4,
+        "requests_per_second": 0.5
+      },
+      "event_reasons": {
+        "no_usable_text": 45,
+        "scanned_or_empty_pdf": 1,
+        "http_404": 1
+      }
+    },
+    {
+      "source_id": "unibe-iee",
+      "tier": "outside_focus",
+      "profile": "final",
+      "started_at": "2026-10-18T14:23:00.757733+00:00",
+      "completed_at": "2026-10-18T14:25:52.668863+00:00",
+      "duration_seconds": 171.914322,
+      "counts": {
+        "discovered": 50,
+        "page_slots": 50,
+        "fetched": 48,
+        "new_versions": 36,
+        "parsed": 36,
+        "outside_focus_pages": 33,
+        "unsupported": 12,
+        "failed": 2,
+        "network_requests": 55,
+        "retries": 4,
+        "remaining_discovered": 28
+      },
+      "languages": {
+        "en": 29,
+        "de": 7
+      },
+      "page_types": {
+        "unit": 4,
+        "directory": 7,
+        "other": 16,
+        "service": 1,
+        "person": 8
+      },
+      "focus_keyword_counts": {
+        "neurology": 3
+      },
+      "unique_active_documents": 36,
+      "limits": {
+        "max_pages": 50,
+        "max_depth": 2,
+        "requests_per_second": 0.5
+      },
+      "event_reasons": {
+        "unsupported_media_type": 7,
+        "http_500": 2,
+        "no_usable_text": 4,
+        "scanned_or_empty_pdf": 1
+      }
+    },
+    {
+      "source_id": "unibe-ifik",
+      "tier": "focus",
+      "profile": "final",
+      "started_at": "2026-10-18T14:26:28.250537+00:00",
+      "completed_at": "2026-10-18T14:34:19.861958+00:00",
+      "duration_seconds": 471.620711,
+      "counts": {
+        "discovered": 200,
+        "page_slots": 200,
+        "fetched": 196,
+        "new_versions": 156,
+        "parsed": 158,
+        "outside_focus_pages": 140,
+        "unsupported": 38,
+        "failed": 4,
+        "unchanged_versions": 2,
+        "network_requests": 203,
+        "retries": 0,
+        "remaining_discovered": 238
+      },
+      "languages": {
+        "de": 100,
+        "en": 57,
+        "fr": 1
+      },
+      "page_types": {
+        "unit": 27,
+        "directory": 10,
+        "other": 86,
+        "project": 27,
+        "person": 8
+      },
+      "focus_keyword_counts": {
+        "neurology": 8,
+        "diabetes": 8,
+        "medtech": 5,
+        "oncology": 3
+      },
+      "unique_active_documents": 156,
+      "limits": {
+        "max_pages": 200,
+        "max_depth": 4,
+        "requests_per_second": 0.5
+      },
+      "event_reasons": {
+        "no_usable_text": 37,
+        "http_404": 4,
+        "scanned_or_empty_pdf": 1
+      }
+    },
+    {
+      "source_id": "unibe-ikim",
+      "tier": "focus",
+      "profile": "final",
+      "started_at": "2026-10-18T14:27:34.175975+00:00",
+      "completed_at": "2026-10-18T14:32:43.301392+00:00",
+      "duration_seconds": 309.131123,
+      "counts": {
+        "discovered": 135,
+        "page_slots": 135,
+        "fetched": 114,
+        "new_versions": 106,
+        "parsed": 106,
+        "outside_focus_pages": 84,
+        "unsupported": 8,
+        "failed": 21,
+        "network_requests": 138,
+        "retries": 0,
+        "remaining_discovered": 0
+      },
+      "languages": {
+        "de": 88,
+        "unknown": 2,
+        "en": 16
+      },
+      "page_types": {
+        "other": 60,
+        "directory": 19,
+        "service": 1,
+        "unit": 1,
+        "person": 25
+      },
+      "focus_keyword_counts": {
+        "oncology": 17,
+        "neurology": 13,
+        "medtech": 5
+      },
+      "unique_active_documents": 106,
+      "limits": {
+        "max_pages": 200,
+        "max_depth": 4,
+        "requests_per_second": 0.5
+      },
+      "event_reasons": {
+        "no_usable_text": 8,
+        "http_404": 21
+      }
+    },
+    {
+      "source_id": "unibe-img",
+      "tier": "outside_focus",
+      "profile": "final",
+      "started_at": "2026-10-18T14:27:45.307814+00:00",
+      "completed_at": "2026-10-18T14:29:00.918252+00:00",
+      "duration_seconds": 75.612278,
+      "counts": {
+        "discovered": 36,
+        "page_slots": 36,
+        "fetched": 35,
+        "new_versions": 33,
+        "parsed": 33,
+        "outside_focus_pages": 29,
+        "unsupported": 2,
+        "failed": 1,
+        "network_requests": 36,
+        "retries": 0,
+        "remaining_discovered": 0
+      },
+      "languages": {
+        "de": 32,
+        "en": 1
+      },
+      "page_types": {
+        "unit": 2,
+        "directory": 9,
+        "other": 18,
+        "service": 2,
+        "person": 2
+      },
+      "focus_keyword_counts": {
+        "diabetes": 2,
+        "neurology": 3,
+        "medtech": 2,
+        "oncology": 2
+      },
+      "unique_active_documents": 33,
+      "limits": {
+        "max_pages": 50,
+        "max_depth": 2,
+        "requests_per_second": 0.5
+      },
+      "event_reasons": {
+        "no_usable_text": 2,
+        "robots_disallowed": 1
+      }
+    },
+    {
+      "source_id": "unibe-iml",
+      "tier": "outside_focus",
+      "profile": "final",
+      "started_at": "2026-10-18T14:25:47.115743+00:00",
+      "completed_at": "2026-10-18T14:27:34.166752+00:00",
+      "duration_seconds": 107.053004,
+      "counts": {
+        "discovered": 50,
+        "page_slots": 50,
+        "fetched": 42,
+        "new_versions": 42,
+        "parsed": 42,
+        "outside_focus_pages": 36,
+        "failed": 8,
+        "network_requests": 48,
+        "retries": 0,
+        "remaining_discovered": 946
+      },
+      "languages": {
+        "de": 40,
+        "en": 1,
+        "fr": 1
+      },
+      "page_types": {
+        "unit": 4,
+        "directory": 25,
+        "other": 6,
+        "project": 6,
+        "service": 1
+      },
+      "focus_keyword_counts": {
+        "diabetes": 5,
+        "oncology": 3,
+        "neurology": 2
+      },
+      "unique_active_documents": 42,
+      "limits": {
+        "max_pages": 50,
+        "max_depth": 2,
+        "requests_per_second": 0.5
+      },
+      "event_reasons": {
+        "robots_disallowed": 8
+      }
+    },
+    {
+      "source_id": "unibe-inf",
+      "tier": "outside_focus",
+      "profile": "final",
+      "started_at": "2026-10-18T14:31:48.532707+00:00",
+      "completed_at": "2026-10-18T14:33:31.197800+00:00",
+      "duration_seconds": 102.667019,
+      "counts": {
+        "discovered": 45,
+        "page_slots": 45,
+        "fetched": 45,
+        "new_versions": 36,
+        "parsed": 36,
+        "outside_focus_pages": 31,
+        "unsupported": 9,
+        "network_requests": 46,
+        "retries": 0,
+        "remaining_discovered": 0
+      },
+      "languages": {
+        "de": 32,
+        "en": 4
+      },
+      "page_types": {
+        "unit": 3,
+        "directory": 11,
+        "other": 22
+      },
+      "focus_keyword_counts": {
+        "neurology": 5
+      },
+      "unique_active_documents": 36,
+      "limits": {
+        "max_pages": 50,
+        "max_depth": 2,
+        "requests_per_second": 0.5
+      },
+      "event_reasons": {
+        "no_usable_text": 9
+      }
+    },
+    {
+      "source_id": "unibe-ips",
+      "tier": "outside_focus",
+      "profile": "final",
+      "started_at": "2026-10-18T14:23:16.169043+00:00",
+      "completed_at": "2026-10-18T14:24:43.843644+00:00",
+      "duration_seconds": 87.676246,
+      "counts": {
+        "discovered": 40,
+        "page_slots": 40,
+        "fetched": 40,
+        "new_versions": 39,
+        "parsed": 39,
+        "outside_focus_pages": 39,
+        "unsupported": 1,
+        "network_requests": 41,
+        "retries": 0,
+        "remaining_discovered": 0
+      },
+      "languages": {
+        "en": 38,
+        "de": 1
+      },
+      "page_types": {
+        "unit": 13,
+        "directory": 8,
+        "other": 15,
+        "person": 2,
+        "service": 1
+      },
+      "focus_keyword_counts": {},
+      "unique_active_documents": 39,
+      "limits": {
+        "max_pages": 50,
+        "max_depth": 2,
+        "requests_per_second": 0.5
+      },
+      "event_reasons": {
+        "no_usable_text": 1
+      }
+    },
+    {
+      "source_id": "unibe-irm",
+      "tier": "outside_focus",
+      "profile": "final",
+      "started_at": "2026-10-18T14:25:52.676990+00:00",
+      "completed_at": "2026-10-18T14:27:45.298976+00:00",
+      "duration_seconds": 112.624087,
+      "counts": {
+        "discovered": 50,
+        "page_slots": 50,
+        "fetched": 49,
+        "new_versions": 46,
+        "parsed": 46,
+        "outside_focus_pages": 33,
+        "unsupported": 3,
+        "failed": 1,
+        "network_requests": 51,
+        "retries": 0,
+        "remaining_discovered": 77
+      },
+      "languages": {
+        "de": 41,
+        "en": 5
+      },
+      "page_types": {
+        "unit": 3,
+        "directory": 14,
+        "other": 27,
+        "service": 2
+      },
+      "focus_keyword_counts": {
+        "neurology": 11,
+        "medtech": 2,
+        "diabetes": 3,
+        "oncology": 2
+      },
+      "unique_active_documents": 46,
+      "limits": {
+        "max_pages": 50,
+        "max_depth": 2,
+        "requests_per_second": 0.5
+      },
+      "event_reasons": {
+        "no_usable_text": 3,
+        "response_too_large": 1
+      }
+    },
+    {
+      "source_id": "unibe-ispm",
+      "tier": "focus",
+      "profile": "final",
+      "started_at": "2026-10-18T14:27:14.986252+00:00",
+      "completed_at": "2026-10-18T14:34:40.701333+00:00",
+      "duration_seconds": 445.72329,
+      "counts": {
+        "discovered": 200,
+        "page_slots": 200,
+        "fetched": 196,
+        "new_versions": 185,
+        "parsed": 186,
+        "outside_focus_pages": 128,
+        "failed": 2,
+        "unsupported": 10,
+        "reused": 2,
+        "unchanged_versions": 1,
+        "network_requests": 204,
+        "retries": 0,
+        "remaining_discovered": 698
+      },
+      "languages": {
+        "en": 186,
+        "de": 2
+      },
+      "page_types": {
+        "unit": 20,
+        "directory": 22,
+        "other": 25,
+        "service": 2,
+        "person": 118,
+        "infrastructure": 1
+      },
+      "focus_keyword_counts": {
+        "oncology": 43,
+        "neurology": 23,
+        "diabetes": 4,
+        "medtech": 1
+      },
+      "unique_active_documents": 185,
+      "limits": {
+        "max_pages": 200,
+        "max_depth": 4,
+        "requests_per_second": 0.5
+      },
+      "event_reasons": {
+        "http_404": 2,
+        "no_usable_text": 10
+      }
+    },
+    {
+      "source_id": "unibe-ita-vetsuisse",
+      "tier": "outside_focus",
+      "profile": "final",
+      "started_at": "2026-10-18T14:34:40.709517+00:00",
+      "completed_at": "2026-10-18T14:35:47.091412+00:00",
+      "duration_seconds": 66.383153,
+      "counts": {
+        "discovered": 30,
+        "page_slots": 30,
+        "fetched": 30,
+        "new_versions": 29,
+        "parsed": 29,
+        "outside_focus_pages": 24,
+        "unsupported": 1,
+        "network_requests": 31,
+        "retries": 0,
+        "remaining_discovered": 0
+      },
+      "languages": {
+        "de": 27,
+        "en": 2
+      },
+      "page_types": {
+        "other": 23,
+        "directory": 4,
+        "service": 2
+      },
+      "focus_keyword_counts": {
+        "oncology": 4,
+        "neurology": 1
+      },
+      "unique_active_documents": 29,
+      "limits": {
+        "max_pages": 50,
+        "max_depth": 2,
+        "requests_per_second": 0.5
+      },
+      "event_reasons": {
+        "no_usable_text": 1
+      }
+    },
+    {
+      "source_id": "unibe-itp",
+      "tier": "outside_focus",
+      "profile": "final",
+      "started_at": "2026-10-18T14:32:34.165636+00:00",
+      "completed_at": "2026-10-18T14:33:49.483808+00:00",
+      "duration_seconds": 75.319604,
+      "counts": {
+        "discovered": 33,
+        "page_slots": 33,
+        "fetched": 33,
+        "new_versions": 29,
+        "parsed": 29,
+        "outside_focus_pages": 29,
+        "unsupported": 4,
+        "network_requests": 34,
+        "retries": 0,
+        "remaining_discovered": 0
+      },
+      "languages": {
+        "en": 29
+      },
+      "page_types": {
+        "unit": 14,
+        "directory": 3,
+        "other": 12
+      },
+      "focus_keyword_counts": {},
+      "unique_active_documents": 29,
+      "limits": {
+        "max_pages": 50,
+        "max_depth": 2,
+        "requests_per_second": 0.5
+      },
+      "event_reasons": {
+        "no_usable_text": 4
+      }
+    },
+    {
+      "source_id": "unibe-izb",
+      "tier": "outside_focus",
+      "profile": "final",
+      "started_at": "2026-10-18T14:23:19.363152+00:00",
+      "completed_at": "2026-10-18T14:24:32.696570+00:00",
+      "duration_seconds": 73.334795,
+      "counts": {
+        "discovered": 32,
+        "page_slots": 32,
+        "fetched": 30,
+        "new_versions": 27,
+        "parsed": 27,
+        "outside_focus_pages": 18,
+        "failed": 2,
+        "unsupported": 3,
+        "network_requests": 31,
+        "retries": 0,
+        "remaining_discovered": 0
+      },
+      "languages": {
+        "en": 20,
+        "de": 6,
+        "unknown": 1
+      },
+      "page_types": {
+        "unit": 12,
+        "directory": 6,
+        "other": 9
+      },
+      "focus_keyword_counts": {
+        "neurology": 7,
+        "oncology": 3
+      },
+      "unique_active_documents": 27,
+      "limits": {
+        "max_pages": 50,
+        "max_depth": 2,
+        "requests_per_second": 0.5
+      },
+      "event_reasons": {
+        "robots_disallowed": 2,
+        "no_usable_text": 3
+      }
+    },
+    {
+      "source_id": "unibe-math",
+      "tier": "outside_focus",
+      "profile": "final",
+      "started_at": "2026-10-18T14:21:09.248688+00:00",
+      "completed_at": "2026-10-18T14:23:00.742676+00:00",
+      "duration_seconds": 111.49611,
+      "counts": {
+        "discovered": 41,
+        "page_slots": 41,
+        "fetched": 41,
+        "new_versions": 34,
+        "parsed": 35,
+        "outside_focus_pages": 35,
+        "unsupported": 6,
+        "unchanged_versions": 1,
+        "network_requests": 46,
+        "retries": 0,
+        "remaining_discovered": 0
+      },
+      "languages": {
+        "de": 20,
+        "en": 15
+      },
+      "page_types": {
+        "unit": 5,
+        "directory": 6,
+        "other": 19,
+        "service": 2,
+        "person": 3
+      },
+      "focus_keyword_counts": {},
+      "unique_active_documents": 34,
+      "limits": {
+        "max_pages": 50,
+        "max_depth": 2,
+        "requests_per_second": 0.5
+      },
+      "event_reasons": {
+        "no_usable_text": 6
+      }
+    },
+    {
+      "source_id": "unibe-mediarelations",
+      "tier": "outside_focus",
+      "profile": "final",
+      "started_at": "2026-10-18T14:21:09.248375+00:00",
+      "completed_at": "2026-10-18T14:23:19.353637+00:00",
+      "duration_seconds": 130.107676,
+      "counts": {
+        "discovered": 50,
+        "page_slots": 50,
+        "fetched": 49,
+        "new_versions": 34,
+        "parsed": 34,
+        "outside_focus_pages": 26,
+        "unsupported": 15,
+        "failed": 1,
+        "network_requests": 51,
+        "retries": 0,
+        "remaining_discovered": 93
+      },
+      "languages": {
+        "de": 20,
+        "fr": 5,
+        "en": 9
+      },
+      "page_types": {
+        "directory": 20,
+        "person": 7,
+        "other": 7
+      },
+      "focus_keyword_counts": {
+        "diabetes": 5,
+        "oncology": 5,
+        "neurology": 6,
+        "medtech": 5
+      },
+      "unique_active_documents": 34,
+      "limits": {
+        "max_pages": 50,
+        "max_depth": 2,
+        "requests_per_second": 0.5
+      },
+      "event_reasons": {
+        "no_usable_text": 15,
+        "outside_scope": 1
+      }
+    },
+    {
+      "source_id": "unibe-medizin",
+      "tier": "focus",
+      "profile": "final",
+      "started_at": "2026-10-18T14:21:09.249703+00:00",
+      "completed_at": "2026-10-18T14:30:41.184112+00:00",
+      "duration_seconds": 571.944932,
+      "counts": {
+        "discovered": 200,
+        "page_slots": 200,
+        "fetched": 192,
+        "new_versions": 172,
+        "parsed": 175,
+        "outside_focus_pages": 101,
+        "failed": 8,
+        "unsupported": 17,
+        "unchanged_versions": 3,
+        "network_requests": 204,
+        "retries": 0,
+        "remaining_discovered": 582
+      },
+      "languages": {
+        "de": 144,
+        "en": 28,
+        "fr": 3
+      },
+      "page_types": {
+        "other": 70,
+        "directory": 85,
+        "infrastructure": 4,
+        "unit": 8,
+        "service": 1,
+        "person": 7
+      },
+      "focus_keyword_counts": {
+        "neurology": 44,
+        "oncology": 43,
+        "diabetes": 16,
+        "medtech": 42
+      },
+      "unique_active_documents": 172,
+      "limits": {
+        "max_pages": 200,
+        "max_depth": 4,
+        "requests_per_second": 0.5
+      },
+      "event_reasons": {
+        "outside_scope": 6,
+        "no_usable_text": 5,
+        "unsupported_media_type": 11,
+        "http_404": 1,
+        "scanned_or_empty_pdf": 1,
+        "response_too_large": 1
+      }
+    },
+    {
+      "source_id": "unibe-mic",
+      "tier": "focus",
+      "profile": "final",
+      "started_at": "2026-10-18T14:33:54.569268+00:00",
+      "completed_at": "2026-10-18T14:41:17.866362+00:00",
+      "duration_seconds": 443.305873,
+      "counts": {
+        "discovered": 200,
+        "page_slots": 200,
+        "fetched": 186,
+        "new_versions": 177,
+        "parsed": 179,
+        "outside_focus_pages": 158,
+        "failed": 13,
+        "reused": 1,
+        "unchanged_versions": 2,
+        "unsupported": 7,
+        "network_requests": 207,
+        "retries": 0,
+        "remaining_discovered": 636
+      },
+      "languages": {
+        "en": 179,
+        "de": 1
+      },
+      "page_types": {
+        "unit": 3,
+        "service": 2,
+        "other": 136,
+        "directory": 32,
+        "infrastructure": 1,
+        "person": 6
+      },
+      "focus_keyword_counts": {
+        "neurology": 15,
+        "oncology": 11,
+        "medtech": 8
+      },
+      "unique_active_documents": 177,
+      "limits": {
+        "max_pages": 200,
+        "max_depth": 4,
+        "requests_per_second": 0.5
+      },
+      "event_reasons": {
+        "http_404": 13,
+        "no_usable_text": 6,
+        "scanned_or_empty_pdf": 1
+      }
+    },
+    {
+      "source_id": "unibe-neuroscience",
+      "tier": "focus",
+      "profile": "final",
+      "started_at": "2026-10-18T14:34:19.874161+00:00",
+      "completed_at": "2026-10-18T14:41:59.866702+00:00",
+      "duration_seconds": 460.003994,
+      "counts": {
+        "discovered": 200,
+        "page_slots": 200,
+        "fetched": 196,
+        "new_versions": 189,
+        "parsed": 189,
+        "unsupported": 7,
+        "outside_focus_pages": 39,
+        "failed": 4,
+        "network_requests": 199,
+        "retries": 0,
+        "remaining_discovered": 681
+      },
+      "languages": {
+        "en": 189
+      },
+      "page_types": {
+        "other": 40,
+        "directory": 83,
+        "unit": 20,
+        "person": 46
+      },
+      "focus_keyword_counts": {
+        "neurology": 147,
+        "oncology": 17,
+        "medtech": 19,
+        "diabetes": 2
+      },
+      "unique_active_documents": 189,
+      "limits": {
+        "max_pages": 200,
+        "max_depth": 4,
+        "requests_per_second": 0.5
+      },
+      "event_reasons": {
+        "no_usable_text": 7,
+        "robots_disallowed": 2,
+        "response_too_large": 1,
+        "http_404": 1
+      }
+    },
+    {
+      "source_id": "unibe-ngs",
+      "tier": "focus",
+      "profile": "final",
+      "started_at": "2026-10-18T14:24:50.124678+00:00",
+      "completed_at": "2026-10-18T14:25:45.124123+00:00",
+      "duration_seconds": 55.001275,
+      "counts": {
+        "discovered": 23,
+        "page_slots": 23,
+        "fetched": 23,
+        "new_versions": 10,
+        "parsed": 10,
+        "outside_focus_pages": 9,
+        "unsupported": 13,
+        "network_requests": 24,
+        "retries": 0,
+        "remaining_discovered": 0
+      },
+      "languages": {
+        "en": 10
+      },
+      "page_types": {
+        "infrastructure": 1,
+        "directory": 2,
+        "other": 5,
+        "person": 2
+      },
+      "focus_keyword_counts": {
+        "medtech": 1
+      },
+      "unique_active_documents": 10,
+      "limits": {
+        "max_pages": 200,
+        "max_depth": 4,
+        "requests_per_second": 0.5
+      },
+      "event_reasons": {
+        "no_usable_text": 8,
+        "unsupported_media_type": 5
+      }
+    },
+    {
+      "source_id": "unibe-oeschger",
+      "tier": "outside_focus",
+      "profile": "final",
+      "started_at": "2026-10-18T14:24:43.188182+00:00",
+      "completed_at": "2026-10-18T14:27:14.974696+00:00",
+      "duration_seconds": 151.789741,
+      "counts": {
+        "discovered": 50,
+        "page_slots": 50,
+        "fetched": 49,
+        "new_versions": 46,
+        "parsed": 46,
+        "outside_focus_pages": 46,
+        "unsupported": 3,
+        "failed": 1,
+        "network_requests": 51,
+        "retries": 0,
+        "remaining_discovered": 73
+      },
+      "languages": {
+        "en": 40,
+        "de": 6
+      },
+      "page_types": {
+        "unit": 9,
+        "directory": 8,
+        "infrastructure": 4,
+        "other": 25
+      },
+      "focus_keyword_counts": {},
+      "unique_active_documents": 46,
+      "limits": {
+        "max_pages": 50,
+        "max_depth": 2,
+        "requests_per_second": 0.5
+      },
+      "event_reasons": {
+        "no_usable_text": 3,
+        "outside_scope": 1
+      }
+    },
+    {
+      "source_id": "unibe-philnat",
+      "tier": "outside_focus",
+      "profile": "final",
+      "started_at": "2026-10-18T14:21:09.246215+00:00",
+      "completed_at": "2026-10-18T14:22:59.626512+00:00",
+      "duration_seconds": 110.382353,
+      "counts": {
+        "discovered": 50,
+        "page_slots": 50,
+        "fetched": 48,
+        "new_versions": 47,
+        "parsed": 47,
+        "outside_focus_pages": 40,
+        "failed": 2,
+        "unsupported": 1,
+        "network_requests": 51,
+        "retries": 0,
+        "remaining_discovered": 48
+      },
+      "languages": {
+        "de": 42,
+        "en": 5
+      },
+      "page_types": {
+        "other": 20,
+        "directory": 26,
+        "unit": 1
+      },
+      "focus_keyword_counts": {
+        "neurology": 4,
+        "oncology": 1,
+        "medtech": 4
+      },
+      "unique_active_documents": 47,
+      "limits": {
+        "max_pages": 50,
+        "max_depth": 2,
+        "requests_per_second": 0.5
+      },
+      "event_reasons": {
+        "http_404": 1,
+        "outside_scope": 1,
+        "no_usable_text": 1
+      }
+    },
+    {
+      "source_id": "unibe-phinst",
+      "tier": "outside_focus",
+      "profile": "final",
+      "started_at": "2026-10-18T14:22:57.088655+00:00",
+      "completed_at": "2026-10-18T14:24:01.622822+00:00",
+      "duration_seconds": 64.535383,
+      "counts": {
+        "discovered": 31,
+        "page_slots": 31,
+        "fetched": 31,
+        "new_versions": 29,
+        "parsed": 29,
+        "outside_focus_pages": 29,
+        "unsupported": 2,
+        "network_requests": 32,
+        "retries": 0,
+        "remaining_discovered": 0
+      },
+      "languages": {
+        "de": 29
+      },
+      "page_types": {
+        "unit": 3,
+        "directory": 5,
+        "other": 20,
+        "service": 1
+      },
+      "focus_keyword_counts": {},
+      "unique_active_documents": 29,
+      "limits": {
+        "max_pages": 50,
+        "max_depth": 2,
+        "requests_per_second": 0.5
+      },
+      "event_reasons": {
+        "no_usable_text": 2
+      }
+    },
+    {
+      "source_id": "unibe-physik",
+      "tier": "outside_focus",
+      "profile": "final",
+      "started_at": "2026-10-18T14:22:52.446225+00:00",
+      "completed_at": "2026-10-18T14:24:46.870632+00:00",
+      "duration_seconds": 114.426545,
+      "counts": {
+        "discovered": 50,
+        "page_slots": 50,
+        "fetched": 50,
+        "new_versions": 48,
+        "parsed": 48,
+        "outside_focus_pages": 44,
+        "unsupported": 2,
+        "network_requests": 51,
+        "retries": 0,
+        "remaining_discovered": 73
+      },
+      "languages": {
+        "de": 46,
+        "en": 2
+      },
+      "page_types": {
+        "other": 23,
+        "directory": 24,
+        "unit": 1
+      },
+      "focus_keyword_counts": {
+        "medtech": 4
+      },
+      "unique_active_documents": 48,
+      "limits": {
+        "max_pages": 50,
+        "max_depth": 2,
+        "requests_per_second": 0.5
+      },
+      "event_reasons": {
+        "no_usable_text": 2
+      }
+    },
+    {
+      "source_id": "unibe-pki",
+      "tier": "focus",
+      "profile": "final",
+      "started_at": "2026-10-18T14:29:34.685390+00:00",
+      "completed_at": "2026-10-18T14:36:49.583237+00:00",
+      "duration_seconds": 434.907631,
+      "counts": {
+        "discovered": 200,
+        "page_slots": 200,
+        "fetched": 196,
+        "new_versions": 127,
+        "parsed": 127,
+        "outside_focus_pages": 67,
+        "unsupported": 69,
+        "failed": 4,
+        "network_requests": 201,
+        "retries": 0,
+        "remaining_discovered": 454
+      },
+      "languages": {
+        "de": 54,
+        "en": 55,
+        "unknown": 17,
+        "fr": 1
+      },
+      "page_types": {
+        "unit": 10,
+        "directory": 16,
+        "other": 80,
+        "person": 19,
+        "infrastructure": 2
+      },
+      "focus_keyword_counts": {
+        "oncology": 52,
+        "medtech": 16,
+        "diabetes": 37,
+        "neurology": 31
+      },
+      "unique_active_documents": 127,
+      "limits": {
+        "max_pages": 200,
+        "max_depth": 4,
+        "requests_per_second": 0.5
+      },
+      "event_reasons": {
+        "no_usable_text": 40,
+        "unsupported_media_type": 28,
+        "http_404": 2,
+        "invalid_pdf": 1,
+        "response_too_large": 1,
+        "http_401": 1
+      }
+    },
+    {
+      "source_id": "unibe-psy",
+      "tier": "outside_focus",
+      "profile": "final",
+      "started_at": "2026-10-18T14:21:09.247186+00:00",
+      "completed_at": "2026-10-18T14:22:48.382540+00:00",
+      "duration_seconds": 99.137858,
+      "counts": {
+        "discovered": 31,
+        "page_slots": 31,
+        "fetched": 31,
+        "new_versions": 30,
+        "parsed": 30,
+        "outside_focus_pages": 20,
+        "unsupported": 1,
+        "network_requests": 32,
+        "retries": 0,
+        "remaining_discovered": 0
+      },
+      "languages": {
+        "de": 27,
+        "en": 3
+      },
+      "page_types": {
+        "unit": 5,
+        "directory": 11,
+        "service": 1,
+        "other": 13
+      },
+      "focus_keyword_counts": {
+        "neurology": 10
+      },
+      "unique_active_documents": 30,
+      "limits": {
+        "max_pages": 50,
+        "max_depth": 2,
+        "requests_per_second": 0.5
+      },
+      "event_reasons": {
+        "no_usable_text": 1
+      }
+    },
+    {
+      "source_id": "unibe-soz",
+      "tier": "outside_focus",
+      "profile": "final",
+      "started_at": "2026-10-18T14:21:09.249103+00:00",
+      "completed_at": "2026-10-18T14:22:57.074596+00:00",
+      "duration_seconds": 107.827512,
+      "counts": {
+        "discovered": 50,
+        "page_slots": 50,
+        "fetched": 49,
+        "new_versions": 41,
+        "parsed": 41,
+        "outside_focus_pages": 39,
+        "unsupported": 8,
+        "failed": 1,
+        "network_requests": 51,
+        "retries": 0,
+        "remaining_discovered": 24
+      },
+      "languages": {
+        "de": 33,
+        "en": 8
+      },
+      "page_types": {
+        "unit": 3,
+        "directory": 9,
+        "person": 16,
+        "other": 13
+      },
+      "focus_keyword_counts": {
+        "neurology": 1,
+        "oncology": 1
+      },
+      "unique_active_documents": 41,
+      "limits": {
+        "max_pages": 50,
+        "max_depth": 2,
+        "requests_per_second": 0.5
+      },
+      "event_reasons": {
+        "no_usable_text": 3,
+        "http_404": 1,
+        "scanned_or_empty_pdf": 5
+      }
+    },
+    {
+      "source_id": "unibe-strada",
+      "tier": "outside_focus",
+      "profile": "final",
+      "started_at": "2026-10-18T14:33:57.029304+00:00",
+      "completed_at": "2026-10-18T14:35:14.739072+00:00",
+      "duration_seconds": 77.711663,
+      "counts": {
+        "discovered": 28,
+        "page_slots": 28,
+        "fetched": 28,
+        "new_versions": 27,
+        "parsed": 28,
+        "outside_focus_pages": 22,
+        "unchanged_versions": 1,
+        "network_requests": 32,
+        "retries": 0,
+        "remaining_discovered": 0
+      },
+      "languages": {
+        "en": 28
+      },
+      "page_types": {
+        "directory": 4,
+        "other": 24
+      },
+      "focus_keyword_counts": {
+        "medtech": 4,
+        "neurology": 2
+      },
+      "unique_active_documents": 27,
+      "limits": {
+        "max_pages": 50,
+        "max_depth": 2,
+        "requests_per_second": 0.5
+      },
+      "event_reasons": {}
+    },
+    {
+      "source_id": "unibe-tki",
+      "tier": "focus",
+      "profile": "final",
+      "started_at": "2026-10-18T14:25:45.149825+00:00",
+      "completed_at": "2026-10-18T14:29:34.676456+00:00",
+      "duration_seconds": 229.530877,
+      "counts": {
+        "discovered": 99,
+        "page_slots": 99,
+        "fetched": 96,
+        "new_versions": 66,
+        "parsed": 70,
+        "outside_focus_pages": 38,
+        "unsupported": 26,
+        "unchanged_versions": 4,
+        "failed": 3,
+        "network_requests": 106,
+        "retries": 0,
+        "remaining_discovered": 0
+      },
+      "languages": {
+        "en": 69,
+        "de": 1
+      },
+      "page_types": {
+        "unit": 7,
+        "directory": 24,
+        "service": 1,
+        "other": 31,
+        "person": 7
+      },
+      "focus_keyword_counts": {
+        "neurology": 24,
+        "oncology": 16,
+        "diabetes": 1
+      },
+      "unique_active_documents": 66,
+      "limits": {
+        "max_pages": 200,
+        "max_depth": 4,
+        "requests_per_second": 0.5
+      },
+      "event_reasons": {
+        "no_usable_text": 24,
+        "http_404": 3,
+        "unsupported_media_type": 2
+      }
+    },
+    {
+      "source_id": "unibe-vetsuisse",
+      "tier": "outside_focus",
+      "profile": "final",
+      "started_at": "2026-10-18T14:21:09.248575+00:00",
+      "completed_at": "2026-10-18T14:22:52.435981+00:00",
+      "duration_seconds": 103.189351,
+      "counts": {
+        "discovered": 50,
+        "page_slots": 50,
+        "fetched": 49,
+        "new_versions": 48,
+        "parsed": 48,
+        "outside_focus_pages": 39,
+        "failed": 1,
+        "unsupported": 1,
+        "network_requests": 51,
+        "retries": 0,
+        "remaining_discovered": 117
+      },
+      "languages": {
+        "de": 34,
+        "en": 8,
+        "fr": 6
+      },
+      "page_types": {
+        "other": 32,
+        "directory": 13,
+        "infrastructure": 3
+      },
+      "focus_keyword_counts": {
+        "medtech": 4,
+        "oncology": 3,
+        "neurology": 6,
+        "diabetes": 2
+      },
+      "unique_active_documents": 48,
+      "limits": {
+        "max_pages": 50,
+        "max_depth": 2,
+        "requests_per_second": 0.5
+      },
+      "event_reasons": {
+        "outside_scope": 1,
+        "no_usable_text": 1
+      }
+    }
+  ],
+  "limitations": [
+    "Remaining-discovered counts are queue entries, not unique unvisited pages.",
+    "Unsupported no_usable_text means fewer than 40 cleaned characters with this parser; it does not prove a blank or JS-only source.",
+    "Focus keyword tags are routing signals, not validated expertise.",
+    "All entity anchors remain uncertain and contain no claims.",
+    "No Italian documents were detected in this bounded corpus; language detection is not manually adjudicated.",
+    "No search indexes, LLM extraction, semantic support scoring, confidential inputs, paid inference or full air-gapped query demonstration are part of this run.",
+    "Cache-only replay deliberately blocked 880 uncached requests. An unrestricted repeat crawl can use the network.",
+    "Coverage and corpus artifacts use local temporary development storage; hosting transfer and production durability are separate tasks."
+  ],
+  "ci": {
+    "pull_request": 54,
+    "evidence_commit": "606a846",
+    "run_id": 39137529111,
+    "checks": {
+      "test": "pass",
+      "container": "pass",
+      "hf-space-image": "pass"
+    },
+    "test_passed": 121,
+    "test_skipped": 1,
+    "note": "PR integration tree contains additional team tests; local 87-pass measurement remains tied to 372b59c."
+  }
+}
