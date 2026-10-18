@@ -66,6 +66,7 @@ Open question for the organisers: whether the video file itself must be inside t
 
 ## 6. Submission checklist (tick only after verifying on the final state)
 
+- [ ] **Delete the temporary corpus release first** (it holds personal contact data): `gh release delete temp-corpus-delete-me --cleanup-tag --yes`, then `gh release list` must be empty (issue #73).
 - [ ] Repository is public; open it logged out.
 - [ ] No secrets in tracked files; CI green on `main`.
 - [ ] Final deployed URL answers `/healthz` and a real search from outside the network.
