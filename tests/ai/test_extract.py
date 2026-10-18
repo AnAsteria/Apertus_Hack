@@ -270,3 +270,14 @@ def test_run_corpus_writes_jsonl_for_routed_pages(tmp_path, monkeypatch):
     lines = [json.loads(l) for l in out.read_text().splitlines()]
     assert summary["pages"] == 1 and summary["statuses"] == {"extracted": 1}
     assert lines[0]["version_id"] == unit[0].version_id and lines[0]["claims"]
+
+
+def test_short_alias_inside_unlisted_subject_does_not_resolve():
+    texts = ["The Department for BioMedical Research (DBMR) awards prizes.",
+             "DBMR Poster prize for the Best Preclincal Project (CHF 2'000)."]
+    v, s = page(texts=texts)
+    out = out_with(entities=[{"name": "Department for BioMedical Research (DBMR)", "kind": "unit", "sentences": [1]}],
+                   attributes=[{"subject": "DBMR Poster prize for the Best Preclincal Project", "predicate": "project",
+                                "value": "CHF 2'000 prize", "sentences": [2]}])
+    r = extract_page(v, s, client=client_returning(out))
+    assert r.stats == {"unknown_subject": 1}

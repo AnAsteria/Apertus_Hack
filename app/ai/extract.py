@@ -93,6 +93,17 @@ def _sha32(*parts: str) -> str:
     return hashlib.sha256("\n".join(parts).encode("utf-8")).hexdigest()[:32]
 
 
+def _contains_name(a: str, b: str) -> bool:
+    """Partial name match for normalised names: one contains the other AND they are of
+    similar length, or the shorter is a whole segment of a "Name - Subtitle" title.
+    So "dbmr" does not match "dbmr poster prize for the best preclinical project"."""
+    short, long_ = sorted((a, b), key=len)
+    if len(short) < 4 or short not in long_:
+        return False
+    segments = {seg.strip() for seg in re.split(r"\s[-–|:]\s", long_)}
+    return len(short) / len(long_) >= 0.5 or short in segments
+
+
 def looks_like_injection(text: str) -> bool:
     return bool(_INJECTION_RE.search(text))
 
@@ -199,14 +210,14 @@ class _Builder:
 
     @staticmethod
     def _resolve(ref: str, local: dict[str, tuple[str, str]]) -> tuple[str, str] | None:
-        """Exact or alias match first; otherwise a unique containment match (>= 4 chars).
+        """Exact or alias match first; otherwise a unique `_contains_name` match.
         Ambiguous references resolve to nothing rather than to a guess."""
         r = _norm(ref)
         if r in local:
             return local[r]
         if len(r) < 4:
             return None
-        hits = {k for alias, k in local.items() if len(alias) >= 4 and (r in alias or alias in r)}
+        hits = {k for alias, k in local.items() if _contains_name(r, alias)}
         return hits.pop() if len(hits) == 1 else None
 
     def add_window(self, output: PageExtraction, window: list[Sentence], withheld: set[str]) -> None:
