@@ -35,6 +35,16 @@ Claim fields: `claim_id`, `subject_entity_id`, `predicate`, exactly one of `valu
 
 The example evidence sentence would be stored as “The group researches medical imaging.” Code returns that stored text; model quotation text is never trusted. IDs and quote validity do not prove support for a different claim such as a named person's current clinical service.
 
+**Implemented in `app/contracts.py` (contract owner, 2026-10-18; see DECISIONS D8):** `Document`, `Version`, `Passage`, `Sentence`, `Entity`, `Claim`, `EvidencePair`, `Identifier`, and the ID helpers `content_hash`, `make_document_id`, `make_version_id`, `make_passage_id`, `make_sentence_id`. Producers must use these helpers rather than re-implementing the recipes. Concrete choices beyond the text above:
+- `page_type`: `person|unit|project|infrastructure|service|directory|other`.
+- `predicate`: `name|role|affiliation|expertise|project|infrastructure|service|official_contact|leader|member_of|part_of|related_to`. Only `affiliation|leader|member_of|part_of|related_to` may take `object_entity_id`; the rest take `value`.
+- `content_hash`: 64 lowercase hex characters (SHA-256 of the cleaned main text, D3). `Version` rejects a `version_id` that does not match the recipe.
+- Sentences and passages must belong to their version; a sentence appears in at most one passage; `EvidencePair.sentence_id` must belong to `EvidencePair.version_id`.
+- `Entity.identifiers` items are `{scheme: profile_url|orcid|email|other, value}`; `alias_entity_ids` keeps merged-away IDs resolvable; `contact_claim_ids` must be a subset of `claim_ids`.
+- `qualified` claims require `qualification`. Only `supported` and `qualified` claims are surfaceable (`Claim.surfaceable`).
+- Entity/claim IDs: `ent_`/`clm_` + lowercase alphanumerics (UUID hex in production, short demo IDs in fixtures). Document/version/passage/sentence IDs are strictly the computed formats.
+- Cross-record integrity (claim subject exists, evidence sentence exists in storage) is checked by producers and the grounding step (T08), not by single-record validation.
+
 ## 4. Search request and fast path
 
 Proposed routes: `POST /api/v1/search`, `GET /api/v1/search/{request_id}/events`, `POST /api/v1/feedback`, protected `GET /api/v1/admin/coverage`, protected `POST /api/v1/admin/refresh`; `/healthz` is liveness and `/readyz` requires corpus/index readiness. No crawl on search. No LLM call awaited by initial response. The local embedding runtime must be loaded for dense retrieval without network fetches at query time.
