@@ -22,19 +22,19 @@ All structured output uses the gateway's JSON-schema constrained decoding, still
 
 ## Evaluation
 
-**Protocol (T14):** 36 gold queries in intent groups (professional, lay, synonym, misleading, partial, absent; EN/DE/FR/IT/RU). Expected entities are keyed by source URL and written from corpus evidence by the search owner. They were reviewed against the corpus and frozen (gold 0.2, hash `693d4695…`) before any evaluation-split run.
+**Protocol (T14):** 36 gold queries in intent groups (professional, lay, synonym, misleading, partial, absent; EN/DE/FR/IT/RU). Expected entities are keyed by source URL and written from corpus evidence by the search owner. They were reviewed against the corpus and frozen (gold 0.3, hash `340c4b0a…`) before any evaluation-split run.
 
 **Component comparison (T20):** the same frozen queries under five configurations:
 
-| Configuration | Recall@10 | Correct abstention | Median latency | Tokens/query |
+| Configuration (development split, 17 queries) | Recall@10 | Cross-lingual | Median latency | Apertus tokens/query |
 | --- | --- | --- | --- | --- |
-| BM25 only | T20_KEYWORD | | | 0 |
-| Dense only | T20_DENSE | | | 0 |
-| Hybrid (shipped fast path) | T20_HYBRID | | | 0 |
-| Hybrid + Apertus expansion | T20_EXPANSION | | | |
-| + Apertus assessment (category quality) | same ranking | | | |
+| BM25 only | 0.59 | 0.55 | 33 ms | 0 |
+| Dense only | 0.71 | 0.73 | 23 ms | 0 |
+| Hybrid (shipped fast path) | 0.59 | 0.55 | 42 ms | 0 |
+| **Hybrid + Apertus expansion** | **0.76** | **0.82** | 5.1 s (background) | 708 |
+| + Apertus assessment | same ranking; 88% of expected answers labelled direct/related | | 18.6 s (background) | 2,783 |
 
-T20_INTERPRETATION
+On the development split, **Apertus query expansion raised Recall@10 from 0.59 to 0.76**, which is above the best single retriever (dense, 0.71). All of the gain came from non-English queries that the fast path missed entirely: a German and a French query on cancer therapy resistance, and a German query on spatial single-cell analysis. Apertus added the English research terms used on the pages ("cancer therapy resistance", "drug resistance in oncology", "spatial single-cell analysis of tissue samples"). Assessment does not reorder results, so it gets no recall credit; it labelled 88% of the expected answers direct or related, and 20% of other returned cards direct (the gold lists only known answers, so not all of those are errors). The development split was also used for tuning: hybrid currently scores below dense alone, which is fed back to retrieval tuning (T09). **Final numbers come from the frozen evaluation split (gold 0.3) and are reported separately.** EVAL_SPLIT_RESULTS
 
 **Grounding at corpus scale:** of 5,130 extracted claims, 4,314 passed the support checks and 816 were rejected (469 by code rules, 347 by the judge, including 3 reversed relations). Every surfaced fact links to an exact stored sentence and URL.
 

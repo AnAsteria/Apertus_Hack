@@ -11,7 +11,7 @@ Refs #16. Owner: workstream B (Ruihan). Every number here was **observed**; noth
 | Concurrency | `APERTUS_MAX_CONCURRENCY=4` unless stated |
 | Corpus | Shared release `corpus.jsonl` (sha256 `e3d8a170…5d1c58`): 2,811 pages, 148,404 sentences, 41 inventory domains |
 | Embeddings | `intfloat/multilingual-e5-small` ONNX int8 (pinned in `app/search/models.json`), CPU |
-| Dates | 2026-10-18, 12:00–20:30 UTC |
+| Dates | 2026-10-18, 12:00–18:50 UTC |
 
 ## 1. Endpoint probes (T03/T05, fictional prompts)
 
@@ -59,11 +59,11 @@ Comparison on 11 real pages (dev crawl, one run each, hand-checked; `docs/extrac
 
 | Measure | Value |
 | --- | --- |
-| Entries / vectors | INDEX_ENTRIES |
+| Entries / vectors | 21,684 entries (19,141 passages + 2,543 profiles) / 22,179 vectors, 384 dimensions |
 | Entities indexed / with card fields | 2,543 / 674 (validated supported claims: 4,289) |
-| Build wall time (CPU, e5-small) | INDEX_BUILD_TIME |
-| Peak memory | INDEX_PEAK_MEM |
-| Index size on disk | INDEX_SIZE |
+| Build wall time (CPU, e5-small) | **1,129 s (18.8 min)** on the laptop CPU (8 cores, ~3.3 cores busy on average) |
+| Peak memory | **1.23 GB** resident |
+| Index size on disk | **234 MB** (one generation, including the 130 MB model) |
 
 ## 5. Online: fast path (no LLM)
 
@@ -71,11 +71,11 @@ Server-side compute per query, measured in-process on the full index with the fr
 
 | Mode | Median | p95 | n |
 | --- | --- | --- | --- |
-| keyword (BM25) | FAST_KEYWORD | | |
-| dense | FAST_DENSE | | |
-| hybrid | FAST_HYBRID | | |
+| keyword (BM25) | 33 ms | 202 ms | 17 |
+| dense | 23 ms | 41 ms | 17 |
+| hybrid | 42 ms | 137 ms | 17 |
 
-Target "< 3 s to first cards": SEARCH_TARGET_STATEMENT
+Target "< 3 s to first cards": **met with a large margin** for server compute (p95 ≤ 0.2 s in every mode). Client latency to the live Space, including network, remains to be measured by T14 once the full index is deployed.
 
 ## 6. Online: optional Apertus enrichment
 
@@ -85,10 +85,10 @@ Target "< 3 s to first cards": SEARCH_TARGET_STATEMENT
 | Interpretation (T18) | 8B | 1.4–13.6 s | ~400 in / ~200 out | 6 live calls |
 | Assessment of 8 candidates (T19) | 8B | **5.7–6.3 s** total (2 batches of 4, 2.5–3.6 s each) | ~1.3k in / ~1.0k out | 3 runs |
 | Assessment of 8 candidates (T19) | 70B | 18.1 s | ~1.35k in / ~1.1k out | 1 valid run |
-| Expansion fan-out in search (ablation) | 70B interp. | ENRICH_EXPANSION | ENRICH_EXPANSION_TOK | |
-| Expansion + assessment (ablation) | 70B + 8B | ENRICH_FULL | ENRICH_FULL_TOK | |
+| Interpretation + expansion fan-out in search (T20 ablation) | 70B | median **5.1 s**, p95 7.5 s per query | 708 tokens/query | 17 |
+| Expansion (cached) + assessment of top 10 (T20 ablation) | 8B | median **18.6 s**, p95 23.8 s per query (2–3 sequential batches; median batch 9.3 s, max 12.0 s) | 2,783 tokens/query incl. expansion | 17 |
 
-Target "complete enrichment < 15 s": met by 8B assessment alone; **not guaranteed** for interpretation + assessment, because 70B interpretation latency on the shared gateway ranged from 1.5 s to 52 s. The first cards never wait for enrichment (T18/T19 run over SSE).
+Target "complete enrichment < 15 s": **not met on the full corpus.** With real cards (longer evidence), 8B assessment batches took a median 9.3 s instead of 2.5–3.6 s on the earlier 8-candidate sample, so assessing the top 10 alone took a median 18.6 s. Interpretation adds 1.5–52 s (shared-gateway variance). Mitigations: assess fewer candidates, run batches concurrently, or trim evidence per candidate. The first cards never wait for enrichment (T18/T19 run over SSE), so this delay affects only the suggestions panel and assessment labels.
 
 ## Not measured (and why)
 
