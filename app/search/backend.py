@@ -32,7 +32,7 @@ def freshness(evidence, now=None):
 
 
 class HybridBackend:
-    def __init__(self, directory, *, encoder=None, min_dense=None, abstain_dense=None, mode=None):
+    def __init__(self, directory, *, encoder=None, min_dense=None, abstain_dense=None, keyword_weight=None, mode=None):
         mode = mode or os.environ.get('BERNMATCH_SEARCH_MODE','hybrid')
         min_dense = float(os.environ.get('BERNMATCH_MIN_DENSE','.80')) if min_dense is None else min_dense
         # Query-level abstention: E5 similarities are compressed (~.80-.91), so a
@@ -42,6 +42,11 @@ class HybridBackend:
         if not 0 <= min_dense <= 1 or not 0 <= abstain_dense <= 1:
             raise ValueError('invalid_dense_threshold')
         self.abstain_dense = abstain_dense
+        # Weight of the BM25 channel relative to dense in RRF (dense = 1). Chosen on the
+        # development split only (see app/search/README.md).
+        self.keyword_weight = float(os.environ.get('BERNMATCH_KEYWORD_WEIGHT','.25')) if keyword_weight is None else keyword_weight
+        if self.keyword_weight < 0:
+            raise ValueError('invalid_keyword_weight')
         if mode not in ('hybrid','dense','keyword'):
             raise ValueError('invalid_retrieval_mode')
         self.store = IndexStore(directory)
@@ -113,7 +118,7 @@ class HybridBackend:
             limitations.append('No stored passage was similar enough to the request; support was not found in the indexed corpus.')
             return self._response(req,[],limitations,enrichment,start,timing,dense_ok=dense_ok,best_dense=best_dense,abstain=self.abstain_dense)
         t = time.perf_counter()
-        fused = reciprocal_rank_fusion([keyword,dense])
+        fused = reciprocal_rank_fusion([keyword,dense],weights=[self.keyword_weight,1.])
         demoted = {eid for eid in fused if non_entity_page(self.entities[eid]['entity']['name'],
                    self.entities[eid]['entity']['canonical_profiles'])}
         for eid in demoted:

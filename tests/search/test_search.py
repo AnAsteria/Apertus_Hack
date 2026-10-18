@@ -162,6 +162,16 @@ def test_cards_carry_traceable_retrieval_data(built):
     assert r['evidence_language']=='en' and '"laser"' in card.reason
 
 
+def test_weighted_fusion_lets_dense_lead_without_dropping_keyword_hits():
+    keyword={'kw_only':(9.,0),'both':(5.,1)}
+    dense={'dense_only':(.9,2),'both':(.85,3)}
+    plain=reciprocal_rank_fusion([keyword,dense])
+    weighted=reciprocal_rank_fusion([keyword,dense],weights=[.25,1.])
+    assert plain['kw_only']==plain['dense_only']                 # equal weights: a tie
+    assert weighted['dense_only']>weighted['kw_only']>0          # dense leads, keyword hit kept
+    assert max(weighted,key=weighted.get)=='both'
+
+
 def test_stemming_compounds_and_multilingual_terms():
     assert set(analyze('Krebserkrankungen','de')) & set(query_terms('Krebs'))
     assert analyze('cancers','en')==analyze('cancer','en')
