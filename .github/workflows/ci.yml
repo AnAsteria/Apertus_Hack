@@ -14,4 +14,7 @@ jobs:
       - run: pip install -r requirements.lock pytest httpx
       - run: python -m pytest -q
       - name: Tracked files contain no secrets
-        run: "! git ls-files | grep -E '(^|/)\.env($|\.)'"
+        run: |
+          if git ls-files | grep -E '(^|/)\.env($|\.)'; then
+            echo "tracked .env file found"; exit 1
+          fi
