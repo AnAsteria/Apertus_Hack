@@ -15,3 +15,6 @@ app/REVISION
 
 # Evaluation run records hold search-result excerpts (names from public pages): keep local
 runs/
+
+# T26: built submission ZIP and manifest
+dist/
