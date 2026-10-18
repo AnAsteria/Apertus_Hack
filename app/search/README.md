@@ -122,3 +122,7 @@ At build time, a person whose own page header says "Prof. em." / "Emeritus" (the
 ## Acronym expansion (EXTRA A4, #122, 2026-10-18): measured, no gain, off by default
 
 `app/search/acronyms.py` mines "long form (ACRONYM)" pairs from the stored sentences: 253 pairs seen at least twice, with initials matching (e.g. CGM, CNS, FND, NGS, IBU). It adds the other form to the keyword channel only, and is enabled with `BERNMATCH_ACRONYMS=1`; the table is cached next to the served index, and mining takes about 8 s once. Development split: 0.824 with and without. On five acronym probes the right entity was already first without expansion, because pages contain both forms and the dense model handles the rest. **Off by default.**
+
+## Title boost (EXTRA A5, #123): measured, no gain, off by default
+
+At query time, `BERNMATCH_TITLE_BOOST` multiplies the fused score of an entity whose own name contains query words by (1 + boost × min(matches, 3)). Development split: 0.824 at boost 0, 0.1, 0.25 and 0.5, with the same misses (intent I03 only). **Off by default.** Listing-page demotion (A7, #125) was also scanned: 1.0 → 0.765, 0.5 (current) → 0.824, 0.25 and 0.1 → 0.824, so it is unchanged.

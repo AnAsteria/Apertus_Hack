@@ -132,6 +132,13 @@ class HybridBackend:
                    self.entities[eid]['entity']['canonical_profiles'])}
         for eid in demoted:
             fused[eid] *= DEMOTION
+        title_boost = float(os.environ.get('BERNMATCH_TITLE_BOOST','0'))
+        if title_boost > 0:
+            # EXTRA A5: entities whose own name contains query words get a relevance bonus.
+            for eid in fused:
+                hits = matched_words(req.query,[self.entities[eid]['entity']['name']],'en')
+                if hits:
+                    fused[eid] *= 1+title_boost*min(len(hits),3)
         type_hint = preferred_type(req.query) if req.entity_type is None and os.environ.get('BERNMATCH_TYPE_HINT','0')=='1' else None
         if type_hint:
             # EXTRA A3: soft preference only; nothing is filtered out.
