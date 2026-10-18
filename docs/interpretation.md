@@ -36,7 +36,7 @@ Model: `BERNMATCH_INTERPRET_MODEL`, default `APERTUS_QUALITY_MODEL` (70B). Decod
 
    404 if nothing is registered; 409 on revision mismatch.
 
-Initial cards never depend on this: every failure is an SSE error event only.
+Initial cards never depend on this: every failure is an SSE error event only. T19 extends the same stream with batched `assessment` events after `interpretation`; see `docs/assessment.md` for the full event order.
 
 ## Integration (needs Dimitry)
 

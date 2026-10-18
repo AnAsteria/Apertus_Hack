@@ -120,8 +120,10 @@ def api():
     app = FastAPI()
     app.include_router(enrichment.router)
     enrichment.registry.clear()
+    enrichment.set_candidate_provider(lambda req: [])  # no candidates: assessment is skipped
     yield TestClient(app)
     enrichment.set_interpreter(None)
+    enrichment.set_candidate_provider(None)
     enrichment.registry.clear()
 
 
@@ -144,8 +146,9 @@ def test_stream_progress_interpretation_complete(api):
     s = api.get(r.json()["events_url"])
     assert s.headers["content-type"].startswith("text/event-stream")
     ev = events(s)
-    assert [e.event_type for e in ev] == ["progress", "interpretation", "complete"]
-    assert [e.event_sequence for e in ev] == [0, 1, 2] and all(e.revision == 1 for e in ev)
+    assert [e.event_type for e in ev] == ["progress", "interpretation", "progress", "complete"]
+    assert ev[2].payload == {"stage": "assessment", "state": "skipped", "reason": "no_candidates"}
+    assert [e.event_sequence for e in ev] == [0, 1, 2, 3] and all(e.revision == 1 for e in ev)
     needs = [Need(**n) for n in ev[1].payload["needs"]]
     assert needs[0].origin == "user" and ev[1].payload["decoding_mode"] == "backend_constrained"
 
@@ -172,7 +175,9 @@ def test_timeout_and_unavailable_are_error_events(api, monkeypatch):
     enrichment.set_interpreter(lambda req: time.sleep(0.5))
     api.post("/api/v1/search/req_t/enrichment", json=BODY)
     ev = events(api.get("/api/v1/search/req_t/events?revision=1"))
-    assert ev[-1].payload["code"] == "ENRICHMENT_TIMEOUT" and ev[-1].payload["retryable"] is True
+    err = next(e for e in ev if e.event_type == "error")
+    assert err.payload["code"] == "ENRICHMENT_TIMEOUT" and err.payload["retryable"] is True
+    assert err.payload["stage"] == "interpretation" and ev[-1].event_type == "complete"
 
     def down(req):
         raise InferenceError("UNAVAILABLE", "x", True)
@@ -180,7 +185,7 @@ def test_timeout_and_unavailable_are_error_events(api, monkeypatch):
     enrichment.set_interpreter(down)
     api.post("/api/v1/search/req_u/enrichment", json=BODY)
     ev = events(api.get("/api/v1/search/req_u/events?revision=1"))
-    assert ev[-1].payload["code"] == "ENRICHMENT_UNAVAILABLE"
+    assert next(e for e in ev if e.event_type == "error").payload["code"] == "ENRICHMENT_UNAVAILABLE"
 
 
 def test_unexpected_failure_does_not_leak_details(api):
@@ -190,7 +195,8 @@ def test_unexpected_failure_does_not_leak_details(api):
     enrichment.set_interpreter(boom)
     api.post("/api/v1/search/req_b/enrichment", json=BODY)
     s = api.get("/api/v1/search/req_b/events?revision=1")
-    assert "Zebra" not in s.text and events(s)[-1].payload["code"] == "ENRICHMENT_FAILED"
+    assert "Zebra" not in s.text
+    assert next(e for e in events(s) if e.event_type == "error").payload["code"] == "ENRICHMENT_FAILED"
 
 
 def test_request_validation(api):

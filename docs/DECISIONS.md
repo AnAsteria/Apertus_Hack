@@ -1,14 +1,14 @@
 # Decisions log (T01)
 
-**Status: PROPOSED by Dimitry on 2026-10-18. Partly approved: Ruihan (contract owner) approved D1 and D3-D7 on 2026-10-18; Dimitry acknowledged D8. Maxim has not yet approved the identifier recipes, limits and merge policy below.** Nothing below is ratified until each row is marked APPROVED with a name and date. Where `CONTRACTS.md` says "fixed in T01", this file supplies the proposed value so that independent work does not invent incompatible recipes.
+**Status (2026-10-18, T01 close-out): ACCEPTED IN PRACTICE, with one stated gap.** Roles and decisions below are in force because the team has been working under them: grants were recorded on the issues and acknowledged by the workers, and shared files, contracts and merge policy were used as written. Ruihan (contract owner) explicitly approved D1 and D3-D7 and acknowledged D9; Dimitry acknowledged D8. **Maxim never posted an explicit approval of this file**; his accepted work follows it (D3 cleaned-text hashes, D8 identifier helpers, the 365-day freshness rule, the pull-request merge policy). The removal route, operator contact and retention periods are NOT settled: they stay open under T12 (#12) and `docs/data-policy.md`.
 
-## Roles (to confirm)
+## Roles
 
 | Role | Proposed holder | Approval |
 | --- | --- | --- |
-| Dispatcher / integration owner | Dimitry | pending |
-| Contract owner (`docs/CONTRACTS.md`, shared schemas) | Ruihan | pending |
-| Data/search lead | Maxim | pending |
+| Dispatcher / integration owner | Dimitry | accepted: acting since 2026-10-18; every grant recorded on its issue |
+| Contract owner (`docs/CONTRACTS.md`, shared schemas) | Ruihan | accepted: acting; approved D1, D3-D7, acknowledged D9 (PRs #47, #64) |
+| Data/search lead | Maxim | accepted in practice: acknowledged grants on #6 and #9, followed D3/D8/365-day freshness; no explicit approval posted |
 
 Deviation recorded: Dimitry instructed T01 drafting and T04 scaffolding to start on 2026-10-18 before Maxim and Ruihan approved this file. T04 work is therefore at risk of rework if a decision below changes. The T04 PR must not merge until the rows it depends on are approved.
 
@@ -66,5 +66,5 @@ Branch `codex/issue-<n>-<slug>`, pull request referencing `Refs #n`, green CI, d
 - **D6 (R1, team decision; APPROVED by Ruihan, 2026-10-18):** hosting on a free Hugging Face Space (Docker) with the organiser Keera endpoint; no paid resources.
 - **D7 (R1, proposed by Maxim; APPROVED by Ruihan, 2026-10-18):** multilingual scope extension — T27 Core query languages EN/DE/FR/IT/RU; T28 Stretch localized output.
 - **D8 (contract owner Ruihan, 2026-10-18; acknowledged by Dimitry as integration owner, 2026-10-18; Maxim's confirmation pending):** CONTRACTS section 3 corpus models and identifier helpers added to `app/contracts.py`, with the enum, predicate and integrity choices listed under section 3 of `CONTRACTS.md`. Additive: no existing model changes. Needs Maxim's (T06) and Dimitry's (integration) acknowledgement.
-- **D9 (T11, Dimitry, 2026-10-18; deviation from D6):** creating a Docker Space on free CPU Basic now requires a paid Hugging Face plan, so the Space runs on paid **CPU Upgrade** hardware (8 vCPU, 32 GB; $0.03/hour per Hugging Face's docs, about $0.70 until the deadline) billed to Dimitry's prepaid balance. Apertus still runs on the organiser Keera endpoint. Needs Maxim's and Ruihan's acknowledgement.
+- **D9 (T11, Dimitry, 2026-10-18; deviation from D6):** creating a Docker Space on free CPU Basic now requires a paid Hugging Face plan, so the Space runs on paid **CPU Upgrade** hardware (8 vCPU, 32 GB; $0.03/hour per Hugging Face's docs, about $0.70 until the deadline) billed to Dimitry's prepaid balance. Apertus still runs on the organiser Keera endpoint. Acknowledged by Ruihan (2026-10-18); Maxim's acknowledgement pending.
 - **D10 (T07, Ruihan, 2026-10-18, proposed; deviation from architecture step 4):** use `apertus-v1-5-70b` for offline T07 extraction instead of 8B, keeping 8B as fallback. Measured on 11 real T06 pages: 70B ~97% hand-checked claim precision and 24 persons found, vs 8B ~48% and 0 persons; 70B is ~7× slower (62 s vs 9 s), but extraction is offline and cached, so query latency is unaffected. Evidence: `docs/extraction.md`. Needs Maxim's and Dimitry's acknowledgement.

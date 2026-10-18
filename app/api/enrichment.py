@@ -6,7 +6,9 @@ Flow, after the first cards from POST /api/v1/search have rendered:
    (same revision). The context is held in memory only for this session and
    expires 60 minutes after last use (DECISIONS); it is never written to disk or logs.
 2. GET  /api/v1/search/{request_id}/events?revision=N streams SseEvent records:
-   progress -> interpretation -> complete, or progress -> error.
+   progress -> interpretation -> progress -> assessment* -> complete.
+   A failed stage emits an `error` event (payload.stage says which) and the
+   stream moves on; `complete` closes it. STALE_REVISION ends it immediately.
 
 A newer revision for the same request makes older streams stop with a
 STALE_REVISION error, so late results never overwrite a newer search. Any
@@ -19,6 +21,7 @@ from __future__ import annotations
 
 import os
 import re
+import queue
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -28,10 +31,12 @@ from typing import Callable, Iterator
 from fastapi import APIRouter, Query
 from fastapi.responses import JSONResponse, StreamingResponse
 
+from ..ai.assess import assess
 from ..ai.client import InferenceError
+from ..ai.config import InferenceConfig
 from ..ai.interpret import Interpretation, interpret
-from ..contracts import (MAX_CONTEXT_CHARS, MAX_NEEDS, MAX_QUERY_CHARS, SCHEMA_VERSION, SearchRequest, SseEvent,
-                         error)
+from ..contracts import (MAX_CONTEXT_CHARS, MAX_NEEDS, MAX_QUERY_CHARS, SCHEMA_VERSION, Result, SearchRequest,
+                         SseEvent, error)
 
 router = APIRouter()
 
@@ -41,21 +46,52 @@ INTERPRET_TIMEOUT_S = float(os.environ.get("BERNMATCH_INTERPRET_TIMEOUT_S", "60"
 # 70B interpretation took ~47-52 s on the gateway on 2026-10-18 (vs ~5 s earlier): measure in T16.
 REQUEST_ID_RE = re.compile(r"^req_[A-Za-z0-9]{1,64}$")
 
+ASSESS_TIMEOUT_S = float(os.environ.get("BERNMATCH_ASSESS_TIMEOUT_S", "45"))
+
 Interpreter = Callable[[SearchRequest], Interpretation]
+CandidateProvider = Callable[[SearchRequest], list[Result]]
+Assessor = Callable  # (query, needs, candidates, on_result) -> (payloads, stats)
 
 
 def _default_interpreter(req: SearchRequest) -> Interpretation:
     return interpret(req.query, req.company_context, req.needs)
 
 
+def _default_candidates(req: SearchRequest) -> list[Result]:
+    """Re-run the same search to get cards whose evidence text was resolved by code.
+    Client-sent card text is never trusted for assessment."""
+    from .search import get_backend, index_ready, FixtureBackend
+
+    backend = get_backend()
+    if backend is None or (not isinstance(backend, FixtureBackend) and not index_ready()):
+        return []
+    return list(backend.search(req).results)
+
+
+def _default_assessor(query, needs, candidates, on_result):
+    return assess(query, needs, candidates, on_result=on_result)
+
+
 _interpreter: Interpreter = _default_interpreter
-_pool = ThreadPoolExecutor(max_workers=4, thread_name_prefix="enrich")
+_candidates: CandidateProvider = _default_candidates
+_assessor: Assessor = _default_assessor
+_pool = ThreadPoolExecutor(max_workers=8, thread_name_prefix="enrich")
 
 
 def set_interpreter(fn: Interpreter | None) -> None:
     """Tests and integration may replace the interpreter."""
     global _interpreter
     _interpreter = fn or _default_interpreter
+
+
+def set_candidate_provider(fn: CandidateProvider | None) -> None:
+    global _candidates
+    _candidates = fn or _default_candidates
+
+
+def set_assessor(fn: Assessor | None) -> None:
+    global _assessor
+    _assessor = fn or _default_assessor
 
 
 class Registry:
@@ -140,31 +176,92 @@ def enrichment_events(request_id: str, revision: int = Query(ge=1)):
 def _stream(request_id: str, req: SearchRequest) -> Iterator[str]:
     rev, seq = req.revision, 0
     started = time.monotonic()
-    yield _sse(request_id, rev, seq, "progress", {"stage": "interpretation", "state": "started"})
-    seq += 1
+    timings: dict = {}
+
+    def event(event_type: str, payload: dict) -> str:
+        nonlocal seq
+        out = _sse(request_id, rev, seq, event_type, payload)
+        seq += 1
+        return out
+
+    def stale() -> bool:
+        return registry.latest_revision(request_id) != rev
+
+    # Stage 1: interpretation.
+    yield event("progress", {"stage": "interpretation", "state": "started"})
+    t0 = time.monotonic()
+    interp = None
     future = _pool.submit(_interpreter, req)
     try:
-        result = future.result(timeout=min(INTERPRET_TIMEOUT_S, JOB_LIFETIME_S))
+        interp = future.result(timeout=min(INTERPRET_TIMEOUT_S, JOB_LIFETIME_S))
     except FutureTimeout:
         future.cancel()
-        yield _sse(request_id, rev, seq, "error",
-                   _error_payload("ENRICHMENT_TIMEOUT", "Interpretation took too long; initial results are unaffected.", True))
-        return
+        yield event("error", _error_payload("ENRICHMENT_TIMEOUT", "Interpretation took too long; initial results are unaffected.", True) | {"stage": "interpretation"})
     except InferenceError as e:
-        yield _sse(request_id, rev, seq, "error",
-                   _error_payload("ENRICHMENT_UNAVAILABLE", "Interpretation is unavailable; initial results are unaffected.",
-                                  e.retryable))
-        return
+        yield event("error", _error_payload("ENRICHMENT_UNAVAILABLE", "Interpretation is unavailable; initial results are unaffected.", e.retryable) | {"stage": "interpretation"})
     except Exception:  # never leak details (they may contain company text)
-        yield _sse(request_id, rev, seq, "error",
-                   _error_payload("ENRICHMENT_FAILED", "Interpretation failed; initial results are unaffected.", False))
+        yield event("error", _error_payload("ENRICHMENT_FAILED", "Interpretation failed; initial results are unaffected.", False) | {"stage": "interpretation"})
+    timings["interpretation_ms"] = int((time.monotonic() - t0) * 1000)
+    if stale():
+        yield event("error", _error_payload("STALE_REVISION", "A newer revision replaced this search.", False))
         return
-    if registry.latest_revision(request_id) != rev:
-        yield _sse(request_id, rev, seq, "error",
-                   _error_payload("STALE_REVISION", "A newer revision replaced this search.", False))
-        return
-    payload = result.payload()
-    payload["decoding_mode"] = result.decoding_mode
-    yield _sse(request_id, rev, seq, "interpretation", payload)
-    seq += 1
-    yield _sse(request_id, rev, seq, "complete", {"elapsed_ms": int((time.monotonic() - started) * 1000)})
+    if interp is not None:
+        payload = interp.payload()
+        payload["decoding_mode"] = interp.decoding_mode
+        yield event("interpretation", payload)
+
+    # Stage 2: batched assessment of the current candidates.
+    try:
+        candidates = _candidates(req)
+    except Exception:
+        candidates = []
+    needs = interp.needs if interp is not None else list(req.needs)
+    if not candidates:
+        yield event("progress", {"stage": "assessment", "state": "skipped", "reason": "no_candidates"})
+    elif _assessor is _default_assessor and not InferenceConfig.from_env().enabled:
+        # Fixture mode / no key: say so instead of emitting a model error.
+        yield event("progress", {"stage": "assessment", "state": "skipped", "reason": "inference_disabled"})
+    else:
+        yield event("progress", {"stage": "assessment", "state": "started", "candidates": min(len(candidates), 8)})
+        t1 = time.monotonic()
+        ready: "queue.Queue" = queue.Queue()
+        future = _pool.submit(_assessor, req.query, needs, candidates, ready.put)
+        deadline = t1 + min(ASSESS_TIMEOUT_S, JOB_LIFETIME_S)
+        stats, assessed = None, 0
+        while True:
+            try:
+                item = ready.get(timeout=0.05)
+            except queue.Empty:
+                item = None
+            if item is not None:
+                if stale():
+                    yield event("error", _error_payload("STALE_REVISION", "A newer revision replaced this search.", False))
+                    return
+                yield event("assessment", item.model_dump())
+                assessed += 1
+                continue
+            if future.done():
+                while not ready.empty():  # drain anything published just before completion
+                    if stale():
+                        yield event("error", _error_payload("STALE_REVISION", "A newer revision replaced this search.", False))
+                        return
+                    yield event("assessment", ready.get().model_dump())
+                    assessed += 1
+                try:
+                    _, stats = future.result()
+                except InferenceError as e:
+                    yield event("error", _error_payload("ASSESSMENT_UNAVAILABLE", "Assessment is unavailable; initial results are unaffected.", e.retryable) | {"stage": "assessment"})
+                except Exception:
+                    yield event("error", _error_payload("ASSESSMENT_FAILED", "Assessment failed; initial results are unaffected.", False) | {"stage": "assessment"})
+                break
+            if time.monotonic() > deadline:
+                future.cancel()
+                yield event("error", _error_payload("ASSESSMENT_TIMEOUT", "Assessment took too long; initial results are unaffected.", True) | {"stage": "assessment"})
+                break
+        timings["assessment_ms"] = int((time.monotonic() - t1) * 1000)
+        timings["assessed"] = assessed
+        if stats is not None:
+            timings.update(batches=len(stats.latency_s), prompt_tokens=stats.usage.prompt_tokens,
+                           completion_tokens=stats.usage.completion_tokens, decoding_modes=stats.decoding_modes,
+                           corrections=stats.corrections)
+    yield event("complete", {"elapsed_ms": int((time.monotonic() - started) * 1000)} | timings)

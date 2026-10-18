@@ -32,8 +32,10 @@ function renderEvidence(ev) {
 
 function renderFields(fields) {
   var dl = el("dl", "fields");
-  var labels = { affiliation: "Affiliation", expertise: "Expertise", contact: "Contact",
-                 projects: "Projects", infrastructure: "Infrastructure / services" };
+  var labels = { role: "Role", affiliation: "Affiliation", part_of: "Part of", led_by: "Led by", leads: "Leads",
+                 members: "Members", includes: "Includes", expertise: "Expertise", projects: "Projects",
+                 infrastructure: "Infrastructure", services: "Services",
+                 official_contact: "Official contact (role only, not expertise)", contact: "Official contact (role only, not expertise)" };
   Object.keys(labels).forEach(function (k) {
     var vals = (fields && fields[k]) || [];
     dl.appendChild(el("dt", null, labels[k]));
@@ -46,6 +48,7 @@ function renderFields(fields) {
 
 function renderCard(r) {
   var card = el("article", "card");
+  card.dataset.entity = r.entity_id;
   var head = el("h3", null, r.rank + ". " + r.display_name);
   head.appendChild(el("span", "badge", r.entity_type));
   head.appendChild(el("span", "badge fresh-" + r.freshness, r.freshness));
@@ -97,7 +100,7 @@ function renderNeeds(payload) {
   var box = document.getElementById("needs");
   clearNode(box);
   box.hidden = false;
-  if (payload.synthetic) box.appendChild(el("p", "synthetic", "SYNTHETIC fixture interpretation: not a real model output."));
+  if (payload.synthetic || payload.decoding_mode === "synthetic") box.appendChild(el("p", "synthetic", "SYNTHETIC fixture interpretation: not a real model output."));
   box.appendChild(el("h3", null, "Your needs (editable)"));
   var list = el("ul", "needlist");
   userNeeds.forEach(function (n, i) {
@@ -132,14 +135,11 @@ function renderNeeds(payload) {
   if (payload.expanded_queries && payload.expanded_queries.length) {
     box.appendChild(el("h3", null, "Alternative wording (read-only; added to recall, never to requirements)"));
     var chips = el("p");
-    payload.expanded_queries.forEach(function (q) { chips.appendChild(el("span", "badge", q.language + ": " + q.text)); });
+    payload.expanded_queries.forEach(function (q) { var chip = el("span", "badge", q.language + ": " + q.text); chip.title = "expands: " + q.source; chips.appendChild(chip); });
     box.appendChild(chips);
   }
   if (payload.clarification) {
-    box.appendChild(el("p", "reason", payload.clarification.question));
-    payload.clarification.options.forEach(function (o) {
-      box.appendChild(button(o, function () { addNeed(o, payload); }));
-    });
+    box.appendChild(el("p", "reason", "To focus the search: " + payload.clarification));
   }
   var add = el("input"); add.type = "text"; add.placeholder = "Add a need"; add.maxLength = 300; add.id = "newneed";
   box.appendChild(add);
@@ -155,32 +155,83 @@ function addNeed(text, payload) {
   renderNeeds(payload);
 }
 
-function openEvents(requestId, myRevision) {
+var CATEGORY_LABELS = { direct_match: "Direct match", related_capability: "Related capability",
+                        insufficient_evidence: "Insufficient evidence" };
+var SUPPORT_LABELS = { supported: "supported", partial: "partly supported", none: "not supported" };
+
+function renderAssessment(a) {
+  var card = document.querySelector('.card[data-entity="' + String(a.entity_id).replace(/"/g, "") + '"]');
+  if (!card) return; // assessment for a card that is not on screen: ignore
+  var old = card.querySelector(".assessment");
+  if (old) card.removeChild(old);
+  var box = el("div", "assessment");
+  var head = el("p", "meta", "AI-generated assessment (Apertus), not source text");
+  box.appendChild(head);
+  var cat = el("p", "reason");
+  cat.appendChild(el("span", "badge cat-" + a.category, CATEGORY_LABELS[a.category] || a.category));
+  cat.appendChild(document.createTextNode(" " + a.explanation));
+  box.appendChild(cat);
+  if (a.need_coverage && a.need_coverage.length) {
+    var ul = el("ul", "needlist");
+    a.need_coverage.forEach(function (c) {
+      var li = el("li", null, c.need_id + ": " + (SUPPORT_LABELS[c.support] || c.support));
+      (c.evidence || []).forEach(function (e) {
+        if (!e.version_id || !e.sentence_id) return;
+        var link = el("a", null, " [cited sentence]");
+        link.href = "/api/v1/evidence/" + encodeURIComponent(e.version_id) + "/" + encodeURIComponent(e.sentence_id);
+        link.target = "_blank"; link.rel = "noopener noreferrer";
+        li.appendChild(link);
+      });
+      ul.appendChild(li);
+    });
+    box.appendChild(ul);
+  }
+  if (a.unresolved_questions && a.unresolved_questions.length) {
+    box.appendChild(el("p", "meta", "Open questions: " + a.unresolved_questions.join(" | ")));
+  }
+  card.appendChild(box);
+}
+
+function startEnrichment(body, requestId, myRevision) {
   closeEvents();
   needNote("Interpreting your request… (results above are already usable)");
-  var es = new EventSource("/api/v1/search/" + encodeURIComponent(requestId) + "/events");
-  eventSource = es;
-  function parse(e) {
-    var d = JSON.parse(e.data);
-    return d.revision === revision && myRevision === revision ? d : null; // discard stale events
-  }
-  es.addEventListener("interpretation", function (e) {
-    var d = parse(e);
-    if (!d) return;
-    // Keep edits the analyst already made on a re-run; only first interpretation seeds the lists.
-    if (!userNeeds.length) {
-      userNeeds = d.payload.needs.filter(function (n) { return n.origin === "user"; });
+  fetch("/api/v1/search/" + encodeURIComponent(requestId) + "/enrichment", {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body)
+  }).then(function (r) { return r.ok ? r.json() : null; }).then(function (start) {
+    if (myRevision !== revision) return;
+    if (!start) { needNote("AI interpretation is unavailable. The results above are unaffected."); return; }
+    var es = new EventSource(start.events_url);
+    eventSource = es;
+    function parse(e) {
+      var d = JSON.parse(e.data);
+      return d.revision === revision && myRevision === revision ? d : null; // discard stale events
     }
-    suggestedNeeds = d.payload.needs.filter(function (n) { return n.origin === "suggested"; });
-    renderNeeds(d.payload);
-  });
-  es.addEventListener("complete", function () { closeEvents(); });
-  es.addEventListener("error", function (e) {
-    if (e.data) {
+    es.addEventListener("interpretation", function (e) {
       var d = parse(e);
-      if (d) needNote("AI interpretation is unavailable. The results above are unaffected.");
-    }
-    closeEvents(); // no replay: the analyst can search again
+      if (!d) return;
+      var q = document.getElementById("query").value.trim();
+      // Keep edits the analyst already made; the first interpretation seeds the lists.
+      if (!userNeeds.length) {
+        userNeeds = d.payload.needs.filter(function (n) { return n.origin === "user"; });
+        if (!userNeeds.length && q) userNeeds = [{ schema_version: "1", need_id: "u0", text: q, origin: "user", kind: "problem" }];
+      }
+      suggestedNeeds = d.payload.needs.filter(function (n) { return n.origin === "suggested"; });
+      renderNeeds(d.payload);
+    });
+    es.addEventListener("assessment", function (e) {
+      var d = parse(e);
+      if (d) renderAssessment(d.payload);
+    });
+    es.addEventListener("complete", function () { closeEvents(); });
+    es.addEventListener("error", function (e) {
+      if (e.data) {
+        var d = parse(e);
+        if (d && d.payload.code !== "STALE_REVISION") needNote("AI interpretation is unavailable. The results above are unaffected.");
+      }
+      closeEvents(); // no replay: the analyst can search again
+    });
+  }).catch(function () {
+    if (myRevision === revision) needNote("AI interpretation is unavailable. The results above are unaffected.");
   });
 }
 
@@ -194,12 +245,13 @@ function runSearch(needs) {
   closeEvents();
   setStatus("Searching…", "loading");
   clearResults();
+  var body = { schema_version: "1", query: query, revision: myRevision,
+               entity_type: type || null, company_context: null, needs: needs || [],
+               enrichment_requested: interpret };
   fetch("/api/v1/search", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ schema_version: "1", query: query, revision: myRevision,
-                           entity_type: type || null, company_context: null, needs: needs || [],
-                           enrichment_requested: interpret })
+    body: JSON.stringify(body)
   }).then(function (r) {
     return r.json().then(function (body) { return { ok: r.ok, status: r.status, body: body }; });
   }).then(function (res) {
@@ -216,7 +268,7 @@ function runSearch(needs) {
     var lim = document.getElementById("limitations");
     clearNode(lim);
     b.limitations.forEach(function (l) { lim.appendChild(el("li", null, l)); });
-    if (b.enrichment_state === "pending") openEvents(b.request_id, myRevision);
+    if (b.enrichment_state === "pending") startEnrichment(body, b.request_id, myRevision);
     else if (b.enrichment_state === "unavailable") needNote("AI interpretation is not available right now. The results above are unaffected.");
     else document.getElementById("needs").hidden = true;
   }).catch(function () {
