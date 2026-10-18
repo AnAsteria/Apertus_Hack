@@ -1,6 +1,6 @@
 # Structured extraction (T07) — DRAFT
 
-Refs #7. Owner: workstream B (Ruihan). Status: **draft implemented and unit-tested; live-checked only on two fictional pages.** Not yet run on real T06 pages. Branch is stacked on the corpus-models PR (#38).
+Refs #7. Owner: workstream B (Ruihan). Status: **implemented and unit-tested; run once on a small real T06 `dev` crawl (11 extractable pages) with 8B and 70B and hand-checked.** Not yet run on a `final` crawl.
 
 ## Flow
 
@@ -49,9 +49,39 @@ Two six-sentence fictional pages (EN, DE) about a sensor group, its leader, a co
 - 70B is ~4× slower and more accurate.
 - Decide 8B vs 70B (or 8B + 70B on person pages) on **real T06 pages** with a small hand-checked sample before the full run. Architecture step 4 says 8B for bulk, so 70B needs that measured justification.
 
+## Real-page comparison: 8B vs 70B (2026-10-18)
+
+**Setup:** T06 `dev` crawl of `artorg`, `dcb`, `unibe-dbmr` with `--max-pages 10`: 29 pages stored in 71 s, 11 routed to extraction (6 DBMR, 2 ARTORG, 3 DCB incl. one German page). Same pages, prompt `p2`, schema `x2`, `APERTUS_MAX_CONCURRENCY=4`. One run per model; the precision numbers come from Ruihan's single-rater hand check of every non-name claim against its cited sentence. Small sample, not a benchmark.
+
+```bash
+python -m app.ingest --data-dir data --profile dev --source artorg --source dcb --source unibe-dbmr --max-pages 10 crawl
+python -m app.ai.extract --data-dir data --model apertus-v1-5-8b
+python -m app.ai.extract --data-dir data --model apertus-v1-5-70b
+```
+
+| | 8B | 70B |
+| --- | --- | --- |
+| Wall time, 11 pages | 9.2 s | 62.1 s (one long page 58 s, hit the token limit once and retried) |
+| Tokens in / out | 13,314 / 5,304 | 15,363 / 6,845 |
+| Entities (persons) | 44 (0) | 71 (24) |
+| Non-name claims kept | 27 | 36 |
+| Hand-checked correct | ~13 / 27 (~48%) | ~35 / 36 (~97%); 7 of the correct ones are low-value (prize amounts) |
+| Typical errors | wrong or inverted relations ("DBMR part_of Research Programs"), facts citing unrelated sentences, study methods filed as a unit's expertise | one inverted `part_of` ("DCB part_of TIMES study") |
+
+The figures above include the alias fix below, which recovered facts from cached output at no extra token cost (8B 63 → 71 claims, 70B 103 → 107 claims).
+
+**Recommendation (proposed as DECISIONS D10):** use **70B for offline extraction** and keep 8B only as a fallback. Extraction runs once per page offline and is cached by content hash, so the ~7× latency doesn't touch query time. Architecture step 4 names 8B for bulk extraction, so this needs team agreement. This table is the measured justification.
+
+**Fixes made from this run:**
+- Subject/object resolution now accepts the full name, the name without its parenthetical, the abbreviation ("DBMR"), or a unique partial match (≥ 4 characters). Ambiguous references are still dropped.
+- `MAX_TOKENS` raised from 1500 to 3000.
+
+**Feedback for T06 (Maxim):** the cheap classifier labelled DBMR event/prize pages as `unit`, and the `dev` crawl reached no staff/team pages, so the sample contains no real person profile pages. A crawl that prioritises `/team`, `/people`, `/staff`, `/mitarbeitende` links would test person extraction properly.
+
 ## Known gaps / next steps
 
 - **Relation direction** (`part_of` inverted) is not checked in code. T08's support check must catch it, or add a kind rule (e.g. a project cannot contain a unit).
 - **Member → group transfer** (group attributes citing a sentence about a member) is not blocked in code yet; T08 support check.
-- Run on 5–10 real ARTORG/DCB pages from T06's first `dev` snapshot, and hand-check roles, affiliations and group-vs-member expertise.
+- **Relation claims are the weakest output on both models.** T08 must verify relation direction and support before anything reaches cards.
+- Re-run on a crawl that includes real person/team pages.
 - Record per-page tokens/latency/retries for T16 (already in `PageResult` and `client.meter`).

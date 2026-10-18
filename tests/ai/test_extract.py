@@ -231,3 +231,42 @@ def test_batch_extracts_pages_concurrently():
     pages = [page(), page(texts=TEXTS[:4])]
     results = extract_pages(pages, client=client_returning(GOOD))
     assert [r.status for r in results] == ["extracted", "extracted"]
+
+
+def test_subject_resolves_abbreviation_and_unique_partial_name():
+    texts = ["The Department for BioMedical Research (DBMR) studies inflammation.",
+             "The Example Imaging Group is part of the DBMR."]
+    v, s = page(texts=texts)
+    out = out_with(entities=[{"name": "Department for BioMedical Research (DBMR)", "kind": "unit", "sentences": [1]},
+                             {"name": "Example Imaging Group", "kind": "unit", "sentences": [2]}],
+                   attributes=[{"subject": "DBMR", "predicate": "expertise", "value": "inflammation", "sentences": [1]}],
+                   relations=[{"subject": "Imaging Group", "predicate": "part_of", "object": "DBMR", "sentences": [2]}])
+    r = extract_page(v, s, client=client_returning(out))
+    assert ("expertise", "inflammation") in by_pred(r) and r.stats == {}
+    assert any(c.predicate == "part_of" for c in r.claims)
+
+
+def test_ambiguous_partial_subject_is_dropped():
+    texts = ["The Example Imaging Group and the Example Sensor Group share a lab."]
+    v, s = page(texts=texts)
+    out = out_with(entities=[{"name": "Example Imaging Group", "kind": "unit", "sentences": [1]},
+                             {"name": "Example Sensor Group", "kind": "unit", "sentences": [1]}],
+                   attributes=[{"subject": "Example", "predicate": "expertise", "value": "labs", "sentences": [1]}])
+    r = extract_page(v, s, client=client_returning(out))
+    assert r.stats == {"unknown_subject": 1}
+
+
+def test_run_corpus_writes_jsonl_for_routed_pages(tmp_path, monkeypatch):
+    from app.ai import extract as ex
+    from app.storage import corpus
+
+    unit, directory = page(), page(page_type="directory")
+    recs = [{"document": None, "version": p[0], "sentences": p[1], "entities": [], "source_labels": ["demo"],
+             "passage_entity_ids": {}} for p in (unit, directory)]
+    monkeypatch.setattr(corpus.CorpusStore, "__init__", lambda self, d: None)
+    monkeypatch.setattr(corpus.CorpusStore, "active_records", lambda self: recs)
+    out = tmp_path / "x.jsonl"
+    summary = ex.run_corpus(str(tmp_path), str(out), client=client_returning(GOOD), use_cache=False)
+    lines = [json.loads(l) for l in out.read_text().splitlines()]
+    assert summary["pages"] == 1 and summary["statuses"] == {"extracted": 1}
+    assert lines[0]["version_id"] == unit[0].version_id and lines[0]["claims"]
