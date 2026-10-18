@@ -113,3 +113,19 @@ def test_ui_does_not_highlight_function_words():
     script = js[start:end] + "\nconsole.log(JSON.stringify(termsOf('Bildgebung in der Herzchirurgie')));"
     out = subprocess.run([node, "-e", script], capture_output=True, text=True, check=True).stdout
     assert json.loads(out) == ["bildgebung", "herzchirurgie"]
+
+
+def test_why_panel_uses_only_retrieval_signals_and_says_so():
+    js = _static("app.js")
+    start = js.index("function renderWhy")
+    body = js[start:js.index("function renderCard(", start)]
+    for key in ("keyword_rank", "dense_rank", "matched_terms", "query_language", "evidence_language"):
+        assert key in body
+    assert "Not a probability and not AI-generated." in body
+    assert "fetch(" not in body  # built from the card payload, no extra requests
+
+
+def test_rerank_animation_respects_reduced_motion():
+    js = _static("app.js")
+    body = js[js.index("function rerankCards"):js.index("function renderCards")]
+    assert "prefers-reduced-motion: reduce" in body
