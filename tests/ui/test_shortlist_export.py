@@ -1,0 +1,66 @@
+"""T38: shortlist export is source-only, notes are labelled text, request text only on opt-in."""
+import json
+import os
+import shutil
+import subprocess
+
+import pytest
+
+HARNESS = os.path.join(os.path.dirname(__file__), "shortlist_harness.js")
+RESULT = {
+    "entity_id": "ent_spn005", "entity_type": "project", "rank": 1,
+    "display_name": "SPN-005 Pilot study on painless glucose monitoring",
+    "fields": {"expertise": [{"claim_id": "clm_1", "value": "non-invasive glucose monitoring"}], "role": []},
+    "reason": "Found by keyword match.", "freshness": "fresh", "retrieval": {},
+    "evidence": [
+        {"version_id": "v1", "sentence_id": "s1", "url": "https://www.dcberne.com/en/project/spn-005/",
+         "text": "This project evaluates a novel non-invasive technology — without finger pricks.",
+         "content_date": None, "last_modified": "2026-10-09T01:12:42+00:00", "fetched_at": "2026-10-18T14:35:17+00:00"},
+        {"version_id": "v1", "sentence_id": "s2", "url": "https://www.dcberne.com/en/project/spn-005/",
+         "text": "Second sentence.", "content_date": None, "last_modified": None, "fetched_at": "2026-10-18T14:35:17+00:00"},
+        {"version_id": "v1", "sentence_id": "s3", "url": "https://www.dcberne.com/en/project/spn-005/",
+         "text": "Third sentence is not exported.", "content_date": None, "last_modified": None, "fetched_at": None},
+    ],
+}
+NOTE = "<b>call them</b> <script>alert(1)</script>"
+
+
+def run(opt):
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node not installed")
+    import tempfile
+    with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False, encoding="utf-8") as f:
+        json.dump({"result": RESULT, "note": NOTE}, f, ensure_ascii=False)
+    try:
+        out = subprocess.run([node, HARNESS, f.name, opt], capture_output=True, check=True).stdout
+    finally:
+        os.remove(f.name)
+    return json.loads(out.decode("utf-8"))
+
+
+def test_export_is_source_only_and_quotes_are_byte_identical():
+    out = run("no-request")
+    e = out["data"]["entries"][0]
+    assert [q["text"] for q in e["evidence"]] == [RESULT["evidence"][0]["text"], RESULT["evidence"][1]["text"]]
+    assert all(q["url"] == RESULT["evidence"][0]["url"] for q in e["evidence"])
+    assert e["fields"] == {"expertise": ["non-invasive glucose monitoring"]}  # empty fields are not exported
+    assert out["printed"] == 1
+    assert RESULT["evidence"][0]["text"] in out["printText"]
+
+
+def test_request_text_only_with_opt_in():
+    assert "CONFIDENTIAL" not in json.dumps(run("no-request"))
+    assert run("with-request")["data"]["request"].startswith("CONFIDENTIAL")
+
+
+def test_notes_are_labelled_plain_text_and_facts_are_not_editable():
+    out = run("no-request")
+    assert out["data"]["entries"][0]["analyst_note"] == NOTE
+    flat = json.dumps(out["printView"])
+    assert "Analyst note (not a source fact)" in flat
+    # the note is a text node, never parsed: no element was created from its markup
+    assert '"tag": "SCRIPT"' not in flat and '"tag": "B"' not in flat
+    assert "No AI-generated text is included." in out["printText"]
+    # an entry offers field-visibility checkboxes and the note box only; quotes and facts have no inputs
+    assert sorted(set(out["controls"])) == ["INPUT:checkbox", "TEXTAREA:"]
