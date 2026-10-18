@@ -27,6 +27,10 @@ BERNMATCH_FIXTURE_MODE=1 .venv/Scripts/python -m uvicorn app.main:app --port 800
 
 Without `BERNMATCH_FIXTURE_MODE=1`, `/readyz` and search return 503 until `$BERNMATCH_DATA_DIR/READY` exists, and search returns 501 because retrieval is not wired in yet. Container: `docker build -t bernmatch . && docker run -p 8000:8000 -v bernmatch-data:/data bernmatch`; the CI `container` job builds it and probes `/healthz` and `/readyz`. Inference configuration (server-side only) is described in [docs/inference.md](docs/inference.md); copy `env.example` to a real `.env`, which is git-ignored.
 
+## Removal requests
+
+Anyone named in the index can ask for removal. The route, verification steps, suppression-list format and retention periods are in [docs/data-policy.md](docs/data-policy.md). **The route is not operational yet**: the operator contact in that document is still unset, and no enforcement code exists, so this is a design commitment and not a working service.
+
 ## Roadmap notes
 
 There is no verified deployment yet. The MVP will crawl once and query persistent local indexes, with manual refresh; configurable daily refresh and selected hourly refresh are production requirements. Local offline readiness requires a separately evidenced air-gapped query demonstration.
