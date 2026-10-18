@@ -125,3 +125,10 @@ def test_ui_renders_assessments_as_labelled_generated_text_on_matching_cards_onl
     assert "data-entity" in js and "card.dataset.entity" in js        # matched by entity_id, unknown ids ignored
     assert "/api/v1/evidence/" in js                                    # citations link to exact stored sentences
     assert "innerHTML" not in js
+
+
+def test_a_new_search_clears_the_previous_limitations_before_any_result_or_error():
+    js = open(os.path.join(os.path.dirname(__file__), "..", "..", "app", "static", "app.js"), encoding="utf-8").read()
+    start = js.index("function runSearch(")
+    fetch_at = js.index('fetch("/api/v1/search"', start)
+    assert 'clearNode(document.getElementById("limitations"))' in js[start:fetch_at]

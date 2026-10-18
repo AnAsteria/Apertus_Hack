@@ -245,6 +245,7 @@ function runSearch(needs) {
   closeEvents();
   setStatus("Searching…", "loading");
   clearResults();
+  clearNode(document.getElementById("limitations")); // never show the previous search's notes next to a new error
   var body = { schema_version: "1", query: query, revision: myRevision,
                entity_type: type || null, company_context: null, needs: needs || [],
                enrichment_requested: interpret };
