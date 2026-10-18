@@ -181,6 +181,9 @@ mark { background: var(--mark); color: inherit; border-radius: 3px; padding: 0 .
 /* T29: "Why this result?" panel, language path, reranked markers */
 .why { margin-top: .6rem; font-size: .88rem; }
 .why summary { cursor: pointer; color: var(--accent); }
+.why-list { margin: .5rem 0 .3rem; padding-left: 1.1rem; }
+.why-list li { margin: .2rem 0; }
+.why-list .badge { margin: 0 .1rem; }
 .why .fields { margin: .4rem 0 .2rem; }
 .why .terms { display: flex; gap: .3rem; flex-wrap: wrap; }
 .badge.lang { background: var(--quote-bg); border: 1px solid var(--quote-line); }

@@ -20,7 +20,9 @@ var selectedType = "";
 var shortlist = {};        // entity_id -> { name, state: "select" | "exclude" }
 var feedbackCounter = 0;
 
-var TYPE_ICONS = { person: "👤", unit: "🏛", project: "🧪", infrastructure: "🔬", service: "🛠" };
+var TYPE_NAMES = { person: "Person", unit: "Research group", project: "Project", infrastructure: "Lab / equipment", service: "Service" };
+var FRESHNESS = { fresh: ["Recent source", "The source page was updated recently."],
+                  stale: ["Older source", "The source page has not been updated for a while. Check that it is still current."] };
 var TYPES = [["", "Anything"], ["person", "People"], ["unit", "Groups"], ["project", "Projects"],
              ["infrastructure", "Infrastructure"], ["service", "Services"]];
 var EXAMPLES = [["DE", "Messung des Blutzuckers ohne Nadel für eine Smartwatch"],
@@ -35,9 +37,9 @@ var FIELD_LABELS = { role: "Role", affiliation: "Affiliation", part_of: "Part of
 function sourceOf(url) {
   var host = "";
   try { host = new URL(url).hostname.toLowerCase(); } catch (e) { return { key: "other", label: "Other" }; }
-  if (host.indexOf("artorg") >= 0) return { key: "artorg", label: "ARTORG" };
-  if (host.indexOf("dbmr") >= 0 || host.indexOf("dcb") >= 0 || host.indexOf("diabetes") >= 0) return { key: "dcb", label: "DCB" };
-  if (/(^|\.)unibe\.ch$/.test(host)) return { key: "unibe", label: "UniBE" };
+  if (host.indexOf("artorg") >= 0) return { key: "artorg", label: "ARTORG", full: "ARTORG Center" };
+  if (host.indexOf("dbmr") >= 0 || host.indexOf("dcb") >= 0 || host.indexOf("diabetes") >= 0) return { key: "dcb", label: "DCB", full: "Diabetes Center Berne" };
+  if (/(^|\.)unibe\.ch$/.test(host)) return { key: "unibe", label: "UniBE", full: "University of Bern" };
   return { key: "other", label: host || "Other" };
 }
 
@@ -344,33 +346,30 @@ function requestLang(serverCode) {
 }
 
 // "Why this result?" (T36 data): only retrieval signals the server measured, no model text.
+// Written for analysts: plain reasons, no ranks or scores.
 function renderWhy(r) {
   var t = r.retrieval || {};
   var box = el("details", "why");
   box.appendChild(el("summary", null, "Why this result?"));
-  if (r.reason) box.appendChild(el("p", "reason", r.reason));
-  var dl = el("dl", "fields");
-  function row(label, value) { if (value === null || value === undefined || value === "") return; dl.appendChild(el("dt", null, label)); dl.appendChild(el("dd", null, value)); }
-  var found = [];
-  if (t.keyword_rank) found.push("keyword search, rank " + t.keyword_rank);
-  if (t.dense_rank) found.push("meaning similarity, rank " + t.dense_rank);
-  row("Found by", found.join(" and ") || null);
+  var ul = el("ul", "why-list");
+  function line(text) { ul.appendChild(el("li", null, text)); }
   if (t.matched_terms && t.matched_terms.length) {
-    var dd = el("dd", "terms");
-    t.matched_terms.forEach(function (w) { dd.appendChild(el("span", "badge", w)); });
-    dl.appendChild(el("dt", null, "Matched words")); dl.appendChild(dd);
+    var li = el("li", null, "The source uses your words: ");
+    t.matched_terms.forEach(function (w) { li.appendChild(el("span", "badge", w)); li.appendChild(document.createTextNode(" ")); });
+    ul.appendChild(li);
+  } else if (t.keyword_rank) {
+    line("The source uses words from your request.");
   }
-  if (t.query_language || t.evidence_language) row("Language", langName(requestLang(t.query_language)) + " request → " + langName(t.evidence_language) + " evidence");
-  if (t.query_variants && t.query_variants.length) row("Query used", t.query_variant === "expansion" ? "Apertus expansion: " + t.query_variants.join(", ") : "your wording");
-  if (t.demoted_listing_page) row("Ranked lower", "the page looks like a listing, news or report page");
-  var scores = [];
-  if (typeof t.bm25 === "number") scores.push("keyword " + t.bm25.toFixed(2));
-  if (typeof t.dense === "number") scores.push("similarity " + t.dense.toFixed(3));
-  if (typeof t.rrf === "number") scores.push("fused " + t.rrf.toFixed(4));
-  row("Scores", scores.join(" · ") || null);
-  if (!dl.firstChild && !r.reason) return null;
-  if (dl.firstChild) box.appendChild(dl);
-  box.appendChild(el("p", "meta", "Computed by the search engine from stored source text. Not a probability and not AI-generated."));
+  if (t.dense_rank) line("The source talks about the same topic, even where the wording differs.");
+  var ql = requestLang(t.query_language);
+  if (ql && t.evidence_language && ql !== t.evidence_language)
+    line("Found across languages: you wrote in " + langName(ql) + ", the source is in " + langName(t.evidence_language) + ".");
+  if (t.query_variant === "expansion" && t.query_variants && t.query_variants.length)
+    line("Found with a wording Apertus suggested: " + t.query_variants.join(", ") + ".");
+  if (t.demoted_listing_page) line("Shown lower because the page looks like a list, news or report page.");
+  if (!ul.firstChild) return null;
+  box.appendChild(ul);
+  box.appendChild(el("p", "meta", "Worked out by the search engine from the source text. Not a probability and not AI-generated."));
   return box;
 }
 
@@ -393,14 +392,24 @@ function renderCard(r, index) {
   actions.appendChild(sel); actions.appendChild(exc);
   head.appendChild(actions);
   card.appendChild(head);
+  // Badges in plain words; anything we cannot say clearly is not shown.
   var tags = el("div", "tags");
-  tags.appendChild(el("span", "badge tag-" + src.key, src.label));
-  tags.appendChild(el("span", "badge", (TYPE_ICONS[r.entity_type] || "") + " " + r.entity_type));
-  tags.appendChild(el("span", "badge fresh-" + r.freshness, r.freshness));
+  var srcTag = el("span", "badge tag-" + src.key, src.full || src.label);
+  srcTag.title = "Where this comes from";
+  tags.appendChild(srcTag);
+  if (TYPE_NAMES[r.entity_type]) tags.appendChild(el("span", "badge", TYPE_NAMES[r.entity_type]));
+  if (FRESHNESS[r.freshness]) {
+    var fr = el("span", "badge fresh-" + r.freshness, FRESHNESS[r.freshness][0]);
+    fr.title = FRESHNESS[r.freshness][1];
+    tags.appendChild(fr);
+  }
   var rt = r.retrieval || {};
   var ql = requestLang(rt.query_language);
-  if (ql && rt.evidence_language && ql !== rt.evidence_language)
-    tags.appendChild(el("span", "badge lang", String(ql).toUpperCase() + " → " + String(rt.evidence_language).toUpperCase()));
+  if (ql && rt.evidence_language && ql !== rt.evidence_language && LANG_NAMES[rt.evidence_language]) {
+    var lt = el("span", "badge lang", "Source in " + LANG_NAMES[rt.evidence_language]);
+    lt.title = "Found across languages: your request is in " + langName(ql) + ", the source page is in " + langName(rt.evidence_language) + ".";
+    tags.appendChild(lt);
+  }
   card.appendChild(tags);
   var why = renderWhy(r);
   if (!why) { why = el("details", "why"); why.appendChild(el("summary", null, "Why this result?")); }
