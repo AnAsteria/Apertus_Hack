@@ -14,7 +14,7 @@ from app.contracts import (Document,Version,Sentence,Passage,Entity,Claim,Eviden
 from app.search.build import build_index
 from app.search.backend import HybridBackend,freshness
 from app.search.encoder import normalize
-from app.search.ranking import entity_max,reciprocal_rank_fusion,diversify
+from app.search.ranking import entity_max,reciprocal_rank_fusion,diversify,non_entity_page
 from app.search.analysis import analyze,query_terms,match_expression
 from app.storage.indexes import current_generation
 
@@ -103,6 +103,42 @@ def test_keyword_channel_is_bounded(built):
     assert len(store.keyword(match_expression(query_terms('laser imaging')),limit=1))==min(1,len(everything))
     if everything:
         assert store.keyword(match_expression(query_terms('laser imaging')),limit=1)[0][1]==max(s for _,s in everything)
+
+
+def test_listing_pages_are_recognised_without_hiding_entities():
+    # Shapes observed on the live index (news archives, annual-report PDFs, templates).
+    assert non_entity_page('Medienmitteilungen 2025',['https://mediarelations.unibe.ch/medienmitteilungen/archiv/2025/index_ger.html'])
+    assert non_entity_page('JB_2017_final_ger.pdf',['https://www.pki.unibe.ch/unibe/portal/x/JB_2017_final_ger.pdf'])
+    assert non_entity_page('Leer vorlage',['https://www.ikim.unibe.ch/unibe/portal/x/leer.html'])
+    assert non_entity_page('25th International Summer School',['https://www.pki.unibe.ch/weiterbildung/symposien_undbrsummer_school/'])
+    assert not non_entity_page('Cancer Therapy Resistance - CTR',['https://www.dbmr.unibe.ch/research/research_programs/index_eng.html'])
+    assert not non_entity_page('Next Generation Sequencing (NGS) Platform',['https://www.ngs.unibe.ch/'])
+    assert not non_entity_page('Prevention research group',['https://example.invalid/research/prevention'])
+
+
+def test_demoted_listing_page_ranks_below_entity_page(tmp_path):
+    encoder=FixtureEncoder(tmp_path/'model')
+    records=[record('news',text='Laser laser instruments, laser instruments.',eid='ent_anews'),
+             record('lab',text='Laser precision instruments laboratory.',eid='ent_zlab')]
+    records[0]['entities'][0]=records[0]['entities'][0].model_copy(update={'name':'Aktuell','canonical_profiles':['https://fixture.invalid/aktuell/index.html']})
+    data=tmp_path/'data'; build_index(records,data,encoder)
+    response=HybridBackend(current_generation(data)[0],encoder=encoder).search(req('laser instruments'))
+    assert [r.entity_id for r in response.results]==['ent_zlab','ent_anews']
+    assert response.results[1].retrieval['demoted_listing_page'] is True
+
+
+def test_query_level_dense_abstention(built):
+    data,directory,encoder,records,_=built
+    # 'glucose laser' matches both keyword pages, but no passage is close to the
+    # combined concept (cosine ~.71), so the query abstains instead of guessing.
+    backend=HybridBackend(directory,encoder=encoder,min_dense=.5)
+    response=backend.search(req('glucose laser'))
+    assert response.results==[]
+    assert any('not found in the indexed corpus' in x for x in response.limitations)
+    assert HybridBackend(directory,encoder=encoder,min_dense=.5,abstain_dense=.6).search(req('glucose laser')).results
+    assert backend.search(req('laser')).results[0].entity_id=='ent_a'
+    # Keyword-only mode has no dense signal and therefore never abstains on it.
+    assert HybridBackend(directory,encoder=encoder,mode='keyword').search(req('glucose laser')).results
 
 
 def test_stemming_compounds_and_multilingual_terms():

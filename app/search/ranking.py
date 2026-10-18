@@ -1,5 +1,23 @@
 """Max per entity BEFORE rank fusion: duplicate passages cannot add votes."""
+import re
 import numpy as np
+
+# Listing/news/report pages that the cheap T06 classifier can label as units.
+# They are kept searchable but ranked below real entity pages (never removed).
+NON_ENTITY_WORDS = {'news','aktuell','archiv','archive','event','events','veranstaltungen','publications',
+                    'publikationen','seminar','seminars','symposium','symposien','jobs','stellen','vorlage',
+                    'template','lernzielkatalog','erfolgsmeldungen','medienmitteilungen','jb','newsletter'}
+NON_ENTITY_PREFIXES = ('jahresbericht','medienmitteilung','unibernjahresbericht','annualreport')
+DEMOTION = .5
+
+
+def non_entity_page(name, urls):
+    """True for listing/news/report-like pages, judged from title and URL words only."""
+    if any(u.split('?')[0].casefold().endswith('.pdf') for u in urls):
+        return True
+    words = set(re.split(r'[^0-9a-zà-ÿ]+', ' '.join([name]+[u.split('//',1)[-1] for u in urls]).casefold()))
+    return (bool(words & NON_ENTITY_WORDS) or {'summer','school'} <= words
+            or any(w.startswith(NON_ENTITY_PREFIXES) for w in words))
 
 
 def entity_max(scores, entries, allowed):
