@@ -112,3 +112,7 @@ See `docs/report/ai-evaluation-cost.md` for the full table. Hybrid 0.65 → hybr
 - **Concurrent load on the live Space:** not measured; the live check above ran requests one after another.
 - **Separate prefill/generation throughput:** the gateway doesn't expose it; time to first token is reported instead.
 - **Keera price:** not published to us, so the cost worksheet keeps it as a variable.
+
+## Platform drift between the Space and local runs (G2, #147, 2026-10-18)
+
+Same bundle (`9a0e0951…`, generation `3825f2a3…`) and the same code; the evaluation split (gold 0.3, 17 scored queries) gives hybrid Recall@10 **0.76 on the live Space** (x86, HTTP, run `run_42035869…`) and **0.65 in-process on an Apple M1** (arm64), at both BM25 weights 1.0 and 0.25. Per-query diff: only I11-ru and I18-fr differ (hit live, miss locally), both with the expected entity near rank 10. The cause is int8 ONNX score differences of a few thousandths between CPU types. Report the platform with every number; compare configurations only within one platform.
