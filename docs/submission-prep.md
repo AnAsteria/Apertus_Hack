@@ -66,6 +66,14 @@ Open question for the organisers: whether the video file itself must be inside t
 
 ## 6. Submission checklist (tick only after verifying on the final state)
 
+`scripts/package_submission.py` (T26) checks the page counts, the video length (ffprobe), the live app and that the repository is public, and builds the ZIP and a SHA-256 manifest in `dist/submission/` only when all of them pass:
+
+```bash
+.venv/Scripts/python scripts/package_submission.py --pitch pitch.pdf --report report.pdf --video demo.mp4 --video-url <public link>
+```
+
+Its PASS lines cover the video, pitch, report, deployed URL, repository-public and ZIP items below; the rest stay manual. Video script: [demo-script.md](demo-script.md).
+
 - [ ] **Delete the temporary corpus release first** (it holds personal contact data): `gh release delete temp-corpus-delete-me --cleanup-tag --yes`, then `gh release list` must be empty (issue #73).
 - [ ] Repository is public; open it logged out.
 - [ ] No secrets in tracked files; CI green on `main`.
