@@ -441,7 +441,7 @@ function rerankCards(results) {
     var card = renderCard(r, 0);
     card.classList.remove("appear");
     var was = oldRank[r.entity_id];
-    var note = !was ? "✦ Found by Apertus" : was > r.rank ? "✦ Moved up by Apertus (was #" + was + ")" : was < r.rank ? "✦ Moved down by Apertus (was #" + was + ")" : "";
+    var note = !was ? "Found by Apertus" : was > r.rank ? "Moved up by Apertus (was #" + was + ")" : was < r.rank ? "Moved down by Apertus (was #" + was + ")" : "";
     if (note) { card.classList.add("moved"); card.querySelector(".tags").appendChild(el("span", "badge moved-badge", note)); }
     out.appendChild(card);
     if (still) return;
@@ -687,7 +687,7 @@ function renderAssessment(a) {
   if (old) card.removeChild(old);
   var box = el("div", "assessment");
   var head = el("p", "meta");
-  head.appendChild(el("span", "ai-tag", "✦ Apertus"));
+  head.appendChild(el("span", "ai-tag", "Apertus"));
   head.appendChild(document.createTextNode(" AI-generated assessment (Apertus), not source text"));
   box.appendChild(head);
   var cat = el("p", "reason");
@@ -752,8 +752,8 @@ function startEnrichment(body, requestId, myRevision) {
       var d = parse(e);
       if (!d || !d.payload.results.length) return;
       rerankCards(d.payload.results);
-      setStatus("✦ Re-ranked with Apertus: " + d.payload.results.length + " results, now also searched as " +
-                d.payload.expanded_queries.length + " extra wording" + (d.payload.expanded_queries.length === 1 ? "" : "s") + " (listed above)", "");
+      setStatus("Re-ranked with Apertus: " + d.payload.results.length + " results, now also searched as " +
+                d.payload.expanded_queries.length + " extra wording" + (d.payload.expanded_queries.length === 1 ? "" : "s") + " (listed above)", "ap");
     });
     es.addEventListener("assessment", function (e) {
       var d = parse(e);

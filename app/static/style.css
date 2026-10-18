@@ -1,7 +1,7 @@
 :root {
   --bg: #f6f7fb; --panel: #fff; --text: #111827; --muted: #5b6475; --line: #e3e7ef;
-  --accent: #2f5bea; --accent-2: #7c3aed; --accent-text: #fff; --quote-bg: #f3f6fd; --quote-line: #9db4f0;
-  --mark: #fff0a8; --ai-bg: #f7f2fe; --ai-line: #a77bd0; --ai: #7c3aed;
+  --accent: #2f5bea; --accent-2: #2f5bea; --accent-text: #fff; --quote-bg: #f3f6fd; --quote-line: #9db4f0;
+  --mark: #fff0a8; --ai-bg: #fdf2f1; --ai-line: #efb3ae; --ai: #c4231c;
   --unibe: #c8102e; --artorg: #0b7a75; --dcb: #b45309; --other: #5b6475; --tag-text: #fff;
   --ok: #dcf3e3; --warn: #fdecc8; --neutral: #eef1f6;
   --shadow: 0 1px 2px rgba(17,24,39,.05), 0 8px 24px rgba(17,24,39,.06);
@@ -12,8 +12,8 @@
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #0b0f17; --panel: #131a26; --text: #e8edf5; --muted: #9aa6b8; --line: #243044;
-    --accent: #7aa2ff; --accent-2: #b48cff; --accent-text: #08111f; --quote-bg: #172133; --quote-line: #4a6ea8;
-    --mark: #5c4d10; --ai-bg: #1e1730; --ai-line: #8a63b0; --ai: #b48cff;
+    --accent: #7aa2ff; --accent-2: #7aa2ff; --accent-text: #08111f; --quote-bg: #172133; --quote-line: #4a6ea8;
+    --mark: #5c4d10; --ai-bg: #2a1716; --ai-line: #8a3b36; --ai: #ff8a80;
     --ok: #1d3d28; --warn: #4a3512; --neutral: #1f2938; --shadow: 0 1px 2px rgba(0,0,0,.4); --shadow-hover: 0 8px 24px rgba(0,0,0,.45);
     --unibe: #ff6b81; --artorg: #4fd1c5; --dcb: #f6ad55; --other: #9aa6b8; --tag-text: #08111f;
     --glow: radial-gradient(60rem 22rem at 50% -6rem, rgba(122,162,255,.16), transparent 70%),
@@ -186,10 +186,16 @@ mark { background: var(--mark); color: inherit; border-radius: 3px; padding: 0 .
   padding: .3rem .75rem; border: 1px solid var(--line); border-radius: 99px; background: var(--panel); transition: border-color .15s; }
 .powered b { color: var(--text); letter-spacing: .14em; text-transform: uppercase; font-weight: 500; }
 .powered:hover { border-color: var(--apertus); }
-.dot { display: inline-block; width: .5rem; height: .5rem; border-radius: 50%; background: var(--apertus); box-shadow: 0 0 0 3px rgba(224,45,36,.15); flex-shrink: 0; }
+/* The Apertus mark: a red "Λ" drawn with a clip-path (no image file) */
+.ap, .ai-tag::before, .badge.moved-badge::before, .status.ap::before {
+  content: ""; display: inline-block; width: .74em; height: .9em; background: var(--apertus); flex-shrink: 0;
+  clip-path: polygon(50% 0, 100% 100%, 81% 100%, 50% 27%, 19% 100%, 0 100%); vertical-align: -.08em; }
+.ai-tag::before, .badge.moved-badge::before, .status.ap::before { margin-right: .35em; }
+.powered .ap { font-size: 1rem; }
+.steps li span .ap { font-size: .85rem; }
 .credit { max-width: 56rem; margin: 0 auto; padding: 1.5rem 1rem 3rem; border-top: 1px solid var(--line); font-size: .8rem; color: var(--muted); }
 .credit p { margin: .3rem 0; }
-.credit .dot { margin-right: .45rem; vertical-align: 1px; }
+.credit .ap { margin-right: .45rem; }
 .credit a { color: var(--text); }
 @media (max-width: 36rem) { .powered { display: none; } }
 @media print { .credit, .powered { display: none; } }
