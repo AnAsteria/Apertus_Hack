@@ -46,3 +46,15 @@ I07/I08/I09 measure support and interpretation boundaries, not merely lexical ra
 T14 must expand to 30–50 source-grounded queries, freeze expected entities before running retrieval, document adjudication and partner review, map stable entity IDs/aliases, group variants by intent, set development/evaluation separation and define person/unit equivalence. Review ambiguous negative/current-contact cases before final gold labels. Preserve real-source dates and snapshot/version references after ingestion.
 
 T16 executes actual Core evaluation; T20 adds expansion/assessment and the cross-encoder subset comparisons. Report entity Recall@10, link coverage, sampled evidence support with denominator/sample size, field accuracy/completeness, abstention, relevance-aware institutional exposure and actual median/p95 latency, tokens and indexing time. This seed document reports **no system quality, latency or throughput results**.
+
+## 5. R1 inventory extension candidates
+
+The [complete supplied-inventory audit](sources.md#r1--complete-supplied-inventory-audit) inspects 42 landing pages, not a finished research corpus. Additional source-grounded candidate intents below extend the earlier seeds without fabricating production entity IDs or gold labels. They are independent intent groups; T14 must review equivalence, freeze evidence versions after ingestion and keep language variants in one partition.
+
+| Intent group | Candidate query | Proposed target / type | Landing evidence and limitation |
+| --- | --- | --- | --- |
+| I11 — brain barriers | “Find research on brain barriers and CNS immune surveillance” / “Forschung zu Hirnschranken und Immunüberwachung im ZNS” | Theodor Kocher Institute / unit | [TKI](https://www.tki.unibe.ch/): inspected introductory text describes brain barriers, CNS and imaging. A German query can retrieve English evidence; no person's expertise is inferred. |
+| I12 — cancer pharmacology | “Find a unit researching cancer and inflammation pharmacology” / “Forschungsgruppe für Pharmakologie von Krebs und Entzündungen” | Institute of Pharmacology / unit | [PKI](https://www.pki.unibe.ch/): inspected German introduction names those research topics. Test an English query against German evidence; a unit match is not a named-person match. |
+| I13 — sequencing access | “Which platform offers access to nucleic-acid sequencing technologies?” | NGS Platform / infrastructure or service | [NGS](https://www.ngs.unibe.ch/): inspected landing text describes technology access and invites external service enquiries. This does not establish free access, availability or a particular price; T14 must fix the accepted entity type before scoring. |
+
+Negative/unsupported source case: `geo2.unibe.ch` responds HTTP 200 but has only a Home placeholder and no useful discovery links in the audit. It is excluded from this input snapshot with a recorded reason, not counted as indexed research or automatically treated as an alias of `geo.unibe.ch`. The 42 supplied rows versus 71 claimed in Notes remains a coverage limitation, not a benchmark result.
