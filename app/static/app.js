@@ -68,21 +68,138 @@ function clearResults() {
   return out;
 }
 
-function search(ev) {
-  ev.preventDefault();
+var eventSource = null;
+var userNeeds = [];      // needs the analyst controls (origin "user")
+var suggestedNeeds = []; // model suggestions: never sent as requirements until accepted
+var needCounter = 0;
+
+function closeEvents() {
+  if (eventSource) { eventSource.close(); eventSource = null; }
+}
+
+function clearNode(node) { while (node.firstChild) node.removeChild(node.firstChild); }
+
+function needNote(text) {
+  var box = document.getElementById("needs");
+  clearNode(box);
+  box.hidden = false;
+  box.appendChild(el("p", "meta", text));
+}
+
+function button(label, onclick, cls) {
+  var b = el("button", cls || "small", label);
+  b.type = "button";
+  b.addEventListener("click", onclick);
+  return b;
+}
+
+function renderNeeds(payload) {
+  var box = document.getElementById("needs");
+  clearNode(box);
+  box.hidden = false;
+  if (payload.synthetic) box.appendChild(el("p", "synthetic", "SYNTHETIC fixture interpretation: not a real model output."));
+  box.appendChild(el("h3", null, "Your needs (editable)"));
+  var list = el("ul", "needlist");
+  userNeeds.forEach(function (n, i) {
+    var li = el("li");
+    var input = el("input");
+    input.type = "text"; input.value = n.text; input.maxLength = 300;
+    input.addEventListener("input", function () { n.text = input.value; });
+    li.appendChild(input);
+    li.appendChild(el("span", "badge", n.kind));
+    li.appendChild(button("Remove", function () { userNeeds.splice(i, 1); renderNeeds(payload); }));
+    list.appendChild(li);
+  });
+  box.appendChild(list);
+  if (suggestedNeeds.length) {
+    box.appendChild(el("h3", null, "Suggested by the model (not used until you accept)"));
+    var sl = el("ul", "needlist suggested");
+    suggestedNeeds.forEach(function (n, i) {
+      var li = el("li");
+      li.appendChild(el("span", null, n.text));
+      li.appendChild(el("span", "badge", n.kind));
+      li.appendChild(button("Accept", function () {
+        suggestedNeeds.splice(i, 1);
+        needCounter += 1;
+        userNeeds.push({ schema_version: "1", need_id: "u" + needCounter, text: n.text, origin: "user", kind: n.kind });
+        renderNeeds(payload);
+      }));
+      li.appendChild(button("Dismiss", function () { suggestedNeeds.splice(i, 1); renderNeeds(payload); }));
+      sl.appendChild(li);
+    });
+    box.appendChild(sl);
+  }
+  if (payload.expanded_queries && payload.expanded_queries.length) {
+    box.appendChild(el("h3", null, "Alternative wording (read-only; added to recall, never to requirements)"));
+    var chips = el("p");
+    payload.expanded_queries.forEach(function (q) { chips.appendChild(el("span", "badge", q.language + ": " + q.text)); });
+    box.appendChild(chips);
+  }
+  if (payload.clarification) {
+    box.appendChild(el("p", "reason", payload.clarification.question));
+    payload.clarification.options.forEach(function (o) {
+      box.appendChild(button(o, function () { addNeed(o, payload); }));
+    });
+  }
+  var add = el("input"); add.type = "text"; add.placeholder = "Add a need"; add.maxLength = 300; add.id = "newneed";
+  box.appendChild(add);
+  box.appendChild(button("Add", function () { addNeed(add.value, payload); }));
+  box.appendChild(button("Re-run search with these needs", function () { runSearch(userNeeds); }, ""));
+}
+
+function addNeed(text, payload) {
+  text = (text || "").trim();
+  if (!text || userNeeds.length >= 10) return;
+  needCounter += 1;
+  userNeeds.push({ schema_version: "1", need_id: "u" + needCounter, text: text, origin: "user", kind: "problem" });
+  renderNeeds(payload);
+}
+
+function openEvents(requestId, myRevision) {
+  closeEvents();
+  needNote("Interpreting your request… (results above are already usable)");
+  var es = new EventSource("/api/v1/search/" + encodeURIComponent(requestId) + "/events");
+  eventSource = es;
+  function parse(e) {
+    var d = JSON.parse(e.data);
+    return d.revision === revision && myRevision === revision ? d : null; // discard stale events
+  }
+  es.addEventListener("interpretation", function (e) {
+    var d = parse(e);
+    if (!d) return;
+    // Keep edits the analyst already made on a re-run; only first interpretation seeds the lists.
+    if (!userNeeds.length) {
+      userNeeds = d.payload.needs.filter(function (n) { return n.origin === "user"; });
+    }
+    suggestedNeeds = d.payload.needs.filter(function (n) { return n.origin === "suggested"; });
+    renderNeeds(d.payload);
+  });
+  es.addEventListener("complete", function () { closeEvents(); });
+  es.addEventListener("error", function (e) {
+    if (e.data) {
+      var d = parse(e);
+      if (d) needNote("AI interpretation is unavailable. The results above are unaffected.");
+    }
+    closeEvents(); // no replay: the analyst can search again
+  });
+}
+
+function runSearch(needs) {
   var query = document.getElementById("query").value.trim();
   if (!query) { setStatus("Enter a keyword or a short description.", "warn"); return; }
   var type = document.getElementById("type").value;
+  var interpret = document.getElementById("interpret").checked;
   revision += 1;
   var myRevision = revision;
+  closeEvents();
   setStatus("Searching…", "loading");
   clearResults();
   fetch("/api/v1/search", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ schema_version: "1", query: query, revision: myRevision,
-                           entity_type: type || null, company_context: null, needs: [],
-                           enrichment_requested: false })
+                           entity_type: type || null, company_context: null, needs: needs || [],
+                           enrichment_requested: interpret })
   }).then(function (r) {
     return r.json().then(function (body) { return { ok: r.ok, status: r.status, body: body }; });
   }).then(function (res) {
@@ -97,11 +214,18 @@ function search(ev) {
     setStatus(b.results.length ? b.results.length + " result(s)" : "No results found in the indexed corpus.", "");
     b.results.forEach(function (r) { out.appendChild(renderCard(r)); });
     var lim = document.getElementById("limitations");
-    while (lim.firstChild) lim.removeChild(lim.firstChild);
+    clearNode(lim);
     b.limitations.forEach(function (l) { lim.appendChild(el("li", null, l)); });
+    if (b.enrichment_state === "pending") openEvents(b.request_id, myRevision);
+    else if (b.enrichment_state === "unavailable") needNote("AI interpretation is not available right now. The results above are unaffected.");
+    else document.getElementById("needs").hidden = true;
   }).catch(function () {
     if (myRevision === revision) setStatus("Could not reach the server.", "error");
   });
 }
 
-document.getElementById("form").addEventListener("submit", search);
+document.getElementById("form").addEventListener("submit", function (ev) {
+  ev.preventDefault();
+  userNeeds = []; suggestedNeeds = [];   // a fresh question starts fresh needs
+  runSearch([]);
+});

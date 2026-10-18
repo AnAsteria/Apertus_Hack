@@ -23,11 +23,13 @@
           <option value="infrastructure">Infrastructure</option>
           <option value="service">Services</option>
         </select>
+        <label class="inline"><input type="checkbox" id="interpret"> Interpret my request (optional, Apertus)</label>
         <button type="submit">Search</button>
       </div>
     </form>
     <p id="status" class="status" role="status" aria-live="polite"></p>
     <ul id="limitations" class="limitations"></ul>
+    <section id="needs" class="needs" hidden aria-live="polite"></section>
     <section id="results"></section>
   </main>
   <script src="app.js"></script>
