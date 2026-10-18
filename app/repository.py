@@ -20,6 +20,7 @@ class Repository(Protocol):
     def init(self) -> None: ...
     def put_feedback(self, fb: Feedback) -> tuple[str, bool]: ...
     def put_job(self, job: Job) -> None: ...
+    def list_jobs(self) -> list[Job]: ...
     def get_job(self, job_id: str) -> Job | None: ...
 
 
@@ -60,6 +61,11 @@ class SqliteRepository:
     def put_job(self, job: Job) -> None:
         with self._conn() as c:
             c.execute("INSERT OR REPLACE INTO jobs VALUES (?,?)", (job.job_id, job.model_dump_json()))
+
+    def list_jobs(self) -> list[Job]:
+        with self._conn() as c:
+            rows = c.execute("SELECT body FROM jobs").fetchall()
+        return [Job.model_validate_json(r[0]) for r in rows]
 
     def get_job(self, job_id: str) -> Job | None:
         with self._conn() as c:

@@ -10,6 +10,8 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from .api.admin import router as admin_router
+from .api.feedback import router as feedback_router
 from .api.search import router as search_router
 from .contracts import error
 
@@ -47,6 +49,8 @@ def readyz():
 
 
 app.include_router(search_router)
+app.include_router(feedback_router)
+app.include_router(admin_router)
 
 
 if os.path.isdir(STATIC_DIR):
