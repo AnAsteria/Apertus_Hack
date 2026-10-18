@@ -48,6 +48,7 @@ function renderFields(fields) {
 
 function renderCard(r) {
   var card = el("article", "card");
+  card.dataset.entity = r.entity_id;
   var head = el("h3", null, r.rank + ". " + r.display_name);
   head.appendChild(el("span", "badge", r.entity_type));
   head.appendChild(el("span", "badge fresh-" + r.freshness, r.freshness));
@@ -154,6 +155,43 @@ function addNeed(text, payload) {
   renderNeeds(payload);
 }
 
+var CATEGORY_LABELS = { direct_match: "Direct match", related_capability: "Related capability",
+                        insufficient_evidence: "Insufficient evidence" };
+var SUPPORT_LABELS = { supported: "supported", partial: "partly supported", none: "not supported" };
+
+function renderAssessment(a) {
+  var card = document.querySelector('.card[data-entity="' + String(a.entity_id).replace(/"/g, "") + '"]');
+  if (!card) return; // assessment for a card that is not on screen: ignore
+  var old = card.querySelector(".assessment");
+  if (old) card.removeChild(old);
+  var box = el("div", "assessment");
+  var head = el("p", "meta", "AI-generated assessment (Apertus), not source text");
+  box.appendChild(head);
+  var cat = el("p", "reason");
+  cat.appendChild(el("span", "badge cat-" + a.category, CATEGORY_LABELS[a.category] || a.category));
+  cat.appendChild(document.createTextNode(" " + a.explanation));
+  box.appendChild(cat);
+  if (a.need_coverage && a.need_coverage.length) {
+    var ul = el("ul", "needlist");
+    a.need_coverage.forEach(function (c) {
+      var li = el("li", null, c.need_id + ": " + (SUPPORT_LABELS[c.support] || c.support));
+      (c.evidence || []).forEach(function (e) {
+        if (!e.version_id || !e.sentence_id) return;
+        var link = el("a", null, " [cited sentence]");
+        link.href = "/api/v1/evidence/" + encodeURIComponent(e.version_id) + "/" + encodeURIComponent(e.sentence_id);
+        link.target = "_blank"; link.rel = "noopener noreferrer";
+        li.appendChild(link);
+      });
+      ul.appendChild(li);
+    });
+    box.appendChild(ul);
+  }
+  if (a.unresolved_questions && a.unresolved_questions.length) {
+    box.appendChild(el("p", "meta", "Open questions: " + a.unresolved_questions.join(" | ")));
+  }
+  card.appendChild(box);
+}
+
 function startEnrichment(body, requestId, myRevision) {
   closeEvents();
   needNote("Interpreting your request… (results above are already usable)");
@@ -179,6 +217,10 @@ function startEnrichment(body, requestId, myRevision) {
       }
       suggestedNeeds = d.payload.needs.filter(function (n) { return n.origin === "suggested"; });
       renderNeeds(d.payload);
+    });
+    es.addEventListener("assessment", function (e) {
+      var d = parse(e);
+      if (d) renderAssessment(d.payload);
     });
     es.addEventListener("complete", function () { closeEvents(); });
     es.addEventListener("error", function (e) {
