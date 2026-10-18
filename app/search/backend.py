@@ -12,6 +12,7 @@ from .encoder import OnnxEncoder,digest
 from .ranking import entity_max,reciprocal_rank_fusion,diversify,non_entity_page,DEMOTION
 from .outcome import classify,thresholds
 from .explain import channel_ranks,matched_words,reason as explain_reason
+from . import rerank as rerank_mod
 
 
 def freshness(evidence, now=None):
@@ -32,7 +33,7 @@ def freshness(evidence, now=None):
 
 
 class HybridBackend:
-    def __init__(self, directory, *, encoder=None, min_dense=None, abstain_dense=None, keyword_weight=None, mode=None):
+    def __init__(self, directory, *, encoder=None, min_dense=None, abstain_dense=None, keyword_weight=None, mode=None, reranker=None):
         mode = mode or os.environ.get('BERNMATCH_SEARCH_MODE','hybrid')
         min_dense = float(os.environ.get('BERNMATCH_MIN_DENSE','.80')) if min_dense is None else min_dense
         # Query-level abstention: E5 similarities are compressed (~.80-.91), so a
@@ -67,6 +68,7 @@ class HybridBackend:
             except Exception:
                 self.encoder_error = True
         self.min_dense,self.mode = min_dense,mode
+        self.reranker = rerank_mod.load_from_env() if reranker is None else (reranker or None)
 
     def search(self, req):
         start = time.perf_counter()
@@ -123,6 +125,24 @@ class HybridBackend:
                    self.entities[eid]['entity']['canonical_profiles'])}
         for eid in demoted:
             fused[eid] *= DEMOTION
+        reranked = False
+        if self.reranker is not None and fused:
+            # EXTRA A1: cross-encoder over the best fused candidates; text = name + best passage.
+            t_r = time.perf_counter()
+            try:
+                top = sorted(fused,key=lambda e:(-fused[e],e))[:rerank_mod.TOP_N]
+                texts = {}
+                for eid in top:
+                    entry_id = (dense.get(eid) or keyword[eid])[1]
+                    sids = self.entries[entry_id]['sentence_ids']
+                    texts[eid] = self.entities[eid]['entity']['name']+'. '+' '.join(e['text'] for e in self.store.evidence(sids))
+                fused = rerank_mod.rerank(fused,texts,req.query,self.reranker)
+                for eid in demoted & set(fused):
+                    fused[eid] *= DEMOTION
+                reranked = True
+            except Exception:
+                limitations.append('Reranking failed; fused retrieval order is used.')
+            timing['rerank'] = (time.perf_counter()-t_r)*1000
         representatives = {}
         # Use one representative vector per entity, independent of page count.
         for eid in fused:
@@ -163,7 +183,7 @@ class HybridBackend:
                 'entry_kind':entry['kind'],'demoted_listing_page':eid in demoted,'query_language':query_language,'mode':self.mode,
                 'keyword_rank':keyword_ranks.get(eid),'dense_rank':dense_ranks.get(eid),'matched_terms':matched,
                 'evidence_language':evidence_language,'channels':[c for c,ranks in (('keyword',keyword_ranks),('dense',dense_ranks)) if eid in ranks],
-                'query_variant':'original',
+                'query_variant':'original','reranked':reranked,
                 'resolution_state':entity['resolution_state'],'entity_status':entity['status'],
                 'model':self.manifest['model']['repo'],'generation':self.manifest['generation']}))
         return self._response(req,results,limitations,enrichment,start,timing,dense_ok=dense_ok,best_dense=best_dense,abstain=self.abstain_dense)

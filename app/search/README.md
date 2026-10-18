@@ -97,3 +97,16 @@ Ruihan's T20 development run (#94) showed hybrid (0.59) below dense alone (0.71)
 | **0.25** / 0.00 | **0.824** | **0.82** | I03-en, I03-de, I03-it |
 
 Default 0.25: the same development result as 0, while keyword-only hits (exact names, codes such as SPN-005) still enter the ranking. n is small and the plateau is tuned on development data; the evaluation split must confirm it. Remaining development misses are all intent I03 (AI insulin decision support).
+
+## Optional cross-encoder rerank (EXTRA A1, #119, 2026-10-18)
+
+`app/search/rerank.py` reranks the fused top 30 (`BERNMATCH_RERANK_TOP`) with the open multilingual cross-encoder **`cross-encoder/mmarco-mMiniLMv2-L12-H384-v1`** (Apache-2.0, XLM-R, 14 languages incl. DE/FR/IT/RU). Model revision `1427fd652930e4ba29e8149678df786c240d8825`. The text scored is the entity name plus its best passage. The feature is **off by default** and on only when `BERNMATCH_RERANK_DIR` points to a directory with `model.onnx`, `tokenizer.json`, `config.json` and `REVISION`. Abstention and the answer outcome are unchanged, because they still come from retrieval signals. A missing or failing model falls back to the fused order.
+
+Measured in-process on an Apple M1 (arm64, `onnx/model_qint8_arm64.onnx`, SHA-256 `1825907d…e5c8b4`, 118.6 MB), same bundle as the Space:
+
+| Split (gold 0.3) | Fused | + rerank top 30 | Median latency fused → rerank |
+|---|---|---|---|
+| development (n = 17) | 0.824 | **0.882** | 61 ms → 1,530 ms |
+| evaluation (n = 17, one disclosed T20 configuration, no tuning) | 0.647 | **0.706** | 51 ms → 1,560 ms |
+
+Evaluation: I11-ru and I18-fr become hits, I02-it becomes a miss. Top 50 gave the same development result with higher latency. The price is about 1.5 s on the fast path on the M1. On the x86 Space, use the x86 int8 file (`model_qint8_avx512_vnni.onnx` or `model_quint8_avx2.onnx`) and measure there before enabling it. A background second pass, like the T30 `reranked` event, would keep first cards at about 60 ms.

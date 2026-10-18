@@ -172,6 +172,21 @@ def test_weighted_fusion_lets_dense_lead_without_dropping_keyword_hits():
     assert max(weighted,key=weighted.get)=='both'
 
 
+def test_backend_rerank_is_optional_and_never_breaks_search(built):
+    data,directory,encoder,records,_=built
+    class Boom:
+        def score(self,q,texts): raise RuntimeError('model failure')
+    class PreferGlucose:
+        def score(self,q,texts): return np.array([5. if 'Glucose' in t else -5. for t in texts],dtype=np.float32)
+    plain=HybridBackend(directory,encoder=encoder,min_dense=.0,abstain_dense=.0,reranker=False).search(req('laser glucose'))
+    flipped=HybridBackend(directory,encoder=encoder,min_dense=.0,abstain_dense=.0,reranker=PreferGlucose()).search(req('laser glucose'))
+    broken=HybridBackend(directory,encoder=encoder,min_dense=.0,abstain_dense=.0,reranker=Boom()).search(req('laser glucose'))
+    assert flipped.results[0].entity_id=='ent_b' and flipped.results[0].retrieval['reranked'] is True
+    assert plain.results[0].retrieval['reranked'] is False
+    assert [r.entity_id for r in broken.results]==[r.entity_id for r in plain.results]
+    assert any('Reranking failed' in x for x in broken.limitations)
+
+
 def test_stemming_compounds_and_multilingual_terms():
     assert set(analyze('Krebserkrankungen','de')) & set(query_terms('Krebs'))
     assert analyze('cancers','en')==analyze('cancer','en')
