@@ -1,0 +1,127 @@
+{
+ "schema_version": "1",
+ "request_id": "req_fixture",
+ "revision": 1,
+ "results": [
+  {
+   "entity_id": "ent_demo1",
+   "entity_type": "unit",
+   "rank": 1,
+   "display_name": "Example Imaging Group",
+   "fields": {
+    "affiliation": [
+     {
+      "claim_id": "clm_a1",
+      "value": "Example Institute of Biomedical Engineering"
+     }
+    ],
+    "expertise": [
+     {
+      "claim_id": "clm_a2",
+      "value": "medical imaging"
+     },
+     {
+      "claim_id": "clm_a3",
+      "value": "image-guided surgery"
+     }
+    ],
+    "contact": [
+     {
+      "claim_id": "clm_a4",
+      "value": "Head of group (role only; expertise not implied)"
+     }
+    ],
+    "infrastructure": []
+   },
+   "reason": "Matched on 'imaging partners': the group's page states it researches medical imaging.",
+   "evidence": [
+    {
+     "version_id": "ver_demo1",
+     "sentence_id": "ver_demo1:s1",
+     "text": "The group researches medical imaging.",
+     "url": "https://example.org/research/imaging",
+     "page_number": null,
+     "content_date": "2026-03-02",
+     "last_modified": "2026-03-05",
+     "fetched_at": "2026-10-18T09:00:00Z"
+    }
+   ],
+   "freshness": "fresh",
+   "retrieval": {
+    "bm25_rank": 1,
+    "dense_rank": 2
+   }
+  },
+  {
+   "entity_id": "ent_demo2",
+   "entity_type": "unit",
+   "rank": 2,
+   "display_name": "Example Sensor Lab",
+   "fields": {
+    "affiliation": [],
+    "expertise": [
+     {
+      "claim_id": "clm_b1",
+      "value": "optical sensors"
+     }
+    ]
+   },
+   "reason": "Matched on 'imaging': the page mentions optical sensors for imaging devices.",
+   "evidence": [
+    {
+     "version_id": "ver_demo2",
+     "sentence_id": "ver_demo2:s4",
+     "text": "The lab builds optical sensors for imaging devices.",
+     "url": "https://example.org/research/sensors",
+     "page_number": null,
+     "content_date": "2022-01-10",
+     "last_modified": null,
+     "fetched_at": "2026-10-18T09:01:00Z"
+    }
+   ],
+   "freshness": "stale",
+   "retrieval": {
+    "bm25_rank": 3,
+    "dense_rank": 1
+   }
+  },
+  {
+   "entity_id": "ent_demo3",
+   "entity_type": "person",
+   "rank": 3,
+   "display_name": "Dr. A. Example",
+   "fields": {
+    "affiliation": [
+     {
+      "claim_id": "clm_c1",
+      "value": "Example Imaging Group"
+     }
+    ],
+    "expertise": []
+   },
+   "reason": "Matched on a profile page; no expertise is stated for this person individually.",
+   "evidence": [
+    {
+     "version_id": "ver_demo3",
+     "sentence_id": "ver_demo3:s2",
+     "text": "A. Example is a postdoctoral researcher in the imaging group.",
+     "url": "https://example.org/people/a-example",
+     "page_number": null,
+     "content_date": null,
+     "last_modified": null,
+     "fetched_at": "2026-10-18T09:02:00Z"
+    }
+   ],
+   "freshness": "unknown",
+   "retrieval": {
+    "bm25_rank": 5,
+    "dense_rank": 4
+   }
+  }
+ ],
+ "limitations": [
+  "SYNTHETIC FIXTURE DATA: not real sources, people or evidence."
+ ],
+ "enrichment_state": "not_requested",
+ "timing_ms": null
+}
