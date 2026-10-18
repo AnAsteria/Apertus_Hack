@@ -1,6 +1,6 @@
 # Data policy: removal, retention and freshness (T12 policy part)
 
-Refs #12. Drafted by Dimitry on 2026-10-18 as the policy half of T12; Maxim owns the enforcement code. This is a **design commitment, not a claim of legal compliance**, and it is **not yet approved by Maxim or Ruihan**. Nothing here has been exercised against real data: the suppression list ships empty, and no removal request has been handled.
+Refs #12. Drafted by Dimitry on 2026-10-18 as the policy half of T12 and **adopted by the dispatcher the same day under the team's trust model (no separate sign-off was waited for)**; Maxim owns part of the enforcement code. This is a **design commitment, not a claim of legal compliance**. Nothing here has been exercised against real data: the suppression list ships empty, and no removal request has been handled. **Still open: the operator contact below (needs a real, monitored address).**
 
 ## What we collect
 
@@ -87,4 +87,3 @@ Evidence is `fresh` when its content or last-modified date is within **365 days*
 - A real operator contact (see above).
 - Enforcement against the **real index**: the search index (T09) does not exist yet, so the serving filter has only been tested on the synthetic fixture cards and the 410 route on a hand-built corpus file.
 - Purging derived files and indexes automatically (the command only reports them), and automatic expiry of backups.
-- Maxim's and Ruihan's approval of these retention periods and the verification steps.
