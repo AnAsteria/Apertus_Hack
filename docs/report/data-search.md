@@ -37,6 +37,8 @@ By query language (current, non-absent): EN 0.88 (n = 8), DE 0.40 (n = 5), FR 1.
 
 **Grounding (T37):** an automatic check found **0 problems** across 674 entities with fields, 1,523 field values and 1,695 claim sentences in the index, and across 350 served cards with 2,754 quotes from the development and evaluation runs. Every quote is byte-identical to the stored sentence of its cited version. This shows citation integrity only; whether a sentence semantically supports a claim needs the human-rated sample.
 
+**Exposure across institutions (D3, #136).** Across all 350 cards served in the development and evaluation runs, 34 of 41 sources appear. The top three hosts get 40% of the cards: medizin.unibe.ch 15.1% (6.1% of pages), neuroscience.unibe.ch 12.9% (6.7%), dcberne.com 11.7% (3.0%). DBMR (0.41× its page share) and ISPM (0.48×) are under-exposed. These shares follow the gold topics, which are diabetes, oncology, neurology and medtech by design, so they are **not** a fairness verdict. The system deliberately has no equal-exposure target, and relevance comes first. What the numbers show is that no single institution dominates and that per-entity max aggregation keeps page-rich hosts such as DBMR or ISPM from flooding results.
+
 ## Limitations and honest gaps
 
 - **Abstention versus recall.** No dense-similarity threshold separates nonsense from valid typed or cross-lingual requests (development hits 0.831–0.909, nonsense probes 0.835–0.870, `app/search/README.md`). At 0.83 we keep recall; nonsense is labelled low confidence, not refused. A semantic scope check in the Apertus interpretation is planned (T39).
