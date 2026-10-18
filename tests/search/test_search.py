@@ -193,8 +193,10 @@ def test_supported_claims_aliases_and_missing_evidence(tmp_path):
     assert result.fields['expertise'][0].value=='Precision instruments'
     assert 'role' not in result.fields and 'official_contact' not in result.fields
     claims[0].evidence=[EvidencePair(version_id=r['version'].version_id,sentence_id=make_sentence_id(r['version'].version_id,999))]
-    with pytest.raises(ValueError,match='unavailable_claim_evidence'):
-        build_index([r],data,encoder,extra_entities=[resolved],claims=claims)
+    manifest=build_index([r],data,encoder,extra_entities=[resolved],claims=claims)
+    assert any(x['reason']=='unavailable_claim_evidence' for x in manifest['knowledge']['withheld'])
+    result=HybridBackend(current_generation(data)[0],encoder=encoder).search(req()).results[0]
+    assert 'expertise' not in result.fields
 
 
 def test_api_auto_loads_disk_backend_and_preserves_errors(built,monkeypatch):
@@ -307,3 +309,52 @@ def test_model_download_is_pinned_bounded_and_atomic(tmp_path,monkeypatch):
     with pytest.raises(ValueError,match='size_mismatch'): download.fetch_model('small',tmp_path/'bad')
     assert not (tmp_path/'bad').exists()
     assert not list(tmp_path.glob('.e5-download-*'))
+
+
+def test_entity_alias_change_reuses_vectors_but_changes_evidence_metadata(built):
+    data,directory,encoder,records,_=built
+    r=records[0]
+    old=r['entities'][0]
+    merged=old.model_copy(update={'entity_id':'ent_resolved','alias_entity_ids':['ent_a']})
+    def fail(*a,**kw): raise AssertionError('unchanged public text was re-encoded')
+    encoder.encode_windows=fail
+    manifest=build_index(records,data,encoder,extra_entities=[merged])
+    assert manifest['reused_windows']>0 and manifest['encoded_entries']==0
+    backend=HybridBackend(current_generation(data)[0],encoder=FixtureEncoder(encoder.root))
+    assert backend.search(req()).results[0].entity_id=='ent_resolved'
+
+
+def test_live_suppression_matches_alias_before_ranking(built,tmp_path,monkeypatch):
+    data,directory,encoder,records,_=built
+    resolved=records[0]['entities'][0].model_copy(update={'entity_id':'ent_canonical','alias_entity_ids':['ent_a']})
+    build_index(records,data,encoder,extra_entities=[resolved])
+    policy=tmp_path/'suppression.json'
+    policy.write_text(json.dumps({'schema_version':'1','entries':[{'entry_id':'fixture-removal',
+        'reason_category':'removal_request','action':'suppress','confirmed_at':'2026-10-18T12:00:00Z',
+        'confirmed_by_role':'test operator','identifiers':{'entity_ids':['ent_a']}}]}))
+    monkeypatch.setenv('BERNMATCH_SUPPRESSION_FILE',str(policy))
+    response=HybridBackend(current_generation(data)[0],encoder=encoder).search(req())
+    assert not any(x.entity_id=='ent_canonical' for x in response.results)
+
+
+def test_query_bundle_preserves_exact_evidence_route(built,tmp_path,monkeypatch):
+    import tarfile
+    from app.search.bundle import package_bundle
+    from app.main import app
+    data,directory,encoder,records,_=built
+    output=tmp_path/'search.tar.gz'
+    report=package_bundle(data,output)
+    assert report['archive_bytes']==output.stat().st_size
+    extracted=tmp_path/'query-only'; extracted.mkdir()
+    with tarfile.open(output) as archive:
+        archive.extractall(extracted,filter='data')
+    assert (extracted/'corpus.sqlite').is_symlink()
+    assert (extracted/'corpus.sqlite').resolve().is_relative_to(extracted)
+    assert current_generation(extracted)[1]['fingerprint']==current_generation(data)[1]['fingerprint']
+    monkeypatch.setenv('BERNMATCH_DATA_DIR',str(extracted))
+    sentence=records[0]['sentences'][0]
+    with TestClient(app) as client:
+        response=client.get(f'/api/v1/evidence/{sentence.version_id}/{sentence.sentence_id}')
+        assert response.status_code==200
+        assert response.json()['text']==sentence.text
+        assert client.get(f'/api/v1/evidence/wrong-version/{sentence.sentence_id}').status_code==410

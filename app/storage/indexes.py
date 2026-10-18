@@ -52,13 +52,14 @@ class IndexStore:
         with self.connect() as db:
             result = []
             for sid in dict.fromkeys(sentence_ids):
-                row = db.execute('SELECT s.body,v.body FROM sentences s JOIN versions v '
+                row = db.execute('SELECT s.id,s.version_id,s.body,v.body FROM sentences s JOIN versions v '
                                  'ON s.version_id=v.id WHERE s.id=?',(sid,)).fetchone()
                 if row is None:
                     raise KeyError('evidence_unavailable')
-                sentence, version = map(json.loads,row)
-                if sentence['version_id'] != version['version_id']:
+                sid,vid,sentence_body,version_body = row
+                sentence,version = json.loads(sentence_body),json.loads(version_body)
+                if vid != version['version_id'] or sentence.get('sentence_id',sid)!=sid or sentence.get('version_id',vid)!=vid:
                     raise ValueError('cross_version_evidence')
-                result.append({k:sentence[k] for k in ('sentence_id','version_id','text','page_number')} | {
+                result.append({'sentence_id':sid,'version_id':vid,'text':sentence['text'],'page_number':sentence.get('page_number')} | {
                     k:version[k] for k in ('url','content_date','last_modified','fetched_at')})
         return result

@@ -69,7 +69,13 @@ class HybridBackend:
         # present an ignored constraint as enforced by the baseline fast path.
         if req.needs or req.company_context:
             limitations.append('Baseline retrieval uses the query text; needs/context interpretation is not integrated.')
-        allowed = {eid for eid,item in self.entities.items() if item['entity']['status']!='retired'
+        from app.lifecycle.serving import load_suppression
+        from app.lifecycle.suppression import is_suppressed_entity
+        policy = load_suppression()
+        denied = {eid for eid,item in self.entities.items() if any(is_suppressed_entity(policy,
+            entity_id=identifier,names=[item['entity']['name']],urls=item['entity']['canonical_profiles'])
+            for identifier in [eid]+item['entity']['alias_entity_ids'])}
+        allowed = {eid for eid,item in self.entities.items() if eid not in denied and item['entity']['status']!='retired'
                    and req.entity_type in (None,item['entity']['entity_type'])}
         if not req.query.strip() or not words(req.query) or not allowed:
             return self._response(req,[],limitations,enrichment,start,timing)

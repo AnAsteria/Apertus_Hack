@@ -12,6 +12,7 @@ from app.contracts import Claim, Entity
 from app.storage.indexes import INDEX_VERSION, current_generation
 from .analysis import analyze
 from .encoder import digest
+from .cache import RECIPE,encode_reusing
 
 
 def prepare(records, extra_entities=(), claims=()):
@@ -48,33 +49,41 @@ def prepare(records, extra_entities=(), claims=()):
         return eid if entity and entity.status != 'retired' else None
     for alias in aliases:
         canonical(alias)
-    fields, claim_refs = {}, {}
+    from app.grounding.fields import card_fields
+    checked = []
+    withheld = []
     for raw in claims:
         claim = Claim.model_validate(raw)
+        if claim.support != 'supported':
+            withheld.append({'claim_id':claim.claim_id,'reason':'not_supported'})
+            continue
         eid = canonical(claim.subject_entity_id)
         if eid is None:
             continue
         entity = entities[eid]
         if claim.claim_id not in entity.claim_ids:
             raise ValueError('undeclared_entity_claim')
-        for evidence in claim.evidence:
-            sentence = sentences.get(evidence.sentence_id)
-            if sentence is None or sentence.version_id != evidence.version_id:
-                raise ValueError('unavailable_claim_evidence')
-        # Qualified claims are withheld until their qualification can be shown
-        # by the shared UI; presence of a valid citation is not support proof.
-        if claim.support != 'supported':
+        if any(e.sentence_id not in sentences or sentences[e.sentence_id].version_id!=e.version_id for e in claim.evidence):
+            withheld.append({'claim_id':claim.claim_id,'reason':'unavailable_claim_evidence'})
             continue
         if claim.predicate == 'official_contact' and entity.status != 'current':
+            withheld.append({'claim_id':claim.claim_id,'reason':'contact_currency_unverified_or_former'})
             continue
-        value = claim.value
-        if claim.object_entity_id:
-            target = canonical(claim.object_entity_id)
-            if not target:
-                raise ValueError('unavailable_claim_object')
-            value = entities[target].name
-        fields.setdefault(eid,{}).setdefault(claim.predicate,[]).append({'claim_id':claim.claim_id,'value':value})
-        claim_refs.setdefault(eid,[]).extend(e.sentence_id for e in claim.evidence)
+        obj = canonical(claim.object_entity_id) if claim.object_entity_id else None
+        if claim.object_entity_id and (obj is None or obj==eid):
+            withheld.append({'claim_id':claim.claim_id,'reason':'unavailable_or_collapsed_claim_object'})
+            continue
+        checked.append(claim.model_copy(update={'subject_entity_id':eid,'object_entity_id':obj}))
+    canonical_entities = {eid:e for eid,e in entities.items() if canonical(eid)==eid}
+    fields, claim_refs = {}, {}
+    by_claim = {c.claim_id:c for c in checked}
+    for eid,entity in canonical_entities.items():
+        mapped = card_fields(entity,checked,canonical_entities)
+        fields[eid] = {k:[v.model_dump() for v in values] for k,values in mapped.items()}
+        # Inverse relationship fields cite the same validated claim, without
+        # turning a unit's expertise into a person's expertise.
+        claim_refs[eid] = list(dict.fromkeys(ref.sentence_id for values in mapped.values()
+            for value in values for ref in by_claim[value.claim_id].evidence))
     entries, texts, first_evidence = [], [], {}
     for record in records:
         version = record['version']
@@ -101,14 +110,14 @@ def prepare(records, extra_entities=(), claims=()):
         entries.append({'kind':'profile','language':language,'sentence_ids':refs,'entity_ids':[eid]})
         texts.append(profile)
         retained[eid] = {'entity':entity.model_dump(),'fields':fields.get(eid,{}),'claim_sentence_ids':list(dict.fromkeys(claim_refs.get(eid,[])))}
-    return versions,sentences,retained,entries,texts
+    return versions,sentences,retained,entries,texts,{'validated_supported_claims':len(checked),'withheld':withheld}
 
 
 def build_index(records, data_dir, encoder, *, extra_entities=(), claims=(), progress=None):
     started = time.perf_counter()
-    versions,sentences,entities,entries,texts = prepare(records,extra_entities,claims)
-    payload = {'index_version':INDEX_VERSION,'model':encoder.manifest,'versions':sorted(versions),
-               'entities':entities,'entries':entries,'texts_sha256':hashlib.sha256('\n'.join(texts).encode()).hexdigest()}
+    versions,sentences,entities,entries,texts,knowledge = prepare(records,extra_entities,claims)
+    payload = {'index_version':INDEX_VERSION,'embedding_recipe':RECIPE,'serving_projection':'compact-evidence-v1','model':encoder.manifest,'versions':sorted(versions),
+               'entities':entities,'knowledge':knowledge,'entries':entries,'texts_sha256':hashlib.sha256('\n'.join(texts).encode()).hexdigest()}
     fingerprint = hashlib.sha256(json.dumps(payload,sort_keys=True).encode()).hexdigest()
     existing = current_generation(data_dir)
     if existing and existing[1]['fingerprint'] == fingerprint:
@@ -130,8 +139,8 @@ def build_index(records, data_dir, encoder, *, extra_entities=(), claims=(), pro
                 CREATE TABLE entries (id INTEGER PRIMARY KEY,body TEXT NOT NULL);
                 CREATE VIRTUAL TABLE keyword USING fts5(tokens, content='');
             ''')
-            db.executemany('INSERT INTO versions VALUES (?,?)',[(k,v.model_dump_json()) for k,v in versions.items()])
-            db.executemany('INSERT INTO sentences VALUES (?,?,?)',[(k,v.version_id,v.model_dump_json()) for k,v in sentences.items()])
+            db.executemany('INSERT INTO versions VALUES (?,?)',[(k,json.dumps(v.model_dump(exclude={'passages'}))) for k,v in versions.items()])
+            db.executemany('INSERT INTO sentences VALUES (?,?,?)',[(k,v.version_id,json.dumps(v.model_dump(include={'text','page_number','passage_id'}))) for k,v in sentences.items()])
             db.executemany('INSERT INTO entities VALUES (?,?)',[(k,json.dumps(v)) for k,v in entities.items()])
             for i,(entry,text) in enumerate(zip(entries,texts)):
                 db.execute('INSERT INTO entries VALUES (?,?)',(i,json.dumps(entry)))
@@ -140,7 +149,7 @@ def build_index(records, data_dir, encoder, *, extra_entities=(), claims=(), pro
             assert db.execute('PRAGMA integrity_check').fetchone()[0] == 'ok'
             db.commit()
             db.execute('VACUUM')
-        vectors,owners = encoder.encode_windows(texts,kind='passage',progress=progress)
+        vectors,owners,reused_windows,encoded_entries = encode_reusing(texts,encoder,existing,progress)
         vectors = np.asarray(vectors,dtype=np.float32)
         owners = np.asarray(owners,dtype=np.int32)
         if vectors.ndim != 2 or vectors.shape[0] != len(owners) or not np.isfinite(vectors).all():
@@ -155,11 +164,11 @@ def build_index(records, data_dir, encoder, *, extra_entities=(), claims=(), pro
         assets = {str(p.relative_to(stage)):{'bytes':p.stat().st_size,'sha256':digest(p)}
                   for p in sorted(stage.rglob('*')) if p.is_file()}
         manifest = {'index_version':INDEX_VERSION,'fingerprint':fingerprint,'generation':name,
-                    'model':encoder.manifest,'counts':{'versions':len(versions),'sentences':len(sentences),
+                    'model':encoder.manifest,'embedding_recipe':RECIPE,'reused_windows':reused_windows,'encoded_entries':encoded_entries,'counts':{'versions':len(versions),'sentences':len(sentences),
                     'entities':len(entities),'entries':len(entries),'passage_entries':sum(e['kind']=='passage' for e in entries),
                     'profile_entries':sum(e['kind']=='profile' for e in entries),'vectors':len(vectors),'dimensions':vectors.shape[1]},
                     'assets':assets,'asset_bytes':sum(p['bytes'] for p in assets.values()),
-                    'build_seconds':time.perf_counter()-started,'reused':False}
+                    'knowledge':knowledge,'build_seconds':time.perf_counter()-started,'reused':False}
         (stage/'manifest.json').write_text(json.dumps(manifest,indent=2))
         final = parent/name
         os.replace(stage,final)
