@@ -114,4 +114,21 @@ else
   echo "No bundle and BERNMATCH_AUTO_PIPELINE is not 1: serving 'not ready'."
 fi
 
+# T33: feedback and admin job records (bernmatch.sqlite) live on local disk; a snapshot goes to
+# $STORE/state every BERNMATCH_STATE_BACKUP_SECONDS (default 60) and comes back on start-up.
+# A restart can lose at most the writes since the last snapshot.
+if [ "$store_ok" = 1 ]; then
+  STATE_DB="$SERVE/bernmatch.sqlite"
+  ( cd "$HOME/app" && python -m app.lifecycle.state_backup restore --db "$STATE_DB" --store "$STORE/state" ) \
+    && log "state restore checked ($STORE/state)" || log "WARNING: state restore failed; starting with empty feedback"
+  (
+    cd "$HOME/app" || exit 0
+    while true; do
+      sleep "${BERNMATCH_STATE_BACKUP_SECONDS:-60}"
+      python -m app.lifecycle.state_backup backup --db "$STATE_DB" --store "$STORE/state" > /dev/null 2>&1 \
+        || echo "WARNING: state backup failed"
+    done
+  ) &
+fi
+
 exec uvicorn app.main:app --host 0.0.0.0 --port 7860
