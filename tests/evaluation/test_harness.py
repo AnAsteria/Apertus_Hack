@@ -193,3 +193,9 @@ def test_sample_sheet_roundtrip(fixture_client, tmp_path):
     filled = "\n".join([lines[0]] + [l.rstrip(",") + ",supported," if l.endswith(",,") else l for l in lines[1:]])
     sheet.write_text(filled, encoding="utf-8")
     assert report.support_from_sheet(str(sheet))["n"] == 2
+
+
+def test_fields_match_the_card_field_names_emitted_by_t08():
+    from app.grounding.fields import FIELD_FOR, INVERSE_FIELD
+    from evaluation.report import FIELDS
+    assert set(FIELDS) == set(FIELD_FOR.values()) - {"related"} | set(INVERSE_FIELD.values())

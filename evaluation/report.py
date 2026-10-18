@@ -5,7 +5,9 @@ import random
 from . import metrics as m
 from .gold import canonical_hash
 
-FIELDS = ("affiliation", "expertise", "contact", "projects", "infrastructure")
+# Card field names emitted by T08/T09 (app/grounding/fields.py: FIELD_FOR + INVERSE_FIELD values).
+FIELDS = ("role", "expertise", "projects", "infrastructure", "services", "official_contact", "affiliation",
+          "part_of", "leads", "led_by", "members", "includes")
 
 
 def compute(run: dict, gold: dict, k: int = 10) -> dict:
