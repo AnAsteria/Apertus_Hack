@@ -75,7 +75,7 @@ def _default_reranker(req: SearchRequest, expansions: list[str]) -> tuple[list[R
 
     backend = get_backend()
     if backend is None or (not isinstance(backend, FixtureBackend) and not index_ready()):
-        return [], []
+        return [], None  # no index: nothing to report, the assessment stage says so
     return expanded_search(backend, req, expansions)
 
 
@@ -239,7 +239,7 @@ def _stream(request_id: str, req: SearchRequest) -> Iterator[str]:
             reranked, used = future.result(timeout=min(RERANK_TIMEOUT_S, JOB_LIFETIME_S))
         except Exception:
             future.cancel()
-            reranked, used = [], []
+            reranked, used = [], None
             yield event("error", _error_payload("RERANK_FAILED", "The expanded search failed; initial results are unaffected.", True) | {"stage": "reranked"})
         timings["rerank_ms"] = int((time.monotonic() - t2) * 1000)
         if stale():
@@ -249,6 +249,9 @@ def _stream(request_id: str, req: SearchRequest) -> Iterator[str]:
             candidates = reranked
             yield event("reranked", {"results": [r.model_dump() for r in reranked], "expanded_queries": used,
                                      "elapsed_ms": timings["rerank_ms"]})
+        elif used == []:
+            # Guarded original outcome (refusal / too broad) or nothing to fuse: cards stay as they are.
+            yield event("progress", {"stage": "reranked", "state": "skipped", "reason": "original_outcome_kept"})
 
     # Stage 2: batched assessment of the current candidates.
     if candidates is None:

@@ -160,3 +160,15 @@ def test_reranked_event_carries_validated_cards_and_failure_keeps_stream_alive(c
 def test_ui_replaces_cards_on_reranked_event():
     js = open(os.path.join(os.path.dirname(__file__), "..", "..", "app", "static", "app.js"), encoding="utf-8").read()
     assert 'addEventListener("reranked"' in js and "renderCards(d.payload.results)" in js
+
+
+def test_guarded_original_outcome_skips_reranking_and_keeps_cards(client):
+    enrichment.set_reranker(lambda req, expansions: ([], []))
+    try:
+        rid, url = start(client)
+        evs = parse_sse(client.get(url).text)
+        kinds = [k for k, _ in evs]
+        assert "reranked" not in kinds and kinds[-1] == "complete"
+        assert {"stage": "reranked", "state": "skipped", "reason": "original_outcome_kept"} in [d["payload"] for _, d in evs]
+    finally:
+        enrichment.set_reranker(None)
