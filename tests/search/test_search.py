@@ -85,6 +85,26 @@ def test_mmr_keeps_high_relevance_without_institutional_quotas():
     assert diversify(scores,vectors,limit=3)==['a','different','duplicate']
 
 
+def test_hybrid_fusion_keeps_single_channel_candidates():
+    # Regression: an entity first in both channels must not suppress entities that
+    # only one channel found (e.g. cross-lingual dense hits without keyword overlap).
+    keyword={e:(10.-i,i) for i,e in enumerate('ABCDE')}
+    dense={e:(.9-i*.01,i) for i,e in enumerate('AFGHI')}
+    fused=reciprocal_rank_fusion([keyword,dense])
+    vectors={e:np.eye(9)[i] for i,e in enumerate(sorted(fused))}
+    selected=diversify(fused,vectors)
+    assert selected[0]=='A' and set(selected)==set('ABCDEFGHI')
+
+
+def test_keyword_channel_is_bounded(built):
+    data,directory,encoder,records,_=built
+    store=HybridBackend(directory,encoder=encoder).store
+    everything=store.keyword(match_expression(query_terms('laser imaging')),limit=10**6)
+    assert len(store.keyword(match_expression(query_terms('laser imaging')),limit=1))==min(1,len(everything))
+    if everything:
+        assert store.keyword(match_expression(query_terms('laser imaging')),limit=1)[0][1]==max(s for _,s in everything)
+
+
 def test_stemming_compounds_and_multilingual_terms():
     assert set(analyze('Krebserkrankungen','de')) & set(query_terms('Krebs'))
     assert analyze('cancers','en')==analyze('cancer','en')

@@ -28,8 +28,11 @@ def diversify(scores, representatives, limit=10, relevance_weight=.85):
     if not scores:
         return []
     scale = max(scores.values())
-    # Discard candidates below half the best fused relevance before MMR.
-    remaining = {eid for eid,score in scores.items() if score >= .5*scale}
+    # No cut-off on the fused score: under RRF an entity ranked first by both
+    # channels scores 2/61, while every single-channel candidate scores at most
+    # 1/61, so a "half the best" cut-off left one card. Candidates are already
+    # bounded by each channel's depth and the dense similarity threshold.
+    remaining = set(scores)
     selected = []
     while remaining and len(selected) < limit:
         def criterion(eid):

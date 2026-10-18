@@ -9,6 +9,7 @@ import sqlite3
 from pathlib import Path
 
 INDEX_VERSION = 1
+KEYWORD_LIMIT = 1000
 
 
 def current_generation(data_dir):
@@ -41,12 +42,15 @@ class IndexStore:
             entries = [json.loads(body) for (body,) in db.execute('SELECT body FROM entries ORDER BY id')]
         return entities,entries
 
-    def keyword(self, expression):
+    def keyword(self, expression, limit=KEYWORD_LIMIT):
+        """Best `limit` BM25 rows. A broad OR expression can match most of the
+        corpus; ranking keeps only the top entries (per-entity max and RRF depth
+        come after this)."""
         if not expression:
             return []
         with self.connect() as db:
-            return db.execute('SELECT rowid-1,-bm25(keyword) FROM keyword WHERE keyword MATCH ?',
-                              (expression,)).fetchall()
+            return db.execute('SELECT rowid-1,-bm25(keyword) FROM keyword WHERE keyword MATCH ? '
+                              'ORDER BY bm25(keyword) LIMIT ?',(expression,limit)).fetchall()
 
     def evidence(self, sentence_ids):
         with self.connect() as db:
