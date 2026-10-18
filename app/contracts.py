@@ -52,13 +52,21 @@ class EvidenceRef(BaseModel):
     fetched_at: Optional[str] = None
 
 
+class FieldValue(BaseModel):
+    """Proposed additive change (docs/DECISIONS.md, deviation D1): a card field carries the
+    supported claim id AND its display value so the UI need not resolve claims itself."""
+    model_config = ConfigDict(extra="forbid")
+    claim_id: str
+    value: str
+
+
 class Result(BaseModel):
     model_config = ConfigDict(extra="forbid")
     entity_id: str
     entity_type: EntityType
     rank: int = Field(ge=1)
     display_name: str
-    fields: dict[str, list[str]] = {}  # values are supported claim ids
+    fields: dict[str, list[FieldValue]] = {}  # supported claims only
     reason: str
     evidence: list[EvidenceRef]
     freshness: Literal["fresh", "stale", "unknown"]

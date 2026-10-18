@@ -55,3 +55,8 @@ Branch `codex/issue-<n>-<slug>`, pull request referencing `Refs #n`, green CI, d
 - Removal/suppression route, identity verification and backup retention period.
 - Hosting selection (T03).
 - Embedding model revision and Apertus quantisation.
+
+## Deviations
+
+- **D1 (T10, proposed, needs contract-owner approval):** `Result.fields` values changed from bare claim-id strings to `{claim_id, value}` objects, so a card can show a supported claim's text without the UI resolving claims. Additive in intent but breaks any producer using the old shape. Implemented in `app/contracts.py`; `docs/CONTRACTS.md` not yet updated.
+- **D2 (T10):** the search route moved to `app/api/search.py` with a pluggable backend. Fixture mode (`BERNMATCH_FIXTURE_MODE=1`) serves synthetic cards for UI work only; it is off by default and labels its output synthetic.
