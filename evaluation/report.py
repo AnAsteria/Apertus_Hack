@@ -46,6 +46,7 @@ def compute(run: dict, gold: dict, k: int = 10) -> dict:
         "misleading_avoided": {"rate": mean([float(a) for a in avoid_ok]), "n": len(avoid_ok)},
         "institutional_exposure": m.institutional_exposure(cards),
         "field_completeness": m.field_completeness(cards, FIELDS),
+        "cards_with_any_field": (sum(1 for c in cards if any(c.get("fields", {}).values())) / len(cards)) if cards else None,
         "latency_ms": {"median": m.median(lat), "p95": m.percentile(lat, 95), "n": len(lat)},
         "tokens_per_query": run.get("tokens_per_query"), "indexing_time_s": run.get("indexing_time_s"),
         "not_measured_here": ["evidence support (needs the adjudicated sheet)", "field accuracy (needs adjudication)",
