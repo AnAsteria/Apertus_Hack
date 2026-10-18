@@ -65,3 +65,4 @@ Branch `codex/issue-<n>-<slug>`, pull request referencing `Refs #n`, green CI, d
 - **D5 (R1, proposed by Maxim, pending):** T06 stub entities let T09 v1 ship before T07/T08; cards may be evidence-only.
 - **D6 (R1, team decision, pending record):** hosting on a free Hugging Face Space (Docker) with the organiser Keera endpoint; no paid resources.
 - **D7 (R1, proposed by Maxim, pending):** multilingual scope extension — T27 Core query languages EN/DE/FR/IT/RU; T28 Stretch localized output.
+- **D8 (contract owner Ruihan, 2026-10-18, proposed):** CONTRACTS section 3 corpus models and identifier helpers added to `app/contracts.py`, with the enum, predicate and integrity choices listed under section 3 of `CONTRACTS.md`. Additive: no existing model changes. Needs Maxim's (T06) and Dimitry's (integration) acknowledgement.

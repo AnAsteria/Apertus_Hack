@@ -1,0 +1,154 @@
+{
+  "_comment": "SYNTHETIC corpus fixture for contract tests. example.org is not a real source; no fact here is real.",
+  "document": {
+    "schema_version": "1",
+    "document_id": "doc_7d4351443cd1e06ec75526bb4c9c53e4",
+    "source_id": "artorg_demo",
+    "canonical_url": "https://example.org/research/imaging",
+    "language_variant_document_ids": []
+  },
+  "version": {
+    "schema_version": "1",
+    "version_id": "ver_b420cfc10d5ebc41067fea2dba21a8a7",
+    "document_id": "doc_7d4351443cd1e06ec75526bb4c9c53e4",
+    "url": "https://example.org/research/imaging",
+    "redirects": [],
+    "fetched_at": "2026-10-18T12:00:00Z",
+    "content_date": null,
+    "last_modified": null,
+    "content_hash": "aeb2c1f1563bef7cc72fb2584f10176a9c330f938b27789de3fb3beef7982c0e",
+    "parser_version": "parser-1",
+    "language": "en",
+    "media_type": "text/html",
+    "page_type": "unit",
+    "state": "active",
+    "passages": [
+      {
+        "passage_id": "ver_b420cfc10d5ebc41067fea2dba21a8a7:p1",
+        "sentence_ids": [
+          "ver_b420cfc10d5ebc41067fea2dba21a8a7:s1",
+          "ver_b420cfc10d5ebc41067fea2dba21a8a7:s2",
+          "ver_b420cfc10d5ebc41067fea2dba21a8a7:s3"
+        ],
+        "page_number": null
+      }
+    ]
+  },
+  "sentences": [
+    {
+      "schema_version": "1",
+      "sentence_id": "ver_b420cfc10d5ebc41067fea2dba21a8a7:s1",
+      "version_id": "ver_b420cfc10d5ebc41067fea2dba21a8a7",
+      "passage_id": "ver_b420cfc10d5ebc41067fea2dba21a8a7:p1",
+      "text": "The Example Imaging Group researches medical imaging.",
+      "page_number": null
+    },
+    {
+      "schema_version": "1",
+      "sentence_id": "ver_b420cfc10d5ebc41067fea2dba21a8a7:s2",
+      "version_id": "ver_b420cfc10d5ebc41067fea2dba21a8a7",
+      "passage_id": "ver_b420cfc10d5ebc41067fea2dba21a8a7:p1",
+      "text": "Dr. Example Person leads the group.",
+      "page_number": null
+    },
+    {
+      "schema_version": "1",
+      "sentence_id": "ver_b420cfc10d5ebc41067fea2dba21a8a7:s3",
+      "version_id": "ver_b420cfc10d5ebc41067fea2dba21a8a7",
+      "passage_id": "ver_b420cfc10d5ebc41067fea2dba21a8a7:p1",
+      "text": "Contact: imaging@example.org",
+      "page_number": null
+    }
+  ],
+  "entities": [
+    {
+      "schema_version": "1",
+      "entity_id": "ent_demounit",
+      "entity_type": "unit",
+      "name": "Example Imaging Group",
+      "canonical_profiles": [
+        "https://example.org/research/imaging"
+      ],
+      "identifiers": [],
+      "affiliation_entity_ids": [],
+      "status": "unknown",
+      "claim_ids": [
+        "clm_demo1",
+        "clm_demo3"
+      ],
+      "contact_claim_ids": [
+        "clm_demo3"
+      ],
+      "resolution_state": "confirmed",
+      "alias_entity_ids": []
+    },
+    {
+      "schema_version": "1",
+      "entity_id": "ent_demoperson",
+      "entity_type": "person",
+      "name": "Dr. Example Person",
+      "canonical_profiles": [],
+      "identifiers": [],
+      "affiliation_entity_ids": [
+        "ent_demounit"
+      ],
+      "status": "unknown",
+      "claim_ids": [
+        "clm_demo2"
+      ],
+      "contact_claim_ids": [],
+      "resolution_state": "uncertain",
+      "alias_entity_ids": []
+    }
+  ],
+  "claims": [
+    {
+      "schema_version": "1",
+      "claim_id": "clm_demo1",
+      "subject_entity_id": "ent_demounit",
+      "predicate": "expertise",
+      "value": "medical imaging",
+      "object_entity_id": null,
+      "evidence": [
+        {
+          "version_id": "ver_b420cfc10d5ebc41067fea2dba21a8a7",
+          "sentence_id": "ver_b420cfc10d5ebc41067fea2dba21a8a7:s1"
+        }
+      ],
+      "support": "supported",
+      "qualification": null
+    },
+    {
+      "schema_version": "1",
+      "claim_id": "clm_demo2",
+      "subject_entity_id": "ent_demoperson",
+      "predicate": "leader",
+      "value": null,
+      "object_entity_id": "ent_demounit",
+      "evidence": [
+        {
+          "version_id": "ver_b420cfc10d5ebc41067fea2dba21a8a7",
+          "sentence_id": "ver_b420cfc10d5ebc41067fea2dba21a8a7:s2"
+        }
+      ],
+      "support": "supported",
+      "qualification": null
+    },
+    {
+      "schema_version": "1",
+      "claim_id": "clm_demo3",
+      "subject_entity_id": "ent_demounit",
+      "predicate": "official_contact",
+      "value": "imaging@example.org",
+      "object_entity_id": null,
+      "evidence": [
+        {
+          "version_id": "ver_b420cfc10d5ebc41067fea2dba21a8a7",
+          "sentence_id": "ver_b420cfc10d5ebc41067fea2dba21a8a7:s3"
+        }
+      ],
+      "support": "pending",
+      "qualification": null
+    }
+  ]
+}
