@@ -2,6 +2,7 @@
 import argparse
 import json
 import os
+import sys
 from pathlib import Path
 from app.ingest.config import generate_registry, load_source, registry_paths
 from app.ingest.network import Fetcher
@@ -11,13 +12,14 @@ from app.storage.corpus import CorpusStore
 
 def main():
     parser = argparse.ArgumentParser(description='Bounded public corpus ingestion (not query-time crawling)')
-    parser.add_argument('command', choices=['generate', 'crawl', 'export'])
+    parser.add_argument('command', choices=['generate', 'crawl', 'export', 'import'])
     parser.add_argument('--registry', type=Path, default=Path('config/sources'))
     parser.add_argument('--data-dir', type=Path, default=Path(os.environ.get('BERNMATCH_DATA_DIR', 'data')))
     parser.add_argument('--config', type=Path, action='append', help='Explicit source YAML; repeat for a bounded live source extension')
     parser.add_argument('--profile', choices=['dev', 'final'], default='dev')
     parser.add_argument('--source', action='append', default=[], help='Source id; repeat to select several')
     parser.add_argument('--max-pages', type=int, help='Explicit profile budget override, recorded in snapshot')
+    parser.add_argument('--jsonl', type=Path, help='For import: the corpus.jsonl produced by export')
     parser.add_argument('--workers', type=int, default=1, help='Sources crawled at once (each source keeps its own per-host rate limit)')
     parser.add_argument('--refresh', action='store_true', help='Explicitly re-fetch; does not retire absent URLs')
     args = parser.parse_args()
@@ -25,8 +27,17 @@ def main():
         paths = generate_registry(args.registry)
         print(json.dumps({'generated_sources': len(paths), 'directory': str(args.registry / 'generated')}))
         return
+    if args.command == 'import':
+        if not args.jsonl:
+            parser.error('import needs --jsonl')
+        from app.storage.jsonl_import import import_jsonl
+        print(json.dumps(import_jsonl(args.data_dir, args.jsonl)))
+        return
     store = CorpusStore(args.data_dir)
     if args.command == 'export':
+        # Windows consoles default to cp1252 and crash on characters such as U+2212; the file is UTF-8.
+        if hasattr(sys.stdout, 'reconfigure'):
+            sys.stdout.reconfigure(encoding='utf-8')
         # JSONL on stdout; public data only. Store directly under DATA_DIR if saving.
         for record in store.active_records():
             print(json.dumps({k: [x.model_dump() if hasattr(x, 'model_dump') else x for x in v] if isinstance(v, list)
@@ -44,7 +55,6 @@ def main():
     if requested - {s.config.source_id for s in sources}:
         parser.error('Unknown source id')
     chosen = [s for s in sources if not requested or s.config.source_id in requested]
-    import sys
     import threading
     from concurrent.futures import ThreadPoolExecutor
     lock = threading.Lock()
