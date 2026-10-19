@@ -464,3 +464,11 @@ body.sl-open .top { position: sticky; top: 0; z-index: 4; background: var(--bg);
 .outcome.sig-yellow { border-top-color: #d9a400; } .sig-yellow .light { background: #e0ac00; box-shadow: 0 0 0 3px rgba(224, 172, 0, .22); }
 .outcome.sig-red { border-top-color: var(--red); } .sig-red .light { background: var(--red); box-shadow: 0 0 0 3px rgba(227, 6, 19, .18); }
 .outcome.sig-green { padding: .7rem 1.25rem; } .outcome.sig-green h2 { font-size: 1.1rem; } .outcome.sig-green p { margin: .1rem 0 0; font-size: .9rem; color: var(--muted); }
+/* Per-card confidence label: green strong, yellow possible, red weak */
+.badge.conf { text-transform: none; letter-spacing: 0; font-weight: 600; margin-right: .5rem; border: 1px solid transparent; }
+.badge.conf::before { content: ""; display: inline-block; width: .5rem; height: .5rem; border-radius: 50%; margin-right: .35rem; vertical-align: .05em; }
+.conf-3 { background: rgba(31, 143, 58, .12); color: #17692b; } .conf-3::before { background: #1f8f3a; }
+.conf-2 { background: rgba(224, 172, 0, .16); color: #7a5d00; } .conf-2::before { background: #e0ac00; }
+.conf-1 { background: rgba(227, 6, 19, .09); color: var(--red-text); } .conf-1::before { background: var(--red); }
+@media (prefers-color-scheme: dark) { .conf-3 { color: #7fd99a; } .conf-2 { color: #f0cc5c; } }
+.status.refining-strong { font-weight: 600; color: var(--ai); }
