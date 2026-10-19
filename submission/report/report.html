@@ -53,7 +53,7 @@ Live: kaktamsdengami-bern-match.hf.space · Code: github.com/AnAsteria/Apertus_H
 <table>
   <tr><th>Criterion</th><th>Status</th><th>Evidence (frozen evaluation split unless noted)</th></tr>
   <tr><td>1. ≥ 80% of expected experts/units in the top 10</td><td class="ok">Met after refinement</td><td>Recall@10 <b>0.82</b> with Apertus refinement; 0.77 instant (n = 17); development 0.82</td></tr>
-  <tr><td>2. Different wording (synonym, lay, other language)</td><td class="part">Mostly</td><td>Synonym 2/2 · cross-lingual 0.67 → 0.78 with Apertus terms (n = 9) · lay 0.5 (n = 2); development: cross-lingual 0.82 (n = 11), lay 1.0 (n = 2)</td></tr>
+  <tr><td>2. Different wording (synonym, lay, other language)</td><td class="part">Partly</td><td>Synonym 2/2 · cross-lingual 0.67 → 0.78 with Apertus terms (n = 9) · lay 0.5 (n = 2); development: cross-lingual 0.82 (n = 11), lay 1.0 (n = 2)</td></tr>
   <tr><td>3. Every result traceable, nothing invented</td><td class="ok">Met</td><td>100% of cards link to the source; 0 quote mismatches; facts kept only if a cited sentence states them; semantic support is weaker on ranks 4–10 (section 4)</td></tr>
   <tr><td>4. Structured fields where the source provides them</td><td class="part">Partly</td><td>Person, role, unit, expertise, projects, infrastructure/services, reason for match and source link are rendered when supported; 26% of cards carry at least one structured field</td></tr>
   <tr><td>5. All three sources</td><td class="ok">Met</td><td>UniBE (inventory-based), ARTORG, DCB: 41 domains crawled; 34 appear in served results</td></tr>
@@ -159,7 +159,7 @@ Live: kaktamsdengami-bern-match.hf.space · Code: github.com/AnAsteria/Apertus_H
     <ul>
       <li>First results: server median ≈ 0.26 s, p95 ≈ 0.5 s.</li>
       <li>10 concurrent users: p95 ≈ 3 s (load test, 18 Oct).</li>
-      <li>Apertus refinement and assessments: median ≈ 14 s, p95 ≈ 17 s after the B1 latency fixes (parallel batches, interpretation cache, straggler deadline). Before them: 33.5 s / 50.5 s.</li>
+      <li>Apertus refinement and assessments: median ≈ 14 s, p95 ≈ 17 s after the B1 latency fixes (parallel batches, interpretation cache, straggler deadline), down from 33.5 s / 50.5 s. Measured end to end on the live Space over the development split: median 17.5 s.</li>
       <li>The analyst never waits for the model: results are shown first, and the refined ranking is offered when it arrives.</li>
     </ul>
   </li>
@@ -216,10 +216,11 @@ Live: kaktamsdengami-bern-match.hf.space · Code: github.com/AnAsteria/Apertus_H
 </ul>
 </div>
 </div>
-<p><b>Fair discoverability.</b> Scores are max-aggregated per entity, so a group with one page competes on equal terms with a page-rich institute. Across 350 served cards, 34 of 41 sources appear and no single host dominates (largest 15%). There is deliberately no equal-exposure quota: relevance comes first. <b>Legal.</b> Built for the Swiss nDSG and the GDPR where applicable: only public content, data minimisation, removal and retention as above,. Copyright of the source pages stays with the institutions; we store sentences only to quote and link them. Outputs are to be published as Open Commons per the challenge terms (§6).</p>
+<p><b>Fair discoverability.</b> Scores are max-aggregated per entity, so a group with one page competes on equal terms with a page-rich institute. Across 350 served cards, 34 of 41 sources appear and no single host dominates (largest 15%). There is deliberately no equal-exposure quota: relevance comes first. <b>Legal.</b> Built for the Swiss nDSG and the GDPR where applicable: only public content, data minimisation, removal and retention as above. Copyright of the source pages stays with the institutions; we store sentences only to quote and link them. Outputs are to be published as Open Commons per the challenge terms (§6).</p>
 <p class="note">These are design commitments, not a claim of legal compliance.</p>
 
 <h2>8. Implementation feasibility, readiness and limits</h2>
+<p><b>How we worked.</b> Every challenge requirement became a GitHub issue with acceptance criteria (175 issues and PRs, 240 commits on <code>main</code>). Design choices are recorded as decisions D1–D16. Nothing was merged without tests, and ranking changes were merged only after a development-split measurement; evaluation-split runs were disclosed. Ideas that did not measurably help were not shipped (section 4).</p>
 <p><b>Operation.</b>
 One-command deploy with smoke test and commit check; rollback by restoring the previous bundle. Feedback and admin state survive restarts; rate limiting; protected admin with per-source coverage. CI runs 360+ deterministic tests with no network and no paid inference. A new source is a YAML file validated by the loader (example: BFH engineering research).</p>
 <p><b>Needed for production:</b>
@@ -227,6 +228,7 @@ Swiss or on-premises hosting; scheduled refresh crawls; monitoring and alerting;
 <p><b>Limitations.</b></p>
 <ul>
   <li>Small samples: 17 scored evaluation queries, one location for latency.</li>
+  <li>Lay wording without the lab's terms is the weak spot. A juror's live query, "old people care and supply", returned low-confidence cards: the geriatrics clinic and the gerontechnology group exist in the index, but the instant path did not reach them. The 8B fallback (70B was over its 12 s deadline) added only weak terms, and the relevant cards sat under "More results".</li>
   <li>Structured fields cover 26% of cards; every card has quote and link.</li>
   <li>Ranks 4–10 are often weak matches.</li>
   <li>The 2 "no answer" questions still return low-confidence cards.</li>
