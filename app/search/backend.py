@@ -11,7 +11,10 @@ from .analysis import analyze,language_of,match_expression,query_terms,words
 from .encoder import OnnxEncoder,digest
 from .ranking import entity_max,reciprocal_rank_fusion,diversify,non_entity_page,DEMOTION
 from .outcome import classify,thresholds
-from .explain import channel_ranks,matched_words,reason as explain_reason
+from .explain import channel_ranks,matched_words,contact_bearing,reason as explain_reason
+from . import rerank as rerank_mod
+from .typehint import preferred_type,BOOST as TYPE_BOOST
+from .acronyms import AcronymTable
 
 
 def freshness(evidence, now=None):
@@ -32,7 +35,7 @@ def freshness(evidence, now=None):
 
 
 class HybridBackend:
-    def __init__(self, directory, *, encoder=None, min_dense=None, abstain_dense=None, keyword_weight=None, mode=None):
+    def __init__(self, directory, *, encoder=None, min_dense=None, abstain_dense=None, keyword_weight=None, mode=None, reranker=None):
         mode = mode or os.environ.get('BERNMATCH_SEARCH_MODE','hybrid')
         min_dense = float(os.environ.get('BERNMATCH_MIN_DENSE','.80')) if min_dense is None else min_dense
         # Query-level abstention: E5 similarities are compressed (~.80-.91), so a
@@ -67,6 +70,10 @@ class HybridBackend:
             except Exception:
                 self.encoder_error = True
         self.min_dense,self.mode = min_dense,mode
+        self.reranker = rerank_mod.load_from_env() if reranker is None else (reranker or None)
+        # EXTRA A4: acronym table mined in the background from stored sentences (cached).
+        self.acronyms = AcronymTable(self.store,os.environ.get('BERNMATCH_DATA_DIR',str(self.store.root.parent.parent))) \
+            if os.environ.get('BERNMATCH_ACRONYMS','0')=='1' else None
 
     def search(self, req):
         start = time.perf_counter()
@@ -93,7 +100,9 @@ class HybridBackend:
             return self._response(req,[],limitations,enrichment,start,timing)
         query_language = language_of(req.query)
         t = time.perf_counter()
-        keyword = entity_max(self.store.keyword(match_expression(query_terms(req.query))),self.entries,allowed) if self.mode!='dense' else {}
+        extra_forms = self.acronyms.variants(req.query) if self.acronyms is not None else []
+        keyword_text = ' '.join([req.query]+extra_forms)
+        keyword = entity_max(self.store.keyword(match_expression(query_terms(keyword_text))),self.entries,allowed) if self.mode!='dense' else {}
         timing['keyword'] = (time.perf_counter()-t)*1000
         t = time.perf_counter()
         dense = {}; vector_winners = {}; dense_ok = False
@@ -123,6 +132,37 @@ class HybridBackend:
                    self.entities[eid]['entity']['canonical_profiles'])}
         for eid in demoted:
             fused[eid] *= DEMOTION
+        title_boost = float(os.environ.get('BERNMATCH_TITLE_BOOST','0'))
+        if title_boost > 0:
+            # EXTRA A5: entities whose own name contains query words get a relevance bonus.
+            for eid in fused:
+                hits = matched_words(req.query,[self.entities[eid]['entity']['name']],'en')
+                if hits:
+                    fused[eid] *= 1+title_boost*min(len(hits),3)
+        type_hint = preferred_type(req.query) if req.entity_type is None and os.environ.get('BERNMATCH_TYPE_HINT','0')=='1' else None
+        if type_hint:
+            # EXTRA A3: soft preference only; nothing is filtered out.
+            for eid in fused:
+                if self.entities[eid]['entity']['entity_type']==type_hint:
+                    fused[eid] *= TYPE_BOOST
+        reranked = False
+        if self.reranker is not None and fused:
+            # EXTRA A1: cross-encoder over the best fused candidates; text = name + best passage.
+            t_r = time.perf_counter()
+            try:
+                top = sorted(fused,key=lambda e:(-fused[e],e))[:rerank_mod.TOP_N]
+                texts = {}
+                for eid in top:
+                    entry_id = (dense.get(eid) or keyword[eid])[1]
+                    sids = self.entries[entry_id]['sentence_ids']
+                    texts[eid] = self.entities[eid]['entity']['name']+'. '+' '.join(e['text'] for e in self.store.evidence(sids))
+                fused = rerank_mod.rerank(fused,texts,req.query,self.reranker)
+                for eid in demoted & set(fused):
+                    fused[eid] *= DEMOTION
+                reranked = True
+            except Exception:
+                limitations.append('Reranking failed; fused retrieval order is used.')
+            timing['rerank'] = (time.perf_counter()-t_r)*1000
         representatives = {}
         # Use one representative vector per entity, independent of page count.
         for eid in fused:
@@ -151,6 +191,11 @@ class HybridBackend:
             evidence = list({e['sentence_id']:e for e in evidence}.values())
             if not evidence:
                 continue
+            # EXTRA F5: contacts are shown only through a supported, current official-contact
+            # field; do not surface them through quotes when other evidence exists.
+            if not (item['fields'] or {}).get('official_contact'):
+                kept = [e for e in evidence if not contact_bearing(e['text'])]
+                evidence = kept or evidence
             evidence_language = entry.get('language')
             matched = matched_words(req.query,[e['text'] for e in evidence],evidence_language) if eid in keyword else []
             reason = explain_reason(keyword_rank=keyword_ranks.get(eid),dense_rank=dense_ranks.get(eid),matched=matched,
@@ -163,7 +208,7 @@ class HybridBackend:
                 'entry_kind':entry['kind'],'demoted_listing_page':eid in demoted,'query_language':query_language,'mode':self.mode,
                 'keyword_rank':keyword_ranks.get(eid),'dense_rank':dense_ranks.get(eid),'matched_terms':matched,
                 'evidence_language':evidence_language,'channels':[c for c,ranks in (('keyword',keyword_ranks),('dense',dense_ranks)) if eid in ranks],
-                'query_variant':'original',
+                'query_variant':'original','reranked':reranked,'type_hint':type_hint,'acronym_forms':extra_forms,
                 'resolution_state':entity['resolution_state'],'entity_status':entity['status'],
                 'model':self.manifest['model']['repo'],'generation':self.manifest['generation']}))
         return self._response(req,results,limitations,enrichment,start,timing,dense_ok=dense_ok,best_dense=best_dense,abstain=self.abstain_dense)

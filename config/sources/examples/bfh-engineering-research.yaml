@@ -1,0 +1,41 @@
+# EXTRA E2 / T32 (#83): example of a bounded live source extension. NOT part of the organiser
+# inventory or the evaluated corpus. Bern University of Applied Sciences (BFH), research areas.
+source:
+  schema_version: '1'
+  source_id: bfh-research
+  label: BFH Bern University of Applied Sciences (research areas, extension example)
+  start_urls:
+  - https://www.bfh.ch/en/research-consulting-services/areas-of-research/
+  allowed_domains:
+  - www.bfh.ch
+  allowed_paths:
+  - /en/research-consulting-services/
+  - /en/research/
+  languages:
+  - de
+  - en
+  - fr
+  max_pages: 15
+  max_depth: 2
+  requests_per_second: 0.5
+  focus_areas:
+  - medtech
+  refresh_default_hours: 24
+  refresh_hours: null
+  adapter: null
+inventory_key: bfh.ch
+tier: outside_focus
+labels:
+- extension-example
+sitemaps: []
+profiles:
+  dev:
+    max_pages: 15
+    max_depth: 2
+  final:
+    max_pages: 15
+    max_depth: 2
+network:
+  max_sitemaps: 0
+  max_response_bytes: 10000000
+  max_discovered_urls: 200
