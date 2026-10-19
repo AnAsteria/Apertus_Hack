@@ -58,13 +58,32 @@ class GuardedBackend(Backend):
         return r.model_copy(update={'outcome': self.outcome if req.query == REQ.query else 'confident'})
 
 
-def test_expansion_never_overrides_a_refusal():
+def test_expansion_never_overrides_a_refusal_or_too_broad_outcome():
     # Regression for #16: expanded terms pulled near-miss pages into absent queries (I10, I19).
-    backend = GuardedBackend({'Therapieresistenz Krebs': [], 'near miss': ['wrong']}, 'no_evidence')
-    assert expanded_search(backend, REQ, ['near miss']) == ([], [])
-    assert [r.query for r in backend.seen] == [REQ.query]  # expansions were not even searched
-    for outcome in ('low_confidence', 'too_broad'):
-        # A one-word request ("CGM") is often labelled too broad; its expansions are what fix it.
-        backend = GuardedBackend({'Therapieresistenz Krebs': ['a'], 'b': ['b']}, outcome)
-        fused, used = expanded_search(backend, REQ, ['b'])
-        assert used == ['b'] and {r.entity_id for r in fused} == {'a', 'b'}
+    for outcome in ('no_evidence', 'too_broad'):
+        backend = GuardedBackend({'Therapieresistenz Krebs': [], 'near miss': ['wrong']}, outcome)
+        assert expanded_search(backend, REQ, ['near miss']) == ([], [])
+        assert [r.query for r in backend.seen] == [REQ.query]  # expansions were not even searched
+    backend = GuardedBackend({'Therapieresistenz Krebs': ['a'], 'b': ['b']}, 'low_confidence')
+    fused, used = expanded_search(backend, REQ, ['b'])
+    assert used == ['b'] and {r.entity_id for r in fused} == {'a', 'b'}
+
+
+def test_duplicate_key_ignores_titles_and_word_order_but_not_numbers():
+    # Jury round 4/5: the same person or facility twice in one top 10 is shown once.
+    from app.search.ranking import duplicate_key
+    assert duplicate_key('Glisic Marija, Prof., MD, PhD', 'person') == duplicate_key('Marija Glisic', 'person')
+    assert duplicate_key('ARTORG 3D-Printing Core Facility', 'infrastructure') == \
+        duplicate_key('ARTORG 3D-Printing Core Facility', 'unit')
+    assert duplicate_key('Meet the Top 3', 'unit') != duplicate_key('Meet the Top 20', 'unit')
+    assert duplicate_key('Marija Glisic', 'person') != duplicate_key('Marija Glisic', 'unit')
+
+
+def test_fusion_counts_a_same_name_card_once():
+    a = Result(entity_id='ent_a', entity_type='unit', rank=1, display_name='Biomechanical Testing', reason='r',
+               evidence=[{'version_id': 'v', 'sentence_id': 'v:s1', 'text': 't', 'url': 'https://x.ch/a'}],
+               freshness='unknown', retrieval={})
+    b = a.model_copy(update={'entity_id': 'ent_b', 'entity_type': 'infrastructure'})
+    c = a.model_copy(update={'entity_id': 'ent_c', 'display_name': 'Other Lab'})
+    fused = rrf_fuse([[a, c], [b]])
+    assert [r.entity_id for r in fused] == ['ent_a', 'ent_c']  # b is a's twin and adds to a's score

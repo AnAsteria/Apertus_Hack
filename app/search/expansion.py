@@ -45,12 +45,12 @@ def rrf_fuse(result_lists: list[list], k: int = RRF_K, limit: int = TOP_K, label
 
 # Outcomes of the ORIGINAL query that expansion must never override: a refusal stays a refusal
 # (expanded terms pull in near-miss pages, which broke abstention on I10/I19 in Ruihan's
-# baseline cross-check, #16).
-# "too_broad" is no longer guarded (jury, 19 Oct): it fires on any one-topic-word request, so precise
-# terms such as "CGM" or "Herzklappe" lost exactly the wordings that fix them. Measured on the real
-# index with Apertus' recorded expansions: "CGM" shared 4 of 5 cards with "continuous glucose
-# monitoring" before, 9 of 10 after (runs/jury/search/, local).
-GUARDED_OUTCOMES = ('no_evidence',)
+# baseline cross-check, #16), and a too-broad request needs narrowing, not more matches.
+# Jury round 5: un-guarding "too_broad" (round 4) was reverted. A precise term such as "CGM" is no
+# longer labelled too broad (outcome.py, confident-match rule), so it keeps its expansions anyway;
+# a really broad request ("cancer") would otherwise show Apertus' ranked list under "these are
+# examples, not a ranked answer". No recorded live query changed (runs/jury/search/fusion_probe.py).
+GUARDED_OUTCOMES = ('no_evidence', 'too_broad')
 
 
 def expansion_allowed(outcome) -> bool:
