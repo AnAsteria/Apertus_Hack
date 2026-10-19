@@ -50,6 +50,19 @@ By query language (current, non-absent): EN 0.88 (n = 8), DE 0.40 (n = 5), FR 1.
 
 **Exposure across institutions (D3, #136).** Across all 350 cards served in the development and evaluation runs, 34 of 41 sources appear. The top three hosts get 40% of the cards: medizin.unibe.ch 15.1% (6.1% of pages), neuroscience.unibe.ch 12.9% (6.7%), dcberne.com 11.7% (3.0%). DBMR (0.41× its page share) and ISPM (0.48×) are under-exposed. These shares follow the gold topics, which are diabetes, oncology, neurology and medtech by design, so they are **not** a fairness verdict. The system deliberately has no equal-exposure target, and relevance comes first. What the numbers show is that no single institution dominates and that per-entity max aggregation keeps page-rich hosts such as DBMR or ISPM from flooding results.
 
+**Live re-measure, 19 Oct 10:30** (Space `309a2f8`, bundle `5bc123b1` = C3 former-status + A6 person merge, contacts-only cards #160; harness `--enriched`, #165). Evaluation Recall@10 is **0.765 on the fast path** (first cards, server p95 ≈ 0.5 s) and **0.824 end to end**, after the Apertus 70B expansion and enriched ranking (median ≈ 17 s). Development: 0.824 in both modes. The configuration was fixed on development first; each evaluation mode was run once.
+
+## Tried, measured, not shipped
+
+Each idea was measured on the development split before any decision. "Not shipped" means the code is kept but switched off or left unmerged; nothing here runs in the live service.
+
+| Idea | Result | Decision |
+|---|---|---|
+| Open cross-encoder rerank of the top 30 (`mmarco-mMiniLMv2-L12`, A1 #119/#161) | In-process (arm64): development 0.824 → 0.882, evaluation 0.647 → 0.706. **On the HF Space (x86 int8, staging): development 0.824 → 0.824, +1.2 s per search** (server p95 1.74 s) | Not shipped. No gain on the deployed CPU and slower first cards. Code is off by default (`BERNMATCH_RERANK_DIR` unset) |
+| Relevance cut of weaker cards (dense within 0.02 of the best card) | Development 0.824 → 0.824 with 4.4 instead of 9.8 cards per query; **evaluation 0.765 → 0.647** (single check) | Not shipped as a cut. Cards are only flagged `weaker_match` for the UI (#166) |
+| Query entity-type hint, corpus acronyms, title boost, index-time listing classes (A3/A4/A5/A7) | Development 0.824 → 0.824 in each | Off or unchanged |
+| Relevance-based evidence for Apertus assessment (B4 follow-up) | Fixed the SPN-005 case, but development direct/related labels fell 0.82 → 0.71 | Opt-in only |
+
 ## Limitations and honest gaps
 
 - **Abstention versus recall.** No dense-similarity threshold separates nonsense from valid typed or cross-lingual requests (development hits 0.831–0.909, nonsense probes 0.835–0.870, `app/search/README.md`). At 0.83 we keep recall; nonsense is labelled low confidence, not refused. A semantic scope check in the Apertus interpretation is planned (T39).
