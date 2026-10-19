@@ -28,6 +28,12 @@ In scope: only the objective, declared dependencies and acceptance checks below.
 4. Preserve simple search when inference fails; ingestion never runs implicitly on a query. Unknown access/model/source capabilities are explicit blockers; do not substitute mocks for required live or offline evidence.
 5. Coordinate shared-file changes before editing, record material deviations and rerun affected checks. Do not commit local model files, private inputs, logs or real .env files.
 
+### Required pitch/report item: local, sovereign operation (jury criterion "Sovereign deployability")
+
+One slide and one report paragraph: Bern Match runs entirely on one machine with `docker compose up`, with no cantonal ICT, no cloud and no network. That covers search, index, embeddings and optionally Apertus 8B via llama.cpp. Use **only** the recorded T15 air-gapped run (`docs/offline-docker.md`; output and recording on #15) as evidence: show a short clip or screenshots of `NETWORK BLOCKED` plus an unseen query.
+- If the run has not been recorded by the freeze, the slide must say "designed for, not yet demonstrated". It must not claim offline operation.
+- The online demo uses the HF Space + CSCS Keera (Swiss-hosted Apertus). Say so, and say that the same image runs locally.
+
 ## E. Acceptance and verification
 
 Review outlines and attribution inventory early; final deliverables are produced from real T16/T20/T25 evidence before T26. Check PDF page counts, video duration/playback, real-source citations and labelled unknowns. Early placeholders are visibly incomplete; this issue cannot close merely on outlines.
