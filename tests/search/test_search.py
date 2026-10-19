@@ -556,3 +556,39 @@ def test_evidence_route_is_410_for_a_suppressed_url_in_a_query_only_directory(bu
     sentence=records[0]['sentences'][0]
     r=TestClient(app).get(f'/api/v1/evidence/{sentence.version_id}/{sentence.sentence_id}')
     assert r.status_code==410 and sentence.text not in r.text
+
+
+def test_relevance_cut_keeps_close_cards_and_a_minimum():
+    from app.search.ranking import relevance_cut
+    cards = [{'rank': i, 'entity_id': f'e{i}', 'retrieval': {'dense': d}}
+             for i, d in enumerate([.87, .865, .86, .84, .83, .80], 1)]
+    kept = relevance_cut(cards, .02)
+    assert [c['entity_id'] for c in kept] == ['e1', 'e2', 'e3'] and [c['rank'] for c in kept] == [1, 2, 3]
+    assert len(relevance_cut(cards, .005)) == 3            # never fewer than three
+    assert relevance_cut(cards, 0) == cards                 # off
+    no_dense = [{'rank': i, 'retrieval': {}} for i in range(1, 6)]
+    assert relevance_cut(no_dense, .02) == no_dense        # keyword-only lists are untouched
+
+
+def test_search_api_flags_weaker_cards_but_removes_none(monkeypatch, tmp_path):
+    from fastapi.testclient import TestClient
+    from app import main
+    from app.api import search as search_api
+    from app.contracts import SearchResponse
+    cards = [{'entity_id': f'e{i}', 'entity_type': 'unit', 'rank': i, 'display_name': f'U{i}', 'reason': 'r',
+              'evidence': [{'version_id': 'v', 'sentence_id': f's{i}', 'text': 't', 'url': 'https://x.invalid/'}],
+              'freshness': 'unknown', 'retrieval': {'dense': d}} for i, d in enumerate([.87, .865, .86, .84, .83], 1)]
+
+    class Fake:
+        def search(self, req):
+            return SearchResponse(schema_version='1', request_id='req_x', revision=1, results=cards,
+                                  limitations=[], enrichment_state='not_requested')
+    monkeypatch.setenv('BERNMATCH_DATA_DIR', str(tmp_path)); (tmp_path / 'READY').write_text('')
+    monkeypatch.delenv('BERNMATCH_FIXTURE_MODE', raising=False)
+    search_api.set_backend(Fake())
+    try:
+        res = TestClient(main.app).post('/api/v1/search', json={'schema_version': '1', 'query': 'q', 'revision': 1}).json()['results']
+    finally:
+        search_api.set_backend(None)
+    assert len(res) == 5
+    assert [r['retrieval']['weaker_match'] for r in res] == [False, False, False, True, True]

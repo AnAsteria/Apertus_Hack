@@ -14,6 +14,7 @@ from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
 from . import enrich
+from ..search.ranking import relevance_cut
 from ..lifecycle import serving
 from ..contracts import (MAX_CONTEXT_CHARS, MAX_NEEDS, MAX_QUERY_CHARS, MAX_RESULTS, SearchRequest,
                          SearchResponse, error)
@@ -98,5 +99,13 @@ def search(req: SearchRequest):
         return JSONResponse(error("NOT_IMPLEMENTED", "Retrieval is not implemented yet."), status_code=501)
     response = backend.search(req)
     data = enrich.apply_state(serving.apply(response.model_dump()), req)
+    gap = float(os.environ.get("BERNMATCH_RELEVANCE_GAP", "0.02"))
+    if gap > 0 and data.get("results"):
+        # Nothing is removed: on the evaluation split, cutting the weaker cards lost 2 of 17 answers
+        # (0.765 -> 0.647). Cards far below the best one are only flagged, so the UI can fold them
+        # under "more results". The answer outcome and Recall@10 are unchanged.
+        strong = {r["entity_id"] for r in relevance_cut(data["results"], gap)}
+        for r in data["results"]:
+            r["retrieval"] = (r.get("retrieval") or {}) | {"weaker_match": r["entity_id"] not in strong}
     data["timing_ms"] = (data.get("timing_ms") or {}) | {"request_total": (time.perf_counter()-started)*1000}
     return data
