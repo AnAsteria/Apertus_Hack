@@ -30,10 +30,12 @@ All structured output uses the gateway's JSON-schema constrained decoding, still
 | --- | --- | --- | --- |
 | BM25 only | 0.29 | 53 ms | 0 |
 | Dense only | 0.59 | 24 ms | 0 |
-| Hybrid (shipped fast path) | 0.65 | 56 ms | 0 |
+| Hybrid, in-process on the bundle | 0.65 | 56 ms | 0 |
 | **Hybrid + Apertus expansion (70B)** | **0.82** | 4.9 s (background) | 700 |
 | Hybrid + expansion with 8B instead | 0.65 | 1.3 s (background) | 580 |
 | + Apertus assessment (8B) | same ranking; 86% of expected answers labelled direct/related (n = 14) | 18.6 s (background) | 2,880 |
+
+*Note on the hybrid row:* the same frozen evaluation split re-scored over HTTP against the live service gives **0.76** (#16), while the in-process run on the bundle gives **0.65** at both BM25 weights tested (1.0 and 0.25). The gap is not the BM25 weight; it lies between the in-process path and the live service (API wrappers, the x86 ONNX build or configuration) and is being investigated (G2 #147). Neither number should be read as "the shipped" result without this note. The expansion gain (+0.17 to +0.18) is measured within one consistent setup.
 
 **Apertus query expansion raised Recall@10 on the frozen evaluation split from 0.65 to 0.82.** On the development split it raised recall from 0.59 to 0.76 on an earlier local index, with all of the gain coming from German and French queries that the fast path missed; Apertus added the English research terms used on the pages, e.g. "cancer therapy resistance". The **model choice was measured**: 8B expansion was four times faster but added nothing over plain hybrid on the evaluation split, so expansion uses 70B. Assessment does not reorder results, so it gets no recall credit.
 
