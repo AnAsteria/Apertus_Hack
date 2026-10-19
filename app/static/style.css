@@ -77,9 +77,9 @@ textarea { width: 100%; padding: .9rem 1rem; font: inherit; font-size: 1.1rem; b
 
 .steps { list-style: none; display: grid; grid-template-columns: repeat(3, 1fr); gap: .75rem; padding: 0; margin: 2.5rem 0 0; text-align: left; }
 .steps li { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: .85rem 1rem; font-size: .88rem; color: var(--muted); display: flex; gap: .65rem; align-items: flex-start; }
-.steps li span { flex-shrink: 0; display: inline-grid; place-items: center; width: 1.5rem; height: 1.5rem; border-radius: 50%; font-size: .75rem; font-weight: 700;
+.steps li .step-n { flex-shrink: 0; display: inline-grid; place-items: center; width: 1.5rem; height: 1.5rem; border-radius: 50%; font-size: .75rem; font-weight: 700;
   color: var(--accent); background: var(--quote-bg); }
-.steps li:not(:first-child) span { color: var(--ai); background: var(--ai-bg); }
+.steps li:not(:first-child) .step-n { color: var(--ai); background: var(--ai-bg); }
 .steps li:not(:first-child) { border-color: var(--ai-line); }
 .eyebrow .ai-tag { margin: 0 .3rem 0 0; }
 .also { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; margin: .35rem 0 .6rem; }
@@ -201,7 +201,7 @@ mark { background: var(--mark); color: inherit; border-radius: 3px; padding: 0 .
   clip-path: polygon(50% 0, 100% 100%, 81% 100%, 50% 27%, 19% 100%, 0 100%); vertical-align: -.08em; }
 .ai-tag::before, .badge.moved-badge::before, .status.by-apertus::before { margin-right: .35em; }
 .powered .ap { font-size: 1rem; }
-.steps li span .ap { font-size: .85rem; }
+.steps li .step-n .ap { font-size: .85rem; }
 .credit { max-width: 56rem; margin: 0 auto; padding: 1.5rem 1rem 3rem; border-top: 1px solid var(--line); font-size: .8rem; color: var(--muted); }
 .credit p { margin: .3rem 0; }
 .credit .ap { margin-right: .45rem; }
