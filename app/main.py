@@ -42,6 +42,16 @@ app = FastAPI(title="Bern Match", version="0.0.1")
 app.middleware("http")(ratelimit.middleware)
 
 
+@app.middleware("http")
+async def _revalidate_ui(request: Request, call_next):
+    # UI files must never be served from a stale browser cache: without this header Chrome reused
+    # an old style.css next to a new index.html (blue page, giant search icon). ETag still gives 304s.
+    response = await call_next(request)
+    if not request.url.path.startswith("/api/"):
+        response.headers.setdefault("Cache-Control", "no-cache")
+    return response
+
+
 @app.exception_handler(RequestValidationError)
 async def _validation(_: Request, exc: RequestValidationError):
     # Fixed text only: validation details can contain submitted company text.

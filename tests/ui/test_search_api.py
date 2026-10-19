@@ -137,3 +137,13 @@ def test_direct_cards_render_when_apertus_is_off_or_unavailable():
     body = js[js.index("function runSearch"):]
     branch = body[body.index("} else {", body.index('b.enrichment_state === "pending" && b.results.length')):]
     assert branch.index("resultsShown = false") < branch.index("showDirect()")
+
+
+def test_ui_files_always_revalidate():
+    # A stale cached style.css next to a new index.html broke the page in Chrome (19 Oct).
+    from fastapi.testclient import TestClient
+    from app.main import app
+    client = TestClient(app)
+    for path in ("/", "/style.css", "/app.js"):
+        assert client.get(path).headers.get("cache-control") == "no-cache"
+    assert 'href="style.css?v=' in _static("index.html")
