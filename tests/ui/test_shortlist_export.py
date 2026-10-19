@@ -64,3 +64,21 @@ def test_notes_are_labelled_plain_text_and_facts_are_not_editable():
     assert "No AI-generated text is included." in out["printText"]
     # an entry offers field-visibility checkboxes and the note box only; quotes and facts have no inputs
     assert sorted(set(out["controls"])) == ["INPUT:checkbox", "TEXTAREA:"]
+
+
+def test_apertus_assessment_only_with_opt_in_and_labelled():
+    off = run("no-request")
+    assert "AI_TEXT_MARKER" not in json.dumps(off)
+    assert off["data"]["entries"][0]["apertus_assessment"] is None and off["data"]["includes_ai_text"] is False
+    on = run("with-ai")
+    a = on["data"]["entries"][0]["apertus_assessment"]
+    assert a["ai_generated"] is True and a["is_source_fact"] is False and a["generated_by"].startswith("Apertus")
+    assert "AI_TEXT_MARKER" in on["printText"]
+    assert "AI-generated assessment (Apertus), not source text" in on["printText"]
+    assert "No AI-generated text is included." not in on["printText"]  # the footer must not lie
+    assert "not the person" in on["printText"]
+
+
+def test_no_contact_field_points_to_the_source_page():
+    e = run("no-request")["data"]["entries"][0]
+    assert e["start_from"] == RESULT["evidence"][0]["url"]

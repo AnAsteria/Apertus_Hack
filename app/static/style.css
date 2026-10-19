@@ -171,6 +171,10 @@ mark { background: var(--mark); color: inherit; border-radius: 3px; padding: 0 .
 .badge.cat-direct_match { background: var(--ok); } .badge.cat-related_capability { background: var(--warn); }
 .badge.cat-insufficient_evidence { background: var(--neutral); color: var(--muted); }
 .privacy { color: var(--muted); font-size: .8rem; margin: .5rem 0 0; }
+.cited { margin: .35rem 0 .35rem .5rem; padding: .35rem .7rem; border-left: 3px solid var(--quote-line); background: var(--quote-bg); }
+.cited .quote { margin: 0 0 .2rem; }
+.pv-ai { border: 1px solid var(--ai-line); background: var(--ai-bg); padding: .4rem .7rem; margin: .5rem 0; }
+.pv-ai h3 { font-size: .85rem; margin: 0 0 .2rem; }
 
 .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(22rem, 100%); background: var(--panel); border-left: 1px solid var(--line); box-shadow: -8px 0 24px rgba(0,0,0,.15); padding: 1rem; overflow-y: auto; z-index: 5; }
 .drawer[hidden] { display: none; }

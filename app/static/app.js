@@ -211,7 +211,8 @@ function setShortlist(r, state, card) {
   if (cur && cur.state === state) { delete shortlist[r.entity_id]; }
   else {
     shortlist[r.entity_id] = { name: r.display_name, state: state, result: r,
-                               note: cur ? cur.note : "", hidden: cur ? cur.hidden : {} };
+                               note: cur ? cur.note : "", hidden: cur ? cur.hidden : {},
+                               assessment: (!noNeed && assessShown[r.entity_id]) || (cur && cur.assessment) || null };
     sendFeedback(r, state);
   }
   slOrder = slOrder.filter(function (id) { return shortlist[id] && shortlist[id].state === "select" && id !== r.entity_id; });
@@ -314,9 +315,10 @@ function renderShortlist() {
 }
 
 // Built from the stored card payload only: names, supported fields, exact quotes, URLs, dates.
-// AI-generated assessments are never included. The request text only with the analyst's opt-in.
+// Apertus' assessments only with the analyst's opt-in, labelled as AI text. The request text only with opt-in.
 function exportData() {
   var withRequest = document.getElementById("sl-include-request").checked;
+  var withAi = !!document.getElementById("sl-include-ai").checked;
   var fetched = [];
   var entries = slOrder.map(function (id) {
     var item = shortlist[id], r = item.result;
@@ -326,13 +328,19 @@ function exportData() {
       if (e.fetched_at) fetched.push(e.fetched_at);
       return { text: e.text, url: e.url, content_date: e.content_date, last_modified: e.last_modified, fetched_at: e.fetched_at };
     });
+    var a = withAi && item.assessment;
+    var hasContact = !!(fields.official_contact || fields.contact);
     return { entity_id: r.entity_id, name: r.display_name, type: r.entity_type, source: sourceOf(r.evidence[0].url).label,
-             fields: fields, evidence: quotes, analyst_note: item.note.trim() || null };
+             fields: fields, evidence: quotes, analyst_note: item.note.trim() || null,
+             // No contact data in the index: the next step is the source page itself.
+             start_from: hasContact ? null : r.evidence[0].url,
+             apertus_assessment: a ? { category: a.category, explanation: a.explanation, generated_by: "Apertus v1.5 8B",
+                                       ai_generated: true, is_source_fact: false } : null };
   });
   fetched.sort();
   return { title: t("pv.title", "Bern Match shortlist"), exported_at: new Date().toISOString(), request: withRequest ? lastQuery : null,
            analyst_note: listNote.trim() || null, fetched_from: fetched[0] || null, fetched_to: fetched[fetched.length - 1] || null,
-           entries: entries };
+           includes_ai_text: entries.some(function (e) { return e.apertus_assessment; }), entries: entries };
 }
 
 function buildPrintView(data) {
@@ -369,6 +377,14 @@ function buildPrintView(data) {
       b.appendChild(el("p", "meta", dateLine(t("date.content", "Source content date"), q.content_date) + " | " + dateLine(t("date.modified", "Last modified"), q.last_modified) + " | " + dateLine(t("date.fetched", "Fetched"), q.fetched_at)));
       s.appendChild(b);
     });
+    if (e.start_from) s.appendChild(el("p", "meta", t("pv.startFrom", "No contact data in Bern Match. Start from the source page: {url}", { url: e.start_from })));
+    if (e.apertus_assessment) {
+      var ai = el("div", "pv-ai");
+      ai.appendChild(el("h3", null, t("as.head", "AI-generated assessment (Apertus), not source text")));
+      var cat = e.apertus_assessment.category;
+      ai.appendChild(el("p", null, (CATEGORY_LABELS[cat] ? t("cat." + cat, CATEGORY_LABELS[cat]) : cat) + ": " + e.apertus_assessment.explanation));
+      s.appendChild(ai);
+    }
     if (e.analyst_note) {
       var n = el("div", "pv-note");
       n.appendChild(el("h3", null, t("pv.note", "Analyst note (not a source fact)")));
@@ -377,7 +393,11 @@ function buildPrintView(data) {
     }
     view.appendChild(s);
   });
-  view.appendChild(el("p", "meta pv-footer", t("pv.footer", "Facts and quotes come from the public pages named under each quote, as stored in the Bern Match index on the fetch dates shown. " +
+  view.appendChild(el("p", "meta pv-footer", data.includes_ai_text
+    ? t("pv.footerAi", "Facts and quotes come from the public pages named under each quote, as stored in the Bern Match index on the fetch dates shown. " +
+        "Analyst notes are the analyst's own text and are not source facts. Text under \u201cAI-generated assessment (Apertus)\u201d was written by Apertus v1.5 8B: " +
+        "it is not a source fact and judges the match to this request, not the person. Check it against the quotes.")
+    : t("pv.footer", "Facts and quotes come from the public pages named under each quote, as stored in the Bern Match index on the fetch dates shown. " +
     "Analyst notes are the analyst's own text and are not source facts. No AI-generated text is included.")));
 }
 
@@ -903,6 +923,26 @@ function addNeed(text, payload) {
   renderNeeds(payload);
 }
 
+// The sentence Apertus cited, shown under its line with a link to the public page (not the raw API answer).
+function showCited(link, li) {
+  var box = li.querySelector('.cited[data-href="' + link.getAttribute("href").replace(/"/g, "") + '"]');
+  if (box) { box.parentNode.removeChild(box); return; }
+  fetch(link.getAttribute("href")).then(function (r) { return r.ok ? r.json() : { gone: r.status === 410 }; }, function () { return {}; }).then(function (d) {
+    var q = el("blockquote", "cited");
+    q.dataset.href = link.getAttribute("href");
+    if (!d.text) {
+      q.appendChild(el("p", "meta", d.gone ? t("as.citedGone", "This sentence is no longer available.") : t("as.citedFail", "Could not load this sentence. Try again.")));
+      li.appendChild(q); return;
+    }
+    q.appendChild(el("p", "quote", d.text));
+    if (/^https?:\/\//.test(d.url || "")) {
+      var a = el("a", "meta", sourceOf(d.url).label); a.href = d.url; a.target = "_blank"; a.rel = "noopener noreferrer";
+      q.appendChild(a);
+    }
+    li.appendChild(q);
+  });
+}
+
 var CATEGORY_LABELS = { direct_match: "Direct match", related_capability: "Related capability",
                         insufficient_evidence: "Insufficient evidence" };
 var SUPPORT_LABELS = { supported: "supported", partial: "partly supported", none: "not supported" };
@@ -929,11 +969,15 @@ function renderAssessment(a) {
       // "need_query" is the server's id for the request itself, not a need the analyst wrote.
       var label = c.need_id === "need_query" ? t("as.request", "Your request") : "“" + (needText[c.need_id] || t("as.need", "Your need")) + "”";
       var li = el("li", null, label + ": " + (SUPPORT_LABELS[c.support] ? t("sup." + c.support, SUPPORT_LABELS[c.support]) : c.support));
+      var seen = {};
       (c.evidence || []).forEach(function (e) {
-        if (!e.version_id || !e.sentence_id) return;
-        var link = el("a", null, " [" + t("as.cited", "cited sentence") + "]");
+        if (!e.version_id || !e.sentence_id || seen[e.version_id + "/" + e.sentence_id]) return; // same sentence once
+        seen[e.version_id + "/" + e.sentence_id] = true;
+        var n = Object.keys(seen).length;
+        var link = el("a", null, " [" + t("as.citedN", "source {n}", { n: n }) + "]");
         link.href = "/api/v1/evidence/" + encodeURIComponent(e.version_id) + "/" + encodeURIComponent(e.sentence_id);
-        link.target = "_blank"; link.rel = "noopener noreferrer";
+        link.setAttribute("aria-label", t("as.citedAria", "Show the source sentence Apertus cited ({n})", { n: n }));
+        link.addEventListener("click", function (ev) { ev.preventDefault(); showCited(link, li); });
         li.appendChild(link);
       });
       ul.appendChild(li);
@@ -947,6 +991,7 @@ function renderAssessment(a) {
   var tags = card.querySelector(".tags");
   if (tags && tags.nextSibling) card.insertBefore(box, tags.nextSibling); else card.appendChild(box);
   assessShown[a.entity_id] = a;
+  if (shortlist[a.entity_id]) shortlist[a.entity_id].assessment = a; // selected before Apertus finished
   card.classList.remove("flash");
   void card.offsetWidth; // restart the highlight animation
   card.classList.add("flash");

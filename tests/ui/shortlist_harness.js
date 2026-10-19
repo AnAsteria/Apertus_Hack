@@ -57,6 +57,10 @@ app.setQuery("CONFIDENTIAL company text: GlucoWear AG needs a needle-free sensor
 app.setShortlist(result, "select", null);
 app.shortlist()[result.entity_id].note = note;
 document.getElementById("sl-include-request").checked = process.argv[3] === "with-request";
+// Jury round 3: Apertus' verdict travels with the entry and is exported only on opt-in.
+app.shortlist()[result.entity_id].assessment = { entity_id: result.entity_id, category: "related_capability",
+  explanation: "AI_TEXT_MARKER the project works on needle-free glucose sensing." };
+document.getElementById("sl-include-ai").checked = process.argv[3] === "with-ai";
 const data = app.exportData();
 app.exportPdf();
 
