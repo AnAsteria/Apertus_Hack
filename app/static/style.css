@@ -411,3 +411,50 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 .
     linear-gradient(0deg, var(--bg) 0, rgba(20, 19, 17, 0) 6rem); }
 }
 @media (prefers-color-scheme: dark) and (max-width: 36rem) { .hero::after { background: rgba(20, 19, 17, .86); } }
+
+/* 19 Oct UI freeze: search-engine style results, shortlist as the final page */
+body.searched .top { position: sticky; top: 0; z-index: 4; background: var(--bg); padding-bottom: .6rem; border-bottom: 1px solid var(--line); }
+#shortlist-toggle { border: 1px solid var(--red); color: var(--red-text); font-weight: 600; }
+#shortlist-toggle .count { background: transparent; padding: 0; min-width: 0; font-size: inherit; }
+.howitworks { font-size: .8rem; color: var(--text); text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; }
+.switch-hint { display: block; font-size: .72rem; font-weight: 400; color: var(--muted); }
+.summary .found-line { flex-basis: 100%; margin: 0 0 .2rem; font-family: var(--serif); font-size: 1.25rem; }
+.card { padding: 1rem 1.2rem .8rem; margin: .7rem 0; }
+.card h3 { font-size: 1.3rem; }
+.card .quote-line { margin: .45rem 0 .1rem; font-family: var(--serif); font-size: 1rem; line-height: 1.4;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.card .link-line { margin: 0; font-size: .82rem; }
+.card .link-line .src { color: var(--red-text); text-decoration: none; font-weight: 600; }
+.card .link-line .src:hover { text-decoration: underline; }
+.card-details { margin-top: .4rem; font-size: .9rem; }
+.card-details > summary { cursor: pointer; width: fit-content; color: var(--muted); font-size: .82rem; }
+.card-details > .act-exclude { margin-top: .6rem; }
+.kicker .badge.moved-badge { margin-left: .5rem; text-transform: none; letter-spacing: 0; }
+button.primary.add-sl { padding: .6rem 1.1rem; font-size: .92rem; }
+button.primary.add-sl::after { content: none; }
+button.primary.add-sl::before { content: none; }
+button.primary.add-sl[aria-pressed="true"] { background: var(--text); color: var(--bg); }
+.more-results { margin: 1.5rem 0 1rem; padding-top: 1rem; border-top: 1px solid var(--line-strong); }
+.more-results > summary { cursor: pointer; width: fit-content; font-weight: 600; }
+.more-results .card { box-shadow: none; }
+/* The shortlist is a full page, not a side drawer */
+.drawer.sl-page { left: 0; width: 100%; border-left: 0; box-shadow: none; background: var(--bg); padding: 1.5rem 1rem 4rem; }
+.sl-page .sl-inner { max-width: 50rem; margin: 0 auto; }
+.sl-page > .sl-inner > label.inline { display: flex; gap: .4rem; align-items: flex-start; margin: .35rem 0; }
+.sl-page h2 { font-size: 2rem; }
+.sl li.sl-entry { display: block; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 1rem 1.2rem; margin: .8rem 0; }
+.sl-entry .sl-head { display: flex; align-items: center; gap: .4rem; }
+.sl-entry .sl-name { flex: 1; font-family: var(--serif); font-size: 1.3rem; }
+.sl-contact { margin: .2rem 0 .5rem; }
+.sl-ai { margin: .6rem 0; padding: .4rem .8rem; border-left: 2px solid var(--ai-line); background: var(--ai-bg); }
+.sl-ai > summary { cursor: pointer; font-size: .85rem; }
+.sl-actions { display: flex; gap: .5rem; flex-wrap: wrap; margin: 1rem 0; }
+@media (max-width: 36rem) {
+  .howitworks { font-size: .72rem; }
+  .card-head { flex-direction: row; align-items: flex-start; }
+  button.primary.add-sl { padding: .5rem .8rem; font-size: .82rem; }
+}
+@media print { .top, .howitworks { display: none; } }
+body.sl-open main, body.sl-open .credit { display: none; }
+body.sl-open .drawer.sl-page { position: static; animation: none; overflow: visible; }
+body.sl-open .top { position: sticky; top: 0; z-index: 4; background: var(--bg); }

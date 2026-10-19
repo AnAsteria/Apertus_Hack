@@ -90,6 +90,25 @@ var FIELD_LABELS = { role: "Role", affiliation: "Affiliation", part_of: "Part of
                      contact: "Official contact (role only, not expertise)" };
 
 function typeName(k) { return TYPE_NAMES[k] ? t("type." + k, TYPE_NAMES[k]) : k; }
+// 19 Oct (UI freeze): what a reader calls the card. Never "unit" or "page": a unit is a research
+// group, a lab or an institute, told apart by its name and page address only.
+var HUMAN_TYPES = { group: "Research group", lab: "Lab", institute: "Institute", platform: "Platform",
+                    project: "Project", person: "Person", service: "Service" };
+var HUMAN_PLURALS = { group: "research groups", lab: "labs", institute: "institutes", platform: "platforms",
+                      project: "projects", person: "people", service: "services" };
+var LAB_NAME = /\b(lab|labs|labor|labore|laboratory|laboratories|laboratorium|laboratoire)\b/i;
+var INSTITUTE_NAME = /institut|center|centre|zentrum|klinik|clinic|department|departement|faculty|fakult|hospital|spital|universit/i;
+function humanKind(r) {
+  var name = r.display_name || "";
+  if (r.entity_type === "person") return "person";
+  if (r.entity_type === "project") return "project";
+  if (r.entity_type === "service") return "service";
+  if (r.entity_type === "infrastructure") return LAB_NAME.test(name) ? "lab" : "platform";
+  if (LAB_NAME.test(name)) return "lab";
+  if (isContact(r)) return "group";
+  return INSTITUTE_NAME.test(name) || SITE_PAGE.test(name) ? "institute" : "group";
+}
+function humanType(r) { var k = humanKind(r); return t("ht." + k, HUMAN_TYPES[k]); }
 function typeChip(tp) { return t("chip." + (tp[0] || "any"), tp[1]); }
 function fieldLabel(k) { return t("field." + k, FIELD_LABELS[k]); }
 
@@ -282,6 +301,35 @@ function renderEntry(id, pos) {
   head.appendChild(up); head.appendChild(down);
   head.appendChild(button(t("remove", "Remove"), function () { removeEntry(id); }));
   li.appendChild(head);
+  // The final page: who to contact, what they are, the key facts, one quote with its link.
+  var src = sourceOf(r.evidence[0].url);
+  li.appendChild(el("p", "kicker", humanType(r) + " · " + (src.full || src.label)));
+  var contactKeys = ["official_contact", "contact"].filter(function (k) { return r.fields && r.fields[k] && r.fields[k].length; });
+  var contact = el("p", "sl-contact");
+  contact.appendChild(el("strong", null, t("sl.contact", "Contact:") + " "));
+  if (contactKeys.length) contact.appendChild(document.createTextNode(r.fields[contactKeys[0]].map(function (v) { return v.value; }).join("; ")));
+  else {
+    var cp = el("a", null, t("sl.contactPage", "see the source page") + " ↗");
+    if (/^https?:\/\//i.test(r.evidence[0].url)) { cp.href = r.evidence[0].url; cp.target = "_blank"; cp.rel = "noopener noreferrer"; }
+    contact.appendChild(cp);
+  }
+  li.appendChild(contact);
+  renderFields(r.fields, li);
+  li.appendChild(renderEvidence(quoteOrder(r.evidence)[0]));
+  if (item.assessment) {
+    var ai = el("details", "sl-ai");
+    var sum = el("summary");
+    sum.appendChild(el("span", "ai-tag", "Apertus"));
+    sum.appendChild(document.createTextNode(" " + t("sl.aiFold", "AI assessment (not source text)")));
+    ai.appendChild(sum);
+    var a = item.assessment;
+    var cat = el("p", "reason");
+    cat.appendChild(el("span", "badge cat-" + a.category, CATEGORY_LABELS[a.category] ? t("cat." + a.category, CATEGORY_LABELS[a.category]) : a.category));
+    cat.appendChild(document.createTextNode(" " + a.explanation));
+    ai.appendChild(cat);
+    if (item.assessedFor !== lastQuery) ai.appendChild(el("p", "meta", t("pv.aiOlder", "Apertus' assessment is from an earlier search and is not included.")));
+    li.appendChild(ai);
+  }
   var fields = supportedFields(r);
   if (fields.length) {
     var fs = el("div", "sl-fields");
@@ -309,7 +357,10 @@ function refreshCardState(card, id) {
   var st = shortlist[id] ? shortlist[id].state : "";
   card.classList.toggle("excluded", st === "exclude");
   var sel = card.querySelector(".act-select"), exc = card.querySelector(".act-exclude");
-  if (sel) sel.setAttribute("aria-pressed", String(st === "select"));
+  if (sel) {
+    sel.setAttribute("aria-pressed", String(st === "select"));
+    if (sel.classList.contains("add-sl")) sel.textContent = st === "select" ? t("card.added", "✓ In shortlist") : t("card.add", "Add to shortlist");
+  }
   if (exc) exc.setAttribute("aria-pressed", String(st === "exclude"));
 }
 
@@ -317,7 +368,7 @@ function renderShortlist() {
   var sel = document.getElementById("sl-selected"), exc = document.getElementById("sl-excluded");
   clearNode(sel); clearNode(exc);
   slOrder.forEach(function (id, i) { sel.appendChild(renderEntry(id, i)); });
-  if (!sel.firstChild) sel.appendChild(el("li", "none", t("sl.emptySelected", "Nothing yet. Use Select on a result card.")));
+  if (!sel.firstChild) sel.appendChild(el("li", "none", t("sl.emptySelected2", "Nothing yet. Use “Add to shortlist” on a result card.")));
   Object.keys(shortlist).forEach(function (id) {
     if (shortlist[id].state !== "exclude") return;
     var li = el("li");
@@ -326,7 +377,7 @@ function renderShortlist() {
     exc.appendChild(li);
   });
   if (!exc.firstChild) exc.appendChild(el("li", "none", t("sl.emptyExcluded", "Nothing yet")));
-  document.getElementById("shortlist-count").textContent = String(slOrder.length);
+  document.getElementById("shortlist-count").textContent = "(" + slOrder.length + ")";
   document.getElementById("sl-export").disabled = !slOrder.length;
   document.getElementById("sl-json").disabled = !slOrder.length;
 }
@@ -363,7 +414,7 @@ function exportData() {
     var older = withAi && item.assessment && item.assessedFor !== lastQuery;
     // From the card itself, not from what the analyst chose to show in the export.
     var hasContact = ["official_contact", "contact"].some(function (k) { return r.fields && r.fields[k] && r.fields[k].length; });
-    return { entity_id: r.entity_id, name: r.display_name, type: r.entity_type, source: sourceOf(r.evidence[0].url).label,
+    return { entity_id: r.entity_id, name: r.display_name, type: r.entity_type, type_label: humanType(r), source: sourceOf(r.evidence[0].url).label,
              fields: fields, evidence: quotes, analyst_note: item.note.trim() || null,
              // No contact data in the index: the next step is the source page itself.
              start_from: hasContact ? null : r.evidence[0].url,
@@ -396,7 +447,7 @@ function buildPrintView(data) {
   data.entries.forEach(function (e, i) {
     var s = el("section", "pv-entry");
     s.appendChild(el("h2", null, (i + 1) + ". " + e.name));
-    s.appendChild(el("p", "meta", typeName(e.type) + " · " + e.source));
+    s.appendChild(el("p", "meta", (e.type_label || typeName(e.type)) + " · " + e.source));
     var keys = Object.keys(e.fields);
     if (keys.length) {
       var dl = el("dl", "fields");
@@ -512,23 +563,36 @@ function renderCard(r, index) {
   card.style.animationDelay = Math.round(landing + Math.min(index || 0, 7) * 70) + "ms";
   card.dataset.entity = r.entity_id;
   card.dataset.contact = isContact(r) ? "1" : "0";
+  card.dataset.weaker = r.retrieval && r.retrieval.weaker_match ? "1" : "0";
   // Same host form as the server's "Only <host>" suggestion (lower case, no "www.").
   try { card.dataset.host = new URL(r.evidence[0].url).hostname.toLowerCase().replace(/^www\./, ""); } catch (e) { card.dataset.host = ""; }
+  // Compact, search-engine style: type, name, one quote line, link. Everything else is under Details.
   var head = el("div", "card-head");
   var heading = el("div");
-  if (TYPE_NAMES[r.entity_type]) heading.appendChild(el("p", "kicker", typeName(r.entity_type)));
+  heading.appendChild(el("p", "kicker", humanType(r) + " · " + (src.full || src.label)));
   var title = el("h3");
   title.appendChild(el("span", "rank", r.rank + "."));
   title.appendChild(document.createTextNode(r.display_name));
   heading.appendChild(title);
   head.appendChild(heading);
   var actions = el("div", "actions");
-  var sel = button(t("card.select", "Select"), function () { setShortlist(r, "select", card); }); sel.classList.add("act-select");
-  var exc = button(t("card.exclude", "Exclude"), function () { setShortlist(r, "exclude", card); }); exc.classList.add("act-exclude");
-  sel.setAttribute("aria-pressed", "false"); exc.setAttribute("aria-pressed", "false");
-  actions.appendChild(sel); actions.appendChild(exc);
+  var sel = button(t("card.add", "Add to shortlist"), function () { setShortlist(r, "select", card); }, "primary add-sl act-select");
+  sel.setAttribute("aria-pressed", "false");
+  actions.appendChild(sel);
   head.appendChild(actions);
   card.appendChild(head);
+  // The best quotes first: one line on the card, the rest under Details.
+  var quotes = quoteOrder(r.evidence);
+  var first = el("p", "quote-line");
+  highlighted(first, "“" + quotes[0].text + "”", queryTerms);
+  card.appendChild(first);
+  var link = el("a", "src", shortUrl(quotes[0].url) + " ↗");
+  if (/^https?:\/\//i.test(quotes[0].url)) { link.href = quotes[0].url; link.rel = "noopener noreferrer"; link.target = "_blank"; }
+  link.title = quotes[0].url;
+  var linkLine = el("p", "link-line"); linkLine.appendChild(link);
+  card.appendChild(linkLine);
+  var details = el("details", "card-details");
+  details.appendChild(el("summary", null, t("card.details", "Details")));
   // Badges in plain words; anything we cannot say clearly is not shown.
   var tags = el("div", "tags");
   var srcTag = el("span", "badge tag-" + src.key, src.full || src.label);
@@ -546,20 +610,22 @@ function renderCard(r, index) {
     lt.title = t("card.srcInTitle", "Found across languages: your request is in {q}, the source page is in {e}.", { q: langName(ql), e: langName(rt.evidence_language) });
     tags.appendChild(lt);
   }
-  card.appendChild(tags);
+  details.appendChild(tags);
   var why = renderWhy(r);
-  renderFields(r.fields, card);
-  // The best quotes first; the rest fold away so one card never fills the screen.
-  var quotes = quoteOrder(r.evidence);
-  quotes.slice(0, QUOTES_SHOWN).forEach(function (ev) { card.appendChild(renderEvidence(ev)); });
+  renderFields(r.fields, details);
+  quotes.slice(0, QUOTES_SHOWN).forEach(function (ev) { details.appendChild(renderEvidence(ev)); });
   if (r.evidence.length > QUOTES_SHOWN) {
     var more = el("details", "more-quotes");
     var n = r.evidence.length - QUOTES_SHOWN;
     more.appendChild(el("summary", null, t(n === 1 ? "card.moreQuote" : "card.moreQuotes", n === 1 ? "Show {n} more quote" : "Show {n} more quotes", { n: n })));
     quotes.slice(QUOTES_SHOWN).forEach(function (ev) { more.appendChild(renderEvidence(ev)); });
-    card.appendChild(more);
+    details.appendChild(more);
   }
-  if (why) card.appendChild(why);
+  if (why) details.appendChild(why);
+  var exc = button(t("card.exclude", "Exclude"), function () { setShortlist(r, "exclude", card); }); exc.classList.add("act-exclude");
+  exc.setAttribute("aria-pressed", "false");
+  details.appendChild(exc);
+  card.appendChild(details);
   refreshCardState(card, r.entity_id);
   return card;
 }
@@ -579,7 +645,7 @@ function rerankCards(results) {
     card.classList.remove("appear");
     var was = oldRank[r.entity_id];
     var note = !was ? t("ap.found", "Found by Apertus") : was > r.rank ? t("ap.up", "Moved up by Apertus (was #{n})", { n: was }) : was < r.rank ? t("ap.down", "Moved down by Apertus (was #{n})", { n: was }) : "";
-    if (note) { card.classList.add("moved"); card.querySelector(".tags").appendChild(el("span", "badge moved-badge", note)); }
+    if (note) { card.classList.add("moved"); card.querySelector(".kicker").appendChild(el("span", "badge moved-badge", note)); }
     out.appendChild(card);
     if (still) return;
     var top = card.getBoundingClientRect().top;
@@ -609,21 +675,36 @@ function isContact(r) {
   if (SITE_PAGE.test(name) || NOT_TEAM_URL.test(url)) return false;
   return TEAM_URL.test(url) || TEAM_NAME.test(name);
 }
-var othersOpen = false;
+var othersOpen = false, moreOpen = false;
 function foldOthers() {
   var out = document.getElementById("results");
   var cards = Array.prototype.slice.call(out.querySelectorAll(".card"));
   var old = out.querySelector(".other-pages");
   if (old) { othersOpen = old.open; out.removeChild(old); }
-  var others = cards.filter(function (c) { return c.dataset.contact !== "1"; });
-  if (!others.length || others.length === cards.length) { cards.forEach(function (c) { out.appendChild(c); }); return; }
-  cards.forEach(function (c) { if (c.dataset.contact === "1") out.appendChild(c); });
-  var box = el("details", "other-pages");
-  box.open = othersOpen;
-  box.appendChild(el("summary", null, t("other.summary", "Other pages and institutions ({n})", { n: others.length })));
-  box.appendChild(el("p", "meta", t("other.note", "Larger institutions and general pages that match your request. Usually not the person to contact first.")));
-  others.forEach(function (c) { box.appendChild(c); });
-  out.appendChild(box);
+  var oldMore = out.querySelector(".more-results");
+  if (oldMore) { moreOpen = oldMore.open; out.removeChild(oldMore); }
+  // Cards far below the best match (retrieval.weaker_match, #166) fold under "More results".
+  var weaker = cards.filter(function (c) { return c.dataset.weaker === "1"; });
+  if (weaker.length === cards.length) weaker = [];
+  var strong = cards.filter(function (c) { return weaker.indexOf(c) < 0; });
+  var others = strong.filter(function (c) { return c.dataset.contact !== "1"; });
+  if (!others.length || others.length === strong.length) strong.forEach(function (c) { out.appendChild(c); });
+  else {
+    strong.forEach(function (c) { if (c.dataset.contact === "1") out.appendChild(c); });
+    var box = el("details", "other-pages");
+    box.open = othersOpen;
+    box.appendChild(el("summary", null, t("other.summary", "Other pages and institutions ({n})", { n: others.length })));
+    box.appendChild(el("p", "meta", t("other.note", "Larger institutions and general pages that match your request. Usually not the person to contact first.")));
+    others.forEach(function (c) { box.appendChild(c); });
+    out.appendChild(box);
+  }
+  if (!weaker.length) return;
+  var more = el("details", "more-results");
+  more.open = moreOpen;
+  more.appendChild(el("summary", null, t("more.summary", "More results ({n})", { n: weaker.length })));
+  more.appendChild(el("p", "meta", t("more.note", "Weaker matches: they score well below the best results.")));
+  weaker.forEach(function (c) { more.appendChild(c); });
+  out.appendChild(more);
 }
 
 function setStatus(text, kind) {
@@ -661,6 +742,13 @@ function renderSummary(b, query, elapsedMs, byApertus) {
   box.hidden = false;
   var total = b.timing_ms && typeof b.timing_ms.request_total === "number" ? b.timing_ms.request_total : elapsedMs;
   var count = t(b.results.length === 1 ? "sum.result" : "sum.results", b.results.length === 1 ? "{n} result" : "{n} results", { n: b.results.length });
+  // One line on top, as a search engine would say it: "Found 4 research groups, 2 platforms, 1 person".
+  var kinds = {}, order = [];
+  b.results.forEach(function (r) { var k = humanKind(r); if (!kinds[k]) { kinds[k] = 0; order.push(k); } kinds[k] += 1; });
+  order.sort(function (x, y) { return kinds[y] - kinds[x]; });
+  if (order.length) box.appendChild(el("p", "found-line", t("sum.found", "Found {list}", { list: order.map(function (k) {
+    return kinds[k] + " " + (kinds[k] === 1 ? t("ht." + k, HUMAN_TYPES[k]).toLowerCase() : t("htp." + k, HUMAN_PLURALS[k]));
+  }).join(", ") })));
   box.appendChild(el("span", "pill latency", byApertus ? t("sum.byApertus", "{count}, ranked by Apertus in {s} s", { count: count, s: (elapsedMs / 1000).toFixed(1).replace(".", uiLang === "fr" ? "," : ".") })
                                                        : t("sum.direct", "{count} in {ms} ms", { count: count, ms: Math.round(total) })));
   var first = b.results[0] && b.results[0].retrieval;
@@ -732,7 +820,7 @@ function renderPeople(list) {
   list.forEach(function (r, i) {
     var c = el("article", "person-card appear");
     c.style.animationDelay = Math.round(Math.max(0, transitionEndsAt - performance.now() - 250) + i * 70) + "ms";
-    c.appendChild(el("p", "kicker", typeName("person")));
+    c.appendChild(el("p", "kicker", t("ht.person", "Person")));
     c.appendChild(el("h3", null, r.display_name));
     var f = r.fields || {};
     var line = [].concat((f.role || []).slice(0, 1), (f.affiliation || []).slice(0, 1))
@@ -743,7 +831,7 @@ function renderPeople(list) {
     var a = el("a", "src", t("people.profile", "Profile page") + " ↗");
     a.href = r.evidence[0].url; a.target = "_blank"; a.rel = "noopener noreferrer";
     acts.appendChild(a);
-    var sel = button(t("card.select", "Select"), function () {
+    var sel = button(t("card.add", "Add to shortlist"), function () {
       setShortlist(r, "select", null);
       sel.setAttribute("aria-pressed", String(!!(shortlist[r.entity_id] && shortlist[r.entity_id].state === "select")));
     });
@@ -970,15 +1058,17 @@ function initHero() {
   });
   setType("");
   var toggle = document.getElementById("shortlist-toggle"), drawer = document.getElementById("shortlist");
-  toggle.addEventListener("click", function () {
-    drawer.hidden = !drawer.hidden;
-    toggle.setAttribute("aria-expanded", String(!drawer.hidden));
-  });
-  document.getElementById("shortlist-close").addEventListener("click", function () {
-    drawer.hidden = true; toggle.setAttribute("aria-expanded", "false"); toggle.focus();
-  });
+  // The shortlist is the final page: while it is open, the results are out of view (kept, not cleared).
+  function showList(open) {
+    drawer.hidden = !open;
+    document.body.classList.toggle("sl-open", open);
+    toggle.setAttribute("aria-expanded", String(open));
+    window.scrollTo(0, 0);
+  }
+  toggle.addEventListener("click", function () { showList(drawer.hidden); });
+  document.getElementById("shortlist-close").addEventListener("click", function () { showList(false); toggle.focus(); });
   document.addEventListener("keydown", function (ev) {
-    if (ev.key === "Escape" && !drawer.hidden) { drawer.hidden = true; toggle.setAttribute("aria-expanded", "false"); toggle.focus(); }
+    if (ev.key === "Escape" && !drawer.hidden) { showList(false); toggle.focus(); }
   });
   var ln = document.getElementById("sl-list-note");
   ln.addEventListener("input", function () { listNote = ln.value; });
@@ -1054,7 +1144,7 @@ function renderNeeds(payload) {
   var box = document.getElementById("needs");
   clearNode(box);
   box.hidden = false;
-  box.appendChild(aiHead(t("ai.read", "How Apertus read your request")));
+  box.appendChild(aiHead(t("ai.readUs", "How we read your request")));
   if (payload.synthetic || payload.decoding_mode === "synthetic") box.appendChild(el("p", "synthetic", "SYNTHETIC fixture interpretation: not a real model output."));
   // The headline: the other wordings Apertus searched, so different terms still find the experts.
   if (payload.expanded_queries && payload.expanded_queries.length) {
@@ -1229,7 +1319,7 @@ function renderAssessment(a) {
   }
   // Right under the badges, so the AI's verdict is the first thing read on the card.
   var tags = card.querySelector(".tags");
-  if (tags && tags.nextSibling) card.insertBefore(box, tags.nextSibling); else card.appendChild(box);
+  if (tags && tags.nextSibling) tags.parentNode.insertBefore(box, tags.nextSibling); else card.appendChild(box);
   assessShown[a.entity_id] = a;
   card.classList.remove("flash");
   void card.offsetWidth; // restart the highlight animation
@@ -1309,7 +1399,7 @@ function showApertusResults(results) {
     var card = renderCard(r, i);
     var was = baseRanks[r.entity_id];
     var note = !was ? t("ap.found", "Found by Apertus") : was > r.rank ? t("ap.up", "Moved up by Apertus (was #{n})", { n: was }) : "";
-    if (note) { card.classList.add("moved"); card.querySelector(".tags").appendChild(el("span", "badge moved-badge", note)); }
+    if (note) { card.classList.add("moved"); card.querySelector(".kicker").appendChild(el("span", "badge moved-badge", note)); }
     out.appendChild(card);
   });
   foldOthers();
@@ -1450,6 +1540,8 @@ function runSearch(needs) {
   shownResults = null; assessShown = {}; noNeed = false; assessFailed = false; noClearMatch = 0; rerankSkipped = false; bestFits = []; hiddenVerdicts = {}; checking = 0; lastSummary = null; lastNotes = null; lastNeedsPayload = null; lastNeedNote = null;
   var started = performance.now();
   searchStarted = started;
+  document.body.classList.remove("sl-open");
+  document.getElementById("shortlist").hidden = true;
   enterResults();
   queryTerms = termsOf(query);
   lastQuery = query;
@@ -1550,7 +1642,8 @@ function goHome(ev) {
   clearNode(document.getElementById("limitations"));
   ["summary", "outcome", "needs", "limits-box", "people"].forEach(function (id) { document.getElementById(id).hidden = true; });
   setStatus("", "");
-  document.body.classList.remove("searched", "leaving");
+  document.body.classList.remove("searched", "leaving", "sl-open");
+  document.getElementById("shortlist").hidden = true;
   window.scrollTo(0, 0);
   document.getElementById("query").focus();
 }
