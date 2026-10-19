@@ -33,6 +33,8 @@ MODEL_OUT = {
                    {"source": "insulin pump", "text": "Insulinpumpe", "language": "de"}],     # source not in request
     "is_broad": False,
     "clarification": "Which sport?",
+    "scope": "in_scope",
+    "scope_reason": "research",
 }
 
 
@@ -94,7 +96,7 @@ def test_suggestion_limit_and_payload_shape():
     r = interpret("glucose sensor", COMPANY, client=fake_client(many))
     assert sum(n.origin == "suggested" for n in r.needs) == 6 and r.dropped["need_limit"] == 2
     p = r.payload()
-    assert set(p) == {"needs", "expanded_queries", "clarification"}
+    assert set(p) == {"needs", "expanded_queries", "clarification", "scope", "scope_reason"}
     [Need(**n) for n in p["needs"]]
 
 
@@ -277,3 +279,61 @@ def test_primary_in_time_reports_primary_model(api):
     api.post("/api/v1/search/req_p/enrichment", json=BODY)
     ev = events(api.get("/api/v1/search/req_p/events?revision=1"))
     assert next(e for e in ev if e.event_type == "interpretation").payload["model"] == "primary"
+
+
+# --- T39 (#100): scope check -> honest refusal ----------------------------------------
+def _scoped(scope):
+    def f(req):
+        r = _quick(req)
+        r.scope, r.scope_reason = scope, ("research" if scope == "in_scope" else "consumer_request")
+        return r
+    return f
+
+
+@pytest.mark.parametrize("first,scope,model_ok,expect", [
+    ("low_confidence", "out_of_scope", True, "out_of_scope"),
+    ("no_evidence", "out_of_scope", True, "out_of_scope"),
+    ("confident", "out_of_scope", True, None),      # confident is never downgraded
+    ("low_confidence", "unclear", True, None),      # unclear never refuses
+    ("low_confidence", "in_scope", True, None),
+])
+def test_scope_outcome_update(api, monkeypatch, first, scope, model_ok, expect):
+    monkeypatch.setattr(enrichment, "SCOPE_REFUSAL", True)
+    enrichment.set_interpreter(_scoped(scope), fallback=_quick)
+    enrichment.set_outcome_provider(lambda req: first)
+    try:
+        api.post("/api/v1/search/req_s/enrichment", json=BODY)
+        ev = events(api.get("/api/v1/search/req_s/events?revision=1"))
+    finally:
+        enrichment.set_outcome_provider(None)
+    interp = next(e for e in ev if e.event_type == "interpretation").payload
+    assert interp["scope"] == scope and interp["outcome_update"] == expect
+    skipped = {"stage": "assessment", "state": "skipped", "reason": "out_of_scope"} in [e.payload for e in ev]
+    assert skipped == (expect == "out_of_scope") and ev[-1].event_type == "complete"
+
+
+def test_fallback_model_never_refuses(api, monkeypatch):
+    monkeypatch.setattr(enrichment, "SCOPE_REFUSAL", True)
+    monkeypatch.setattr(enrichment, "INTERPRET_DEADLINE_S", 0.05)
+    enrichment.set_interpreter(lambda req: (time.sleep(0.5), _quick(req))[1], fallback=_scoped("out_of_scope"))
+    enrichment.set_outcome_provider(lambda req: "no_evidence")
+    try:
+        api.post("/api/v1/search/req_t/enrichment", json=BODY)
+        ev = events(api.get("/api/v1/search/req_t/events?revision=1"))
+    finally:
+        enrichment.set_outcome_provider(None)
+    interp = next(e for e in ev if e.event_type == "interpretation").payload
+    assert interp["model"] == "fallback" and interp["outcome_update"] is None
+
+
+def test_scope_refusal_is_off_by_default(api):
+    assert enrichment.SCOPE_REFUSAL is False
+    enrichment.set_interpreter(_scoped("out_of_scope"), fallback=_quick)
+    enrichment.set_outcome_provider(lambda req: "no_evidence")
+    try:
+        api.post("/api/v1/search/req_d/enrichment", json=BODY)
+        ev = events(api.get("/api/v1/search/req_d/events?revision=1"))
+    finally:
+        enrichment.set_outcome_provider(None)
+    interp = next(e for e in ev if e.event_type == "interpretation").payload
+    assert interp["scope"] == "out_of_scope" and interp["outcome_update"] is None
