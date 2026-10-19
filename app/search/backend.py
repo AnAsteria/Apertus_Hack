@@ -11,10 +11,13 @@ from app.storage.indexes import IndexStore
 from .analysis import analyze,language_of,match_expression,query_terms,words
 from .encoder import OnnxEncoder,digest
 from .ranking import entity_max,reciprocal_rank_fusion,diversify,non_entity_page,not_an_actor,duplicate_key,DEMOTION
-from .outcome import classify,thresholds
+from .outcome import topic_query,classify,thresholds
 from .explain import channel_ranks,matched_words,contact_bearing,reason as explain_reason
 from . import rerank as rerank_mod
 from .typehint import preferred_type,BOOST as TYPE_BOOST
+
+# 19 Oct: generic words are also left out of the meaning search (0 = it uses the full request).
+GENERIC_DENSE = os.environ.get('BERNMATCH_GENERIC_DENSE', '1') == '1'  # 0 = meaning search uses the full request
 from .acronyms import AcronymTable
 
 
@@ -115,14 +118,16 @@ class HybridBackend:
         query_language = language_of(req.query)
         t = time.perf_counter()
         extra_forms = self.acronyms.variants(req.query) if self.acronyms is not None else []
-        keyword_text = ' '.join([req.query]+extra_forms)
+        # Generic words (bern, people, experts) only search when nothing else is asked (outcome.topic_query).
+        topic = topic_query(req.query)
+        keyword_text = ' '.join([topic]+extra_forms)
         keyword = entity_max(self.store.keyword(match_expression(query_terms(keyword_text))),self.entries,allowed) if self.mode!='dense' else {}
         timing['keyword'] = (time.perf_counter()-t)*1000
         t = time.perf_counter()
         dense = {}; vector_winners = {}; dense_ok = False
         if self.encoder is not None and self.mode!='keyword':
             try:
-                query = self.encoder.encode([req.query],kind='query')[0]
+                query = self.encoder.encode([topic if GENERIC_DENSE else req.query],kind='query')[0]
                 if query.shape != (self.vectors.shape[1],):
                     raise ValueError('query_dimension_mismatch')
                 scores = self.vectors @ query
@@ -227,7 +232,7 @@ class HybridBackend:
             # Real sentences first, headings like "Methods" or "." after them (all are kept).
             evidence.sort(key=lambda e: len(re.findall(r'[^\W\d_]{2,}', e['text'] or '')) < 3)
             evidence_language = entry.get('language')
-            matched = matched_words(req.query,[e['text'] for e in evidence],evidence_language) if eid in keyword else []
+            matched = matched_words(topic,[e['text'] for e in evidence],evidence_language) if eid in keyword else []
             reason = explain_reason(keyword_rank=keyword_ranks.get(eid),dense_rank=dense_ranks.get(eid),matched=matched,
                                     query_language=query_language,evidence_language=evidence_language,
                                     demoted=eid in demoted,former=entity['status']=='former')

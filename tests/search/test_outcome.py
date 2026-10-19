@@ -79,3 +79,14 @@ def test_precise_term_without_a_confident_match_is_uncertain_not_broad():
     hosts = ['a.unibe.ch', 'b.unibe.ch', 'c.unibe.ch', 'd.unibe.ch', 'e.unibe.ch']
     results = [card(i, hosts[i % 5], .861 - i * .001) for i in range(1, 11)]
     assert run('CGM', results, .861)[0] == 'low_confidence'
+
+
+def test_generic_words_leave_the_search_when_a_topic_word_is_present():
+    # 19 Oct: "homeless bern people" matched every "University of Bern ... people" page.
+    from app.search.outcome import topic_query
+    assert topic_query('homeless bern people') == 'homeless'
+    assert topic_query('Bern experts in spine surgery') == 'in spine surgery'
+    assert topic_query('Forschende zu Herzklappen in Bern') == 'zu Herzklappen in'
+    # Nothing but generic words: the request is searched as typed (it is "too broad", not empty).
+    assert topic_query('bern people') == 'bern people'
+    assert topic_query('Stefan Weber') == 'Stefan Weber'
