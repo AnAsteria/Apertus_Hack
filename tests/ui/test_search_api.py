@@ -208,7 +208,7 @@ def test_contacts_first_keeps_people_and_teams_and_folds_pages():
     node = shutil.which("node")
     if not node:
         pytest.skip("node not installed")
-    rules = js[js.index("var TEAM_URL"):js.index("var othersOpen")]
+    rules = js[js.index("var TEAM_URL"):js.index("var moreOpen")]
     assert "\b" not in rules  # no stray control characters in the regexes
     def card(name, url, kind="unit"):
         return {"display_name": name, "entity_type": kind, "evidence": [{"url": url}]}
