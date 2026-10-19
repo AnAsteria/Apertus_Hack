@@ -11,7 +11,7 @@
   <!-- data-i18n* attributes name the text's key in i18n.js; the English below is the default. -->
   <a class="skip" href="#results" data-i18n="skip">Skip to results</a>
   <header class="top">
-    <span class="brand"><span class="logo" aria-hidden="true">◆</span> Bern Match</span>
+    <span class="brand">Bern Match <span class="logo" aria-hidden="true"></span></span>
     <a class="powered" href="https://www.apertus-ai.org/" target="_blank" rel="noopener noreferrer" title="Apertus: the fully open Swiss LLM by EPFL, ETH Zurich and CSCS" data-i18n-title="top.poweredTitle">
       <i class="ap" aria-hidden="true"></i><span data-i18n="top.powered">Powered by</span> <b>Apertus</b>
     </a>
@@ -26,11 +26,14 @@
   </header>
   <main>
     <section class="hero" id="hero">
+      <div class="hero-copy">
+      <p class="eyebrow" data-i18n="hero.eyebrow">Research expertise in Bern</p>
       <h1 data-i18n="hero.h1">Describe the need. Apertus finds the experts.</h1>
       <p class="sub" data-i18n="hero.sub">Experts at UniBE, ARTORG and Diabetes Center Berne. Every result quotes its source.</p>
       <form id="form" role="search">
         <label for="query" class="sr" data-i18n="hero.queryLabel">Keywords, a question, or a pasted company description</label>
         <div class="searchbox">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>
           <textarea id="query" rows="2" maxlength="2000" placeholder="e.g. a medtech start-up needs non-invasive glucose monitoring for a smartwatch" data-i18n-placeholder="hero.placeholder"></textarea>
           <button type="submit" class="primary" data-i18n="hero.search">Search</button>
         </div>
@@ -49,6 +52,46 @@
         <div class="examples" id="examples" aria-label="Example queries" data-i18n-aria="hero.examples"></div>
       </div>
       <p class="howto"><i class="ap" aria-hidden="true"></i><span data-i18n="hero.howto">Apertus also searches synonyms, technical terms and other languages, and explains each match.</span></p>
+      </div>
+      <div class="hero-art" aria-hidden="true">
+        <!-- Drawn for Bern Match: Alps, the old town with the Minster spire, a terrace and red glass. No photo, no image file. -->
+        <svg viewBox="0 0 600 800" preserveAspectRatio="xMidYMid slice" focusable="false">
+          <defs>
+            <linearGradient id="ha-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ebe6de"/><stop offset=".55" stop-color="#f4f0e9"/><stop offset="1" stop-color="#f7f4ee"/></linearGradient>
+            <linearGradient id="ha-floor" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e6dfd3"/><stop offset="1" stop-color="#cdc4b5"/></linearGradient>
+            <linearGradient id="ha-glass" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#e30613" stop-opacity=".92"/><stop offset=".6" stop-color="#c4050f" stop-opacity=".88"/><stop offset="1" stop-color="#8f030b" stop-opacity=".95"/></linearGradient>
+            <linearGradient id="ha-shine" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".28"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+            <linearGradient id="ha-haze" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f4f0e9" stop-opacity="0"/><stop offset="1" stop-color="#f4f0e9" stop-opacity=".85"/></linearGradient>
+          </defs>
+          <rect width="600" height="800" fill="url(#ha-sky)"/>
+          <path d="M0 360 L60 318 L95 334 L150 262 L185 300 L215 286 L262 228 L300 280 L338 258 L372 300 L410 270 L470 318 L520 296 L600 336 V430 H0 Z" fill="#d3d4d2"/>
+          <path d="M150 262 L168 284 L160 290 L176 300 L185 300 L172 286 Z M262 228 L280 254 L270 258 L288 270 L300 280 L284 258 Z M410 270 L430 288 L422 292 L440 300 L452 304 Z" fill="#fbfaf7"/>
+          <path d="M0 400 L70 372 L130 388 L210 352 L280 380 L350 356 L430 384 L520 360 L600 384 V460 H0 Z" fill="#c2c5c1"/>
+          <rect y="380" width="600" height="90" fill="url(#ha-haze)"/>
+          <path d="M0 460 Q150 440 300 452 T600 448 V520 H0 Z" fill="#b8b9a8"/>
+          <g fill="#a49d91">
+            <path d="M20 500 v-22 l14 -10 l14 10 v22 Z M52 500 v-28 l18 -12 l18 12 v28 Z M92 500 v-20 l12 -9 l12 9 v20 Z M120 500 v-30 l16 -12 l16 12 v30 Z M156 500 v-24 l14 -10 l14 10 v24 Z M188 500 v-26 l16 -11 l16 11 v26 Z M290 500 v-28 l16 -12 l16 12 v28 Z M326 500 v-22 l14 -10 l14 10 v22 Z M358 500 v-30 l18 -12 l18 12 v30 Z M398 500 v-24 l14 -10 l14 10 v24 Z"/>
+          </g>
+          <g fill="#8d867b">
+            <rect x="226" y="372" width="34" height="128"/>
+            <path d="M226 372 L243 300 L260 372 Z"/>
+            <rect x="240" y="286" width="6" height="18"/>
+            <rect x="214" y="430" width="58" height="70"/>
+          </g>
+          <g fill="#b3ab9f"><rect x="233" y="392" width="6" height="16" rx="3"/><rect x="247" y="392" width="6" height="16" rx="3"/><rect x="233" y="420" width="6" height="16" rx="3"/><rect x="247" y="420" width="6" height="16" rx="3"/></g>
+          <rect y="500" width="600" height="46" fill="#ddd6ca"/>
+          <rect y="500" width="600" height="4" fill="#cfc7ba"/>
+          <path d="M0 546 H600 V800 H0 Z" fill="url(#ha-floor)"/>
+          <path d="M0 546 L300 546 L600 800 L0 800 Z" fill="#000" opacity=".025"/>
+          <path d="M420 546 L600 546 L600 800 L330 800 Z" fill="#e30613" opacity=".10"/>
+          <path d="M0 640 L250 640 L250 700 L0 720 Z" fill="#d9d1c3"/>
+          <path d="M0 720 L250 700 L250 800 L0 800 Z" fill="#c4bbac"/>
+          <rect x="300" y="0" width="130" height="150" fill="#e30613" opacity=".18"/>
+          <rect x="430" y="0" width="170" height="800" fill="url(#ha-glass)"/>
+          <rect x="430" y="0" width="170" height="420" fill="url(#ha-shine)"/>
+          <g fill="#6e0208"><rect x="428" y="0" width="5" height="800"/><rect x="505" y="0" width="3" height="800"/><rect x="560" y="0" width="3" height="800"/><rect x="430" y="148" width="170" height="3"/><rect x="430" y="544" width="170" height="3"/><rect x="300" y="148" width="130" height="2" opacity=".5"/></g>
+        </svg>
+      </div>
     </section>
     <div id="summary" class="summary" hidden></div>
     <p id="status" class="status" role="status" aria-live="polite"></p>

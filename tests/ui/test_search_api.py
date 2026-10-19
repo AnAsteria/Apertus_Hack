@@ -128,3 +128,12 @@ def test_rerank_animation_respects_reduced_motion():
     js = _static("app.js")
     body = js[js.index("function rerankCards"):js.index("function renderCards")]
     assert "prefers-reduced-motion: reduce" in body
+
+
+def test_direct_cards_render_when_apertus_is_off_or_unavailable():
+    # runSearch sets resultsShown = true; the non-pending branch must reset it, or showDirect()
+    # returns at once and the cards never appear (found on main 54f77fc with Apertus unavailable).
+    js = _static("app.js")
+    body = js[js.index("function runSearch"):]
+    branch = body[body.index("} else {", body.index('b.enrichment_state === "pending" && b.results.length')):]
+    assert branch.index("resultsShown = false") < branch.index("showDirect()")
