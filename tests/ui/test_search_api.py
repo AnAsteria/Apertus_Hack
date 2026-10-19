@@ -90,11 +90,10 @@ def test_ui_has_no_markup_sinks_and_no_external_requests():
         assert "//cdn" not in text and "googleapis" not in text
 
 
-def test_ui_hides_empty_fields_and_shows_one_not_stated_line():
+def test_ui_hides_empty_fields_without_a_not_stated_line():
     js = _static("app.js")
-    # empty fields are skipped (no per-field "not stated" row) and collapsed into one line
-    assert "not stated in sources\"" not in js
-    assert "Not stated in sources: " in js
+    # empty fields are skipped; analysts asked not to see a list of what the sources do not say
+    assert "not stated in sources" not in js.lower()
 
 
 def test_ui_respects_reduced_motion_and_dark_mode():
