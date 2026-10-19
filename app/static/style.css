@@ -261,3 +261,11 @@ mark { background: var(--mark); color: inherit; border-radius: 3px; padding: 0 .
 #sources th, #sources td { text-align: left; padding: .35rem .5rem; border-bottom: 1px solid var(--line); white-space: nowrap; }
 #sources td:nth-child(n+2):nth-child(-n+6), #sources th:nth-child(n+2):nth-child(-n+6) { text-align: right; }
 #token { flex: 1; padding: .45rem; font: inherit; background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 8px; }
+
+/* T28: interface language switcher (EN / DE / FR) */
+.langs { display: inline-flex; border: 1px solid var(--line); border-radius: 99px; background: var(--panel); padding: 2px; }
+.langs button { border: 0; background: transparent; color: var(--muted); font-size: .75rem; font-weight: 650; letter-spacing: .04em;
+  padding: .25rem .55rem; border-radius: 99px; }
+.langs button:hover { color: var(--text); }
+.langs button[aria-pressed="true"] { background: var(--text); color: var(--bg); }
+@media print { .langs { display: none; } }

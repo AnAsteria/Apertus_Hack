@@ -8,78 +8,85 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <a class="skip" href="#results">Skip to results</a>
+  <!-- data-i18n* attributes name the text's key in i18n.js; the English below is the default. -->
+  <a class="skip" href="#results" data-i18n="skip">Skip to results</a>
   <header class="top">
     <span class="brand"><span class="logo" aria-hidden="true">◆</span> Bern Match</span>
-    <a class="powered" href="https://www.apertus-ai.org/" target="_blank" rel="noopener noreferrer" title="Apertus: the fully open Swiss LLM by EPFL, ETH Zurich and CSCS">
-      <i class="ap" aria-hidden="true"></i>Powered by <b>Apertus</b>
+    <a class="powered" href="https://www.apertus-ai.org/" target="_blank" rel="noopener noreferrer" title="Apertus: the fully open Swiss LLM by EPFL, ETH Zurich and CSCS" data-i18n-title="top.poweredTitle">
+      <i class="ap" aria-hidden="true"></i><span data-i18n="top.powered">Powered by</span> <b>Apertus</b>
     </a>
+    <div class="langs" role="group" aria-label="Language" data-i18n-aria="lang.aria">
+      <button type="button" data-lang="en" lang="en" title="English">EN</button>
+      <button type="button" data-lang="de" lang="de" title="Deutsch">DE</button>
+      <button type="button" data-lang="fr" lang="fr" title="Français">FR</button>
+    </div>
     <button type="button" id="shortlist-toggle" class="ghost" aria-controls="shortlist" aria-expanded="false">
-      Shortlist <span id="shortlist-count" class="count">0</span>
+      <span data-i18n="top.shortlist">Shortlist</span> <span id="shortlist-count" class="count">0</span>
     </button>
   </header>
   <main>
     <section class="hero" id="hero">
-      <h1>Describe the need. Apertus finds the experts.</h1>
-      <p class="sub">Write what a company needs in your own words, in English, German or French. Apertus also searches the researchers' own terms, like "CGM" for "glucose sensor", and finds groups, people, projects and labs at UniBE, ARTORG and Diabetes Center Berne. Every result quotes its source.</p>
+      <h1 data-i18n="hero.h1">Describe the need. Apertus finds the experts.</h1>
+      <p class="sub" data-i18n="hero.sub">Write what a company needs in your own words, in English, German or French. Apertus also searches the researchers' own terms, like "CGM" for "glucose sensor", and finds groups, people, projects and labs at UniBE, ARTORG and Diabetes Center Berne. Every result quotes its source.</p>
       <form id="form" role="search">
-        <label for="query" class="sr">Keywords, a question, or a pasted company description</label>
+        <label for="query" class="sr" data-i18n="hero.queryLabel">Keywords, a question, or a pasted company description</label>
         <div class="searchbox">
-          <textarea id="query" rows="2" maxlength="2000" placeholder="e.g. a medtech start-up needs non-invasive glucose monitoring for a smartwatch"></textarea>
-          <button type="submit" class="primary">Search</button>
+          <textarea id="query" rows="2" maxlength="2000" placeholder="e.g. a medtech start-up needs non-invasive glucose monitoring for a smartwatch" data-i18n-placeholder="hero.placeholder"></textarea>
+          <button type="submit" class="primary" data-i18n="hero.search">Search</button>
         </div>
         <div class="row">
-          <div class="chips" role="radiogroup" aria-label="Looking for" id="type-chips"></div>
-          <label class="switch" title="On: Apertus finds other wordings, re-ranks and explains each card (everything it adds is labelled as AI). Off: fast keyword and meaning search only, no AI.">
+          <div class="chips" role="radiogroup" aria-label="Looking for" data-i18n-aria="hero.lookingFor" id="type-chips"></div>
+          <label class="switch" title="On: Apertus finds other wordings, re-ranks and explains each card (everything it adds is labelled as AI). Off: fast keyword and meaning search only, no AI." data-i18n-title="hero.switchTitle">
             <input type="checkbox" id="interpret" checked>
             <span class="track" aria-hidden="true"></span>
-            <span>Use <span class="ai-tag">Apertus</span></span>
+            <span><span data-i18n="hero.use">Use</span> <span class="ai-tag">Apertus</span></span>
           </label>
         </div>
       </form>
       <div class="examples-wrap">
-        <span class="examples-label">Try</span>
-        <div class="examples" id="examples" aria-label="Example queries"></div>
+        <span class="examples-label" data-i18n="hero.try">Try</span>
+        <div class="examples" id="examples" aria-label="Example queries" data-i18n-aria="hero.examples"></div>
       </div>
-      <ol class="steps" aria-label="How it works">
-        <li><span>1</span>Results appear at once, quoting the exact source sentence</li>
-        <li><span><i class="ap" aria-hidden="true"></i></span>Apertus searches other wordings: synonyms, technical terms, other languages</li>
-        <li><span><i class="ap" aria-hidden="true"></i></span>Apertus re-ranks and explains each match, always labelled as AI</li>
+      <ol class="steps" aria-label="How it works" data-i18n-aria="hero.steps">
+        <li><span>1</span><span data-i18n="hero.step1">Every result quotes the exact source sentence, with link and date</span></li>
+        <li><span><i class="ap" aria-hidden="true"></i></span><span data-i18n="hero.step2">Apertus searches other wordings: synonyms, technical terms, other languages</span></li>
+        <li><span><i class="ap" aria-hidden="true"></i></span><span data-i18n="hero.step3">Apertus re-ranks and explains each match, always labelled as AI</span></li>
       </ol>
     </section>
     <div id="summary" class="summary" hidden></div>
     <p id="status" class="status" role="status" aria-live="polite"></p>
     <section id="outcome" class="outcome" hidden aria-live="polite"></section>
     <details id="limits-box" class="limits" hidden>
-      <summary>About these results</summary>
+      <summary data-i18n="limits.summary">About these results</summary>
       <ul id="limitations" class="limitations"></ul>
     </details>
     <section id="needs" class="needs" hidden aria-live="polite"></section>
-    <section id="results" aria-label="Results"></section>
+    <section id="results" aria-label="Results" data-i18n-aria="results.aria"></section>
   </main>
   <footer class="credit">
-    <p><i class="ap" aria-hidden="true"></i>AI features run on <a href="https://www.apertus-ai.org/" target="_blank" rel="noopener noreferrer">Apertus</a> v1.5 8B, the fully open Swiss LLM by the Swiss AI Initiative (EPFL, ETH Zurich, CSCS), Apache 2.0, through the hackathon organisers' gateway.</p>
-    <p>Search runs on our own index of public UniBE, ARTORG and Diabetes Center Berne pages. AI text is always labelled and never shown as a source fact.</p>
+    <p><i class="ap" aria-hidden="true"></i><span data-i18n="footer.ai1">AI features run on</span> <a href="https://www.apertus-ai.org/" target="_blank" rel="noopener noreferrer">Apertus</a><span data-i18n="footer.ai2"> v1.5 8B, the fully open Swiss LLM by the Swiss AI Initiative (EPFL, ETH Zurich, CSCS), Apache 2.0, through the hackathon organisers' gateway.</span></p>
+    <p data-i18n="footer.search">Search runs on our own index of public UniBE, ARTORG and Diabetes Center Berne pages. AI text is always labelled and never shown as a source fact.</p>
   </footer>
-  <aside id="shortlist" class="drawer" hidden aria-label="Shortlist">
+  <aside id="shortlist" class="drawer" hidden aria-label="Shortlist" data-i18n-aria="sl.title">
     <div class="drawer-head">
-      <h2>Shortlist</h2>
-      <button type="button" id="shortlist-close" class="ghost" aria-label="Close shortlist">✕</button>
+      <h2 data-i18n="sl.title">Shortlist</h2>
+      <button type="button" id="shortlist-close" class="ghost" aria-label="Close shortlist" data-i18n-aria="sl.close">✕</button>
     </div>
-    <p class="meta">Your selections for this session. Select and exclude are sent as feedback; notes stay in this browser tab and are never sent.</p>
-    <h3>Selected <span class="meta">(drag or use the arrows to reorder)</span></h3>
+    <p class="meta" data-i18n="sl.intro">Your selections for this session. Select and exclude are sent as feedback; notes stay in this browser tab and are never sent.</p>
+    <h3><span data-i18n="sl.selected">Selected</span> <span class="meta" data-i18n="sl.reorder">(drag or use the arrows to reorder)</span></h3>
     <ol id="sl-selected" class="sl"></ol>
-    <label class="sl-note-label" for="sl-list-note">Analyst note for the whole list (your text, not a source fact)</label>
+    <label class="sl-note-label" for="sl-list-note" data-i18n="sl.listNoteLabel">Analyst note for the whole list (your text, not a source fact)</label>
     <textarea id="sl-list-note" class="sl-note" rows="2" maxlength="2000"></textarea>
-    <label class="inline"><input type="checkbox" id="sl-include-request"> Include my request text in the export</label>
+    <label class="inline"><input type="checkbox" id="sl-include-request"> <span data-i18n="sl.includeRequest">Include my request text in the export</span></label>
     <div class="sl-actions">
-      <button type="button" id="sl-export" class="primary">Export PDF</button>
-      <button type="button" id="sl-json" class="ghost">Download JSON</button>
+      <button type="button" id="sl-export" class="primary" data-i18n="sl.exportPdf">Export PDF</button>
+      <button type="button" id="sl-json" class="ghost" data-i18n="sl.json">Download JSON</button>
     </div>
-    <h3>Excluded</h3>
+    <h3 data-i18n="sl.excluded">Excluded</h3>
     <ul id="sl-excluded" class="sl"></ul>
   </aside>
   <section id="print-view" aria-hidden="true"></section>
+  <script src="i18n.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
