@@ -98,7 +98,8 @@ def test_explanation_with_facts_not_in_evidence_is_replaced():
     assert assess("glucose sensor", NEEDS, [C1], client=ok)[0][0].explanation == "Clinical studies with 40 patients."
 
 
-def test_batches_are_bounded_and_results_stream_as_ready():
+def test_batches_are_bounded_and_results_stream_as_ready(monkeypatch):
+    monkeypatch.setattr('app.ai.assess.BATCH_SIZE', 4)
     cands = [card(i, f"Sentence about topic {i}.") for i in range(1, 11)]
     batch = [verdict(i, "insufficient_evidence", []) for i in range(1, 5)]
     c = fake(batch, batch)
@@ -108,7 +109,8 @@ def test_batches_are_bounded_and_results_stream_as_ready():
     assert stats.usage.prompt_tokens == 800 and len(stats.latency_s) == 2
 
 
-def test_query_is_the_need_when_none_given_and_duplicates_ignored():
+def test_query_is_the_need_when_none_given_and_duplicates_ignored(monkeypatch):
+    monkeypatch.setattr('app.ai.assess.BATCH_SIZE', 4)
     c = fake([verdict(1, "related_capability", [(QUERY_NEED_ID, "partial", [1])]),
               verdict(1, "direct_match", [(QUERY_NEED_ID, "supported", [1])]),
               verdict(7, "direct_match", [])])
@@ -226,3 +228,46 @@ def test_default_assessor_is_skipped_without_inference_key(api, monkeypatch):
     ev = run(api, "req_k")
     assert {"stage": "assessment", "state": "skipped", "reason": "inference_disabled"} in [e.payload for e in ev]
     assert ev[-1].event_type == "complete"
+
+
+def test_batches_run_concurrently_and_keep_candidate_order(monkeypatch):
+    import threading, time as _t
+    monkeypatch.setattr("app.ai.assess.BATCH_SIZE", 2)
+    active, peak, lock = [0], [0], threading.Lock()
+
+    def handler(req):
+        with lock:
+            active[0] += 1; peak[0] = max(peak[0], active[0])
+        _t.sleep(0.05)
+        with lock:
+            active[0] -= 1
+        body = {"assessments": [verdict(1, "insufficient_evidence", []), verdict(2, "insufficient_evidence", [])]}
+        return httpx.Response(200, json={"choices": [{"message": {"content": json.dumps(body)}}],
+                                         "usage": {"prompt_tokens": 1, "completion_tokens": 1}})
+
+    c = ApertusClient(InferenceConfig(base_url="https://fake.test/v1", api_key="k", max_retries=0, max_concurrency=4),
+                      transport=httpx.MockTransport(handler), sleep=lambda s: None)
+    cands = [card(i, f"Sentence {i}.") for i in range(1, 9)]
+    out, stats = assess("topic", NEEDS, cands, client=c)
+    assert peak[0] >= 2 and len(stats.latency_s) == 4
+    assert [p.entity_id for p in out] == [c.entity_id for c in cands]
+
+
+def test_one_failed_batch_keeps_the_others(monkeypatch):
+    monkeypatch.setattr("app.ai.assess.BATCH_SIZE", 1)
+    calls = []
+
+    def handler(req):
+        calls.append(1)
+        if len(calls) == 1:
+            return httpx.Response(503, json={})
+        body = {"assessments": [verdict(1, "related_capability", [("need_u1", "partial", [1])])]}
+        return httpx.Response(200, json={"choices": [{"message": {"content": json.dumps(body)}}],
+                                         "usage": {"prompt_tokens": 1, "completion_tokens": 1}})
+
+    c = ApertusClient(InferenceConfig(base_url="https://fake.test/v1", api_key="k", max_retries=0, max_concurrency=1),
+                      transport=httpx.MockTransport(handler), sleep=lambda s: None)
+    out, stats = assess("glucose", NEEDS, [C1, C2], client=c)
+    assert len(out) == 1 and stats.corrections["batch_failed"] == 1
+    with pytest.raises(InferenceError):
+        assess("glucose", NEEDS, [C1], client=fake(status=503))

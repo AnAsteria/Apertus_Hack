@@ -20,6 +20,8 @@ Validation before anything is published:
 from __future__ import annotations
 
 import logging
+import threading
+from concurrent.futures import ThreadPoolExecutor
 import os
 import re
 import time
@@ -31,14 +33,16 @@ from typing import Annotated
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 from ..contracts import AssessmentPayload, Need, Result
-from .client import ApertusClient, Usage, get_client
+from .client import ApertusClient, InferenceError, Usage, get_client
 
 log = logging.getLogger("bernmatch.assess")
 
 ASSESS_PROMPT_VERSION = "a1"
 MAX_CANDIDATES = 8          # bounded batch (T19)
 MAX_EVIDENCE_PER_CANDIDATE = 4
-BATCH_SIZE = 4              # candidates per model call
+# B1 (#126): smaller batches run concurrently. One batch of 4 took ~12 s on real cards and
+# batches ran one after another (first assessment ~18 s, complete ~33 s median).
+BATCH_SIZE = int(os.environ.get("BERNMATCH_ASSESS_BATCH", "2"))   # candidates per model call
 QUERY_NEED_ID = "need_query"
 
 SYSTEM_PROMPT = """You assess research-partner candidates for a business-development analyst.
@@ -88,7 +92,7 @@ def _parse_coverage(line: str) -> _Coverage | None:
 
 class _Batch(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    assessments: list[_Verdict] = Field(max_length=BATCH_SIZE)
+    assessments: list[_Verdict] = Field(max_length=MAX_CANDIDATES)  # BATCH_SIZE is configurable
 
 
 @dataclass
@@ -200,32 +204,55 @@ def assess(query: str, needs: list[Need], candidates: list[Result], *, client: A
     candidates = candidates[:MAX_CANDIDATES]
     stats = BatchStats(candidates=len(candidates))
     out: list[AssessmentPayload] = []
-    for start in range(0, len(candidates), BATCH_SIZE):
-        batch = candidates[start:start + BATCH_SIZE]
+    lock = threading.Lock()
+    batches = [candidates[i:i + BATCH_SIZE] for i in range(0, len(candidates), BATCH_SIZE)]
+
+    def run_batch(batch: list[Result]) -> None:
         messages, maps = build_messages(query, needs, batch)
         t0 = time.perf_counter()
         res = client.complete_json(messages, _Batch, model=model, max_tokens=300 * len(batch) + 200, temperature=0.0)
-        stats.latency_s.append(time.perf_counter() - t0)
-        stats.calls += res.attempts
-        stats.usage = stats.usage + res.usage
-        stats.decoding_modes.append(res.decoding_mode)
+        with lock:
+            stats.latency_s.append(time.perf_counter() - t0)
+            stats.calls += res.attempts
+            stats.usage = stats.usage + res.usage
+            stats.decoding_modes.append(res.decoding_mode)
         done = set()
         numbers = sorted(v.candidate for v in res.value.assessments)
         shift = 1 if numbers and numbers == list(range(len(numbers))) else 0  # observed: 70B counted from 0
         if shift:
-            stats.fix("zero_indexed_candidates")
+            with lock:
+                stats.fix("zero_indexed_candidates")
         for v in res.value.assessments:
             i = v.candidate + shift - 1
             if not 0 <= i < len(batch) or i in done:
-                stats.fix("unknown_or_duplicate_candidate")
+                with lock:
+                    stats.fix("unknown_or_duplicate_candidate")
                 continue
             done.add(i)
-            payload = _validate(v, batch[i], maps[i], need_ids, stats)
-            out.append(payload)
+            with lock:
+                payload = _validate(v, batch[i], maps[i], need_ids, stats)
+                out.append(payload)
             if on_result:
                 on_result(payload)
         if len(done) < len(batch):
-            stats.fix("candidate_not_assessed")
+            with lock:
+                stats.fix("candidate_not_assessed")
+
+    # Batches are independent: run them concurrently (the client enforces its own cap). A failed
+    # batch keeps the other batches' results; only if every batch fails does the error propagate.
+    errors: list[InferenceError] = []
+    with ThreadPoolExecutor(max_workers=max(1, min(len(batches), client.config.max_concurrency))) as pool:
+        for fut in [pool.submit(run_batch, b) for b in batches]:
+            try:
+                fut.result()
+            except InferenceError as e:
+                errors.append(e)
+                with lock:
+                    stats.fix("batch_failed")
+    if errors and len(errors) == len(batches):
+        raise errors[0]
+    order = {c.entity_id: i for i, c in enumerate(candidates)}
+    out.sort(key=lambda p: order.get(p.entity_id, len(order)))
     log.info("assessment model=%s candidates=%d calls=%d latency_s=%s tokens=%d/%d corrections=%s", model,
              stats.candidates, stats.calls, [round(x, 2) for x in stats.latency_s], stats.usage.prompt_tokens,
              stats.usage.completion_tokens, stats.corrections)
