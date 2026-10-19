@@ -27,3 +27,10 @@ def test_function_words_are_never_reported_as_matched_evidence():
     text = 'Forschung bei Krebs zur Therapieresistenz, show all results.'
     assert matched_words('Forschungspartner für Therapieresistenz bei Krebs', [text], 'de') == ['therapieresistenz', 'krebs']
     assert matched_words('show me all monkeys', [text], 'en') == []
+
+
+def test_contact_bearing_sentences():
+    from app.search.explain import contact_bearing
+    assert contact_bearing('Contact: anna.muster@unibe.ch')
+    assert contact_bearing('Tel. +41 31 684 12 34')
+    assert not contact_bearing('Projects 2015 - 2019 on insulin dosing')

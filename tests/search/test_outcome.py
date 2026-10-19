@@ -72,3 +72,10 @@ def test_topic_terms_ignore_generic_words_in_all_languages():
 def test_response_fields_are_optional_for_existing_producers():
     r = SearchResponse(schema_version='1', request_id='r', revision=1, results=[], limitations=[], enrichment_state='not_requested')
     assert r.outcome is None and r.suggestions == []
+
+
+def test_precise_term_without_a_confident_match_is_uncertain_not_broad():
+    # Jury round 4/5: "CGM" (.861 best similarity) was cut to 5 "examples"; it must keep its cards.
+    hosts = ['a.unibe.ch', 'b.unibe.ch', 'c.unibe.ch', 'd.unibe.ch', 'e.unibe.ch']
+    results = [card(i, hosts[i % 5], .861 - i * .001) for i in range(1, 11)]
+    assert run('CGM', results, .861)[0] == 'low_confidence'

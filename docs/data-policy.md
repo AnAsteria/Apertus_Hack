@@ -23,6 +23,24 @@ Only public information from the configured UniBE, ARTORG and Diabetes Center Be
 5. **Retire from serving:** the affected entities, claims and index entries stop appearing in results at once (target: the next index rebuild or the retire action). A citation to removed evidence returns HTTP 410 `EVIDENCE_REMOVED`, never replacement text.
 6. Tell the requester what was done, and what could not be done (for example, copies the source site itself still publishes).
 
+**Operator commands (EXTRA F4, #144).** These were checked on the real index on 2026-10-18, with a temporary entry and in-process (#12):
+
+```bash
+# 1. add the entry (reason_category: removal_request; confirmed_at / confirmed_by_role are required)
+$EDITOR config/suppression.json
+# 2. check that the list is valid before deploying (an invalid list fails loudly at load)
+python -c "from app.lifecycle.suppression import load; load('config/suppression.json'); print('ok')"
+# 3. deploy main (the serving filter and the 410 route read the list at query time; no index rebuild needed)
+scripts/deploy_space.sh main
+# 4. verify: the page no longer appears; its evidence returns 410
+curl -s https://kaktamsdengami-bern-match.hf.space/api/v1/evidence/<version_id>/<sentence_id>   # → 410 EVIDENCE_REMOVED
+# 5. stored copies: dry run first, then apply; derived files are removed by the next rebuild
+python -m app.lifecycle.purge --data-dir <corpus dir>          # dry run
+python -m app.lifecycle.purge --data-dir <corpus dir> --apply
+```
+
+Observed in the 2026-10-18 check: before the entry, the person's card was in the results. With the entry, the card was gone (10 other cards), and its sentence returned `410 EVIDENCE_REMOVED` (200 without the entry). The purge step has not been run on the real corpus, because there has been no real request.
+
 Out of scope: judging whether the source site must remove its own page. We only control our copy and our index.
 
 ## Suppression list format
@@ -81,6 +99,23 @@ Evidence is `fresh` when its content or last-modified date is within **365 days*
 | The list is re-read when the file changes, a missing file suppresses nothing, an invalid file raises instead of silently serving | `app/lifecycle/serving.py` | same file |
 
 **Retire** means adding a suppression entry: serving and the crawler honour it at once. **Purge** removes the stored copies: `python -m app.lifecycle.purge --data-dir data` shows what would go (dry run); add `--apply` to delete the documents, versions, sentences, entities, cached pages, variants and labels of every suppressed URL and VACUUM the database file. A test shows the removed text is no longer in the file's bytes. Run it after every merged suppression entry, and within the 30-day target at the latest. The command does **not** touch derived files (`data/extraction/`, `data/knowledge/`, search indexes, exports) or backups: it lists the derived directories it finds, and those must be rebuilt from the purged corpus by hand. Both Dockerfiles copy `config/suppression.json`; if a deployment forgets to, nothing is suppressed, so check it after every deploy.
+
+## Personal-data audit of what is served (EXTRA F5, #145, 2026-10-18)
+
+Real 70B bundle (`9a0e0951…`) and the 350 cards served in the development and evaluation runs on the live Space:
+
+| Item | Count |
+|---|---|
+| Distinct e-mail addresses in stored sentences | 313 (mostly `unibe.ch`, `insel.ch`, institute subdomains, `dcberne.com`) |
+| Stored sentences with an e-mail or phone-like string | 6,971 of 148,404 |
+| Persons in the index | 559 (all with status `unknown` or `former`; none `current`) |
+| **Cards with an official-contact field served** | **0** (contacts are shown only for `current` persons) |
+| Served quotes (2,754) containing an e-mail | 15 |
+| Served quotes containing a phone-like string | 51 (noisy pattern: it also matches year ranges and numbers) |
+
+**Finding:** card fields withhold contacts, but an evidence quote can still show an institutional e-mail or phone number, because quotes are byte-identical copies of source sentences. Masking would break quote fidelity. The proposed fix is to **not select contact-only sentences as evidence** for a card, unless the card shows a supported, current official contact. Only public institutional pages were crawled, and no private contact data was inferred. This is a minimisation gap to report, not a legal finding.
+
+**Follow-up implemented on branch `EXTRA`:** a card that has no supported current official-contact field no longer uses contact-bearing sentences (an e-mail, or a phone number next to tel/phone/fax/+41) as quotes when other evidence exists. Development split, in-process on the bundle: Recall@10 unchanged at 0.824, and quotes containing an e-mail went to **0 of 1,273**. Quotes stay byte-identical; only the choice of sentences changes.
 
 ## What is not done
 

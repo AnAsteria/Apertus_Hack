@@ -97,3 +97,32 @@ Ruihan's T20 development run (#94) showed hybrid (0.59) below dense alone (0.71)
 | **0.25** / 0.00 | **0.824** | **0.82** | I03-en, I03-de, I03-it |
 
 Default 0.25: the same development result as 0, while keyword-only hits (exact names, codes such as SPN-005) still enter the ranking. n is small and the plateau is tuned on development data; the evaluation split must confirm it. Remaining development misses are all intent I03 (AI insulin decision support).
+
+## Optional cross-encoder rerank (EXTRA A1, #119, 2026-10-18)
+
+`app/search/rerank.py` reranks the fused top 30 (`BERNMATCH_RERANK_TOP`) with the open multilingual cross-encoder **`cross-encoder/mmarco-mMiniLMv2-L12-H384-v1`** (Apache-2.0, XLM-R, 14 languages incl. DE/FR/IT/RU). Model revision `1427fd652930e4ba29e8149678df786c240d8825`. The text scored is the entity name plus its best passage. The feature is **off by default** and on only when `BERNMATCH_RERANK_DIR` points to a directory with `model.onnx`, `tokenizer.json`, `config.json` and `REVISION`. Abstention and the answer outcome are unchanged, because they still come from retrieval signals. A missing or failing model falls back to the fused order.
+
+Measured in-process on an Apple M1 (arm64, `onnx/model_qint8_arm64.onnx`, SHA-256 `1825907d…e5c8b4`, 118.6 MB), same bundle as the Space:
+
+| Split (gold 0.3) | Fused | + rerank top 30 | Median latency fused → rerank |
+|---|---|---|---|
+| development (n = 17) | 0.824 | **0.882** | 61 ms → 1,530 ms |
+| evaluation (n = 17, one disclosed T20 configuration, no tuning) | 0.647 | **0.706** | 51 ms → 1,560 ms |
+
+Evaluation: I11-ru and I18-fr become hits, I02-it becomes a miss. Top 50 gave the same development result with higher latency. The price is about 1.5 s on the fast path on the M1. On the x86 Space, use the x86 int8 file (`model_qint8_avx512_vnni.onnx` or `model_quint8_avx2.onnx`) and measure there before enabling it. A background second pass, like the T30 `reranked` event, would keep first cards at about 60 ms.
+
+## Soft entity-type hint (EXTRA A3, #121, 2026-10-18): measured, not better, off by default
+
+`app/search/typehint.py` maps cue words in EN/DE/FR/IT/RU (researcher, Forscherin, platform, Projekt, …) to a soft preference: in "Anything" mode, the fused score of matching entities is multiplied by 1.5. It never filters. Enable it with `BERNMATCH_TYPE_HINT=1`. Development split in Anything mode: Recall@10 0.765 with and without the hint (the cues fire correctly on I05, I13, I14, but those were already hits; the development split has no person query). On four ad hoc person probes, persons move to the top (e.g. "professor for medical image analysis" → Mauricio Reyes), but several surfaced persons have weak evidence ("Dr.", "Field of work"), so relevance is not shown. Kept **off by default**.
+
+## Former / emeritus persons from page text (EXTRA C3, #132, 2026-10-18)
+
+At build time, a person whose own page header says "Prof. em." / "Emeritus" (the name in the first four sentences), or whose name appears in a "Former members / contributors / ehemalige Mitarbeitende" sentence, gets status `former`. Cards then say "Documented as former", and contacts stay withheld; they were already withheld because they are shown only for `current` people, so no former person shows a contact today. On the real corpus with the 70B knowledge, **20 of 559 persons** are marked. They were spot-checked against their pages: emeriti such as Joppke, Excoffier, Nentwig, Taborsky, Altmann, Znoj, Richner and Hurni, plus the members of a "Former members/contributors" list. An unrelated "ehemaligen Patientinnen" sentence does not trigger. This takes effect only after an index rebuild; the live Space is unchanged.
+
+## Acronym expansion (EXTRA A4, #122, 2026-10-18): measured, no gain, off by default
+
+`app/search/acronyms.py` mines "long form (ACRONYM)" pairs from the stored sentences: 253 pairs seen at least twice, with initials matching (e.g. CGM, CNS, FND, NGS, IBU). It adds the other form to the keyword channel only, and is enabled with `BERNMATCH_ACRONYMS=1`; the table is cached next to the served index, and mining takes about 8 s once. Development split: 0.824 with and without. On five acronym probes the right entity was already first without expansion, because pages contain both forms and the dense model handles the rest. **Off by default.**
+
+## Title boost (EXTRA A5, #123): measured, no gain, off by default
+
+At query time, `BERNMATCH_TITLE_BOOST` multiplies the fused score of an entity whose own name contains query words by (1 + boost × min(matches, 3)). Development split: 0.824 at boost 0, 0.1, 0.25 and 0.5, with the same misses (intent I03 only). **Off by default.** Listing-page demotion (A7, #125) was also scanned: 1.0 → 0.765, 0.5 (current) → 0.824, 0.25 and 0.1 → 0.824, so it is unchanged.

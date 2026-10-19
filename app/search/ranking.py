@@ -6,9 +6,21 @@ import numpy as np
 # They are kept searchable but ranked below real entity pages (never removed).
 NON_ENTITY_WORDS = {'news','aktuell','archiv','archive','event','events','veranstaltungen','publications',
                     'publikationen','seminar','seminars','symposium','symposien','jobs','stellen','vorlage',
-                    'template','lernzielkatalog','erfolgsmeldungen','medienmitteilungen','jb','newsletter'}
+                    'template','lernzielkatalog','erfolgsmeldungen','medienmitteilungen','jb','newsletter',
+                    # jury, 19 Oct: legal/career/empty-title pages seen in live top 10s (runs/jury/search/)
+                    'legal','notice','impressum','disclaimer','datenschutz','privacy','career','careers','karriere',
+                    'untitled'}
 NON_ENTITY_PREFIXES = ('jahresbericht','medienmitteilung','unibernjahresbericht','annualreport')
 DEMOTION = .5
+TITLES = {'prof','dr','md','phd','med','pd','dipl','ing','msc','bsc','mba','mag'}
+
+
+def duplicate_key(name, entity_type):
+    """Same words in any order, titles ignored: "Glisic Marija, Prof., MD, PhD" == "Marija Glisic".
+    Type only separates people from the rest: "ARTORG 3D-Printing Core Facility" came back as
+    infrastructure AND as unit (its category page), the same thing twice for the reader."""
+    words = re.findall(r'[^\W_]+', name.casefold())  # digits count: "Top 3" is not "Top 20"
+    return (entity_type == 'person', ' '.join(sorted(w for w in words if w not in TITLES)))
 
 
 def non_entity_page(name, urls):

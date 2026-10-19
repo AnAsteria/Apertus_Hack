@@ -1,5 +1,6 @@
 """Operator-only indexing of stored records; queries never call this module."""
 import hashlib
+import re
 import json
 import os
 import shutil
@@ -100,6 +101,7 @@ def prepare(records, extra_entities=(), claims=()):
             for eid in eids:
                 first_evidence.setdefault(eid,passage.sentence_ids)
     retained = {}
+    former_from_cues = 0
     for eid in sorted(entities):
         # T08 entities found in page text (e.g. people named on an award page) have no T06
         # passage link; keep them when supported claims give them stored evidence.
@@ -107,12 +109,44 @@ def prepare(records, extra_entities=(), claims=()):
             continue
         entity = entities[eid]
         refs = list(dict.fromkeys(claim_refs.get(eid,[]) or first_evidence.get(eid,[])))
+        former_sid = former_cue_sentence(entity,[sentences[s] for s in list(dict.fromkeys(first_evidence.get(eid,[])[:6]+refs[:10])) if s in sentences])
+        if former_sid:
+            # EXTRA C3: documented former / emeritus status from the page itself; never shown as current.
+            entity = entity.model_copy(update={'status':'former'})
+            former_from_cues += 1
         profile = entity.name+'\n'+'\n'.join(v['value'] for values in fields.get(eid,{}).values() for v in values)
         language = versions[sentences[refs[0]].version_id].language
         entries.append({'kind':'profile','language':language,'sentence_ids':refs,'entity_ids':[eid]})
         texts.append(profile)
         retained[eid] = {'entity':entity.model_dump(),'fields':fields.get(eid,{}),'claim_sentence_ids':list(dict.fromkeys(claim_refs.get(eid,[])))}
-    return versions,sentences,retained,entries,texts,{'validated_supported_claims':len(checked),'withheld':withheld}
+    return versions,sentences,retained,entries,texts,{'validated_supported_claims':len(checked),'withheld':withheld,
+                                                      'former_from_cues':former_from_cues}
+
+
+_FORMER_SECTION = re.compile(r'\b(former|ehemalige[rn]?)\s+(members?|contributors?|mitarbeitende|mitglieder|mitarbeiter(innen)?)\b', re.I)
+_EMERITUS = re.compile(r'\b(emerit(us|a|i)|prof\.\s*em\.)', re.I)
+
+
+def former_cue_sentence(entity, profile_sentences):
+    """Sentence id that documents a person as former/emeritus, or None. Persons only; a
+    'former members' list must name the person (surname), so a page that merely mentions
+    former people elsewhere does not mark everyone on it."""
+    if entity.entity_type != 'person' or entity.status != 'unknown':
+        return None
+    surname = (entity.name.replace(',', ' ').split() or [''])[-1].casefold()
+    if _EMERITUS.search(entity.name):
+        return profile_sentences[0].sentence_id if profile_sentences else None
+    head = profile_sentences[:4]  # page headers split 'Prof. em.' / 'Dr.' / name into sentences
+    window = ' '.join(s.text for s in head)
+    if head and _EMERITUS.search(window) and surname and surname in window.casefold():
+        return next(s.sentence_id for s in head if _EMERITUS.search(s.text))
+    for s in profile_sentences:
+        text = s.text
+        if _EMERITUS.search(text) and surname and surname in text.casefold():
+            return s.sentence_id
+        if _FORMER_SECTION.search(text) and len(surname) > 2 and surname in text.casefold():
+            return s.sentence_id
+    return None
 
 
 def build_index(records, data_dir, encoder, *, extra_entities=(), claims=(), progress=None):

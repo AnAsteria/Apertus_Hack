@@ -55,7 +55,11 @@ def classify(query, results, *, dense_ok, best_dense, abstain_dense, limits=None
     dense = [r.retrieval.get('dense') for r in results if r.retrieval.get('dense') is not None]
     gap = (max(dense) - min(dense)) if len(dense) >= 5 else None
     terms = topic_terms(query)
+    # Broad only when the request also matches confidently: a precise term the model barely knows
+    # ("CGM" .861, "Herzklappe" .871, "biosensing" .875 best similarity) is uncertain, not broad,
+    # and must keep its ten cards (jury, 19 Oct; runs/jury/search/).
     if (len(terms) <= limits['broad_max_terms'] and len(hosts) >= limits['broad_min_hosts']
+            and best_dense >= limits['confident_dense']
             and (gap is None or gap <= limits['broad_max_gap'])):
         suggestions = [{'kind': 'institution', 'label': 'Only ' + host, 'value': host} for host, _ in hosts.most_common(3)]
         suggestions += [{'kind': 'entity_type', 'label': TYPE_LABELS[t], 'value': t} for t, _ in types.most_common(2)]
