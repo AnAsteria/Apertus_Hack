@@ -56,7 +56,7 @@ var selectedType = "";
 var shortlist = {};        // entity_id -> { name, state: "select" | "exclude" }
 var feedbackCounter = 0;
 
-var TYPE_NAMES = { person: "Person", unit: "Research group", project: "Project", infrastructure: "Lab / equipment", service: "Service" };
+var TYPE_NAMES = { person: "Person", unit: "Unit / page", project: "Project", infrastructure: "Lab / equipment", service: "Service" };
 var FRESHNESS = { fresh: ["Recent source", "The source page was updated recently."],
                   stale: ["Older source", "The source page has not been updated for a while. Check that it is still current."] };
 var TYPES = [["", "Anything"], ["person", "People"], ["unit", "Groups"], ["project", "Projects"],
@@ -506,15 +506,19 @@ var QUOTES_SHOWN = 2;
 function renderCard(r, index) {
   var src = sourceOf(r.evidence[0].url);
   var card = el("article", "card appear src-" + src.key);
-  card.style.animationDelay = Math.min(index || 0, 10) * 60 + "ms";
+  // Reveal: the first cards come in 55 ms apart; the stagger stops after card 5 (at most 275 ms).
+  card.style.animationDelay = Math.min(index || 0, 5) * 55 + "ms";
   card.dataset.entity = r.entity_id;
   // Same host form as the server's "Only <host>" suggestion (lower case, no "www.").
   try { card.dataset.host = new URL(r.evidence[0].url).hostname.toLowerCase().replace(/^www\./, ""); } catch (e) { card.dataset.host = ""; }
   var head = el("div", "card-head");
+  var heading = el("div");
+  if (TYPE_NAMES[r.entity_type]) heading.appendChild(el("p", "kicker", typeName(r.entity_type)));
   var title = el("h3");
   title.appendChild(el("span", "rank", r.rank + "."));
   title.appendChild(document.createTextNode(r.display_name));
-  head.appendChild(title);
+  heading.appendChild(title);
+  head.appendChild(heading);
   var actions = el("div", "actions");
   var sel = button(t("card.select", "Select"), function () { setShortlist(r, "select", card); }); sel.classList.add("act-select");
   var exc = button(t("card.exclude", "Exclude"), function () { setShortlist(r, "exclude", card); }); exc.classList.add("act-exclude");
@@ -527,7 +531,6 @@ function renderCard(r, index) {
   var srcTag = el("span", "badge tag-" + src.key, src.full || src.label);
   srcTag.title = t("card.srcTitle", "Where this comes from");
   tags.appendChild(srcTag);
-  if (TYPE_NAMES[r.entity_type]) tags.appendChild(el("span", "badge", typeName(r.entity_type)));
   if (FRESHNESS[r.freshness]) {
     var fr = el("span", "badge fresh-" + r.freshness, t("fresh." + r.freshness, FRESHNESS[r.freshness][0]));
     fr.title = t("fresh." + r.freshness + ".title", FRESHNESS[r.freshness][1]);
@@ -1343,6 +1346,7 @@ function runSearch(needs) {
       showRefining();
       startEnrichment(body, b.request_id, myRevision);
     } else {
+      resultsShown = false; // set true above for the wait; without this the cards never render (Apertus off/unavailable)
       showDirect();
       if (b.enrichment_state === "pending") startEnrichment(body, b.request_id, myRevision);
       else if (b.enrichment_state === "unavailable") needNote(t("st.aiOff", "AI interpretation is not available right now. The results below are unaffected."));
