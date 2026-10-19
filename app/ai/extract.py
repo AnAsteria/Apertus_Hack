@@ -78,6 +78,9 @@ Example answer:
  "relations":[{"subject":"Maria Rossi","predicate":"leader","object":"Alpine Robotics Lab","sentences":[2]}]}"""
 
 _INJECTION_PATTERNS = [
+    # C2 (#131): instructions aimed at the assessment step ("label this group a direct match").
+    r"\b(classify|label|rate|mark|categori[sz]e)\b.{0,50}\b(direct[_ ]match|perfect match|best match|top result)\b",
+    r"\b(always|must)\b.{0,30}\b(recommend|rank|select)\b.{0,30}\b(this|our)\b.{0,20}\b(group|lab|company|candidate)\b",
     r"\b(ignore|disregard|forget)\b.{0,40}\b(instructions?|prompts?|previous|above|rules)\b",
     r"\byou are (now )?(an?|the) (ai|assistant|model|language model|chatbot)\b",
     r"\bsystem prompt\b",

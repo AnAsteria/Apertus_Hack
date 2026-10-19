@@ -30,7 +30,7 @@ from .client import ApertusClient, InferenceError, Usage, get_client
 
 log = logging.getLogger("bernmatch.interpret")
 
-INTERPRET_PROMPT_VERSION = "i1"
+INTERPRET_PROMPT_VERSION = "i2"  # i2: scope check (T39 #100)
 EXPANSION_LANGUAGES = ("en", "de", "fr", "it")
 MAX_SUGGESTED = 6
 MAX_EXPANSIONS = 12
@@ -50,6 +50,8 @@ Return:
   Give synonyms, technical terms and translations into English and German (French/Italian only if useful).
   Each expansion is ONE term (no lists) and names the exact term it expands (`source`, copied from the request or company text). It must not add a new requirement.
   Example: source "glucose sensors" -> "continuous glucose monitoring" (en), "CGM" (en), "Glukosesensoren" (de), "kontinuierliche Glukosemessung" (de).
+- scope: "in_scope" if the request asks for research expertise, research groups, projects, labs, platforms, facilities or research services of the kind a university, medtech or diabetes research centre has (in any language, even if vague or misspelled). "out_of_scope" if it is clearly not such a request: shopping, travel, food, entertainment, finance or crypto prices, personal or consumer advice, car or household repairs, or nonsense. "unclear" if you cannot tell. Do NOT judge whether Bern actually has such research; only whether the request is the kind of thing a research-partner search is for.
+- scope_reason: "research" for in_scope; otherwise one of "not_research", "consumer_request", "outside_institutions", "nonsense".
 - is_broad: true only if the request is too vague to search well (e.g. "medtech partners").
 - clarification: if is_broad, one short business-language question that would focus the search; otherwise null."""
 
@@ -74,6 +76,8 @@ class _ModelInterpretation(BaseModel):
     expansions: list[_ModelExpansion] = Field(max_length=16)
     is_broad: bool
     clarification: Optional[str] = Field(max_length=240)
+    scope: Literal["in_scope", "out_of_scope", "unclear"]
+    scope_reason: Literal["research", "not_research", "consumer_request", "outside_institutions", "nonsense"]
 
 
 @dataclass
@@ -86,11 +90,13 @@ class Interpretation:
     usage: Usage = field(default_factory=Usage)
     latency_s: float = 0.0
     dropped: dict = field(default_factory=dict)
+    scope: str = "unclear"          # T39 (#100): in_scope | out_of_scope | unclear
+    scope_reason: str = "research"
 
     def payload(self) -> dict:
-        """CONTRACTS section 6 interpretation payload."""
+        """CONTRACTS section 6 interpretation payload (+ D15 scope fields, additive)."""
         return {"needs": [n.model_dump() for n in self.needs], "expanded_queries": self.expanded_queries,
-                "clarification": self.clarification}
+                "clarification": self.clarification, "scope": self.scope, "scope_reason": self.scope_reason}
 
 
 def _norm(text: str) -> str:
@@ -187,7 +193,8 @@ def interpret(query: str, company_context: Optional[str] = None, needs: Optional
              clarification is not None, dropped)
     return Interpretation(needs=out_needs, expanded_queries=expanded, clarification=clarification,
                           partner_type=m.partner_type, decoding_mode=res.decoding_mode, usage=res.usage,
-                          latency_s=res.latency_s, dropped=dropped)
+                          latency_s=res.latency_s, dropped=dropped, scope=m.scope,
+                          scope_reason=m.scope_reason if m.scope != "in_scope" else "research")
 
 
 __all__ = ["Interpretation", "interpret", "InferenceError", "EXPANSION_LANGUAGES"]

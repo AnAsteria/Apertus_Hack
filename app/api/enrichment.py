@@ -50,6 +50,9 @@ REQUEST_ID_RE = re.compile(r"^req_[A-Za-z0-9]{1,64}$")
 
 ASSESS_TIMEOUT_S = float(os.environ.get("BERNMATCH_ASSESS_TIMEOUT_S", "30"))  # B2: was 45; B1 p95 is ~16 s
 INTERPRET_DEADLINE_S = float(os.environ.get("BERNMATCH_INTERPRET_DEADLINE_S", "12"))  # then fall back to 8B
+# T39 (#100): opt-in. On the frozen evaluation split 70B wrongly marked one in-scope query (I07-en,
+# "already ready for market launch") out of scope, so refusal stays off until re-validated.
+SCOPE_REFUSAL = os.environ.get("BERNMATCH_SCOPE_REFUSAL") == "1"
 
 Interpreter = Callable[[SearchRequest], Interpretation]
 CandidateProvider = Callable[[SearchRequest], list[Result]]
@@ -139,8 +142,23 @@ def _default_fallback_interpreter(req: SearchRequest) -> Interpretation:
     return interpret(req.query, req.company_context, req.needs, model=get_client().config.model)
 
 
+def _default_outcome(req: SearchRequest):
+    """The fast path's outcome for this request (cheap: same stored-index search, no LLM)."""
+    from .search import get_backend, index_ready, FixtureBackend
+    backend = get_backend()
+    if backend is None or (not isinstance(backend, FixtureBackend) and not index_ready()):
+        return None
+    return getattr(backend.search(req), "outcome", None)
+
+
 _interpreter: Interpreter = _default_interpreter
 _fallback_interpreter = _default_fallback_interpreter
+_outcome_provider = _default_outcome
+
+
+def set_outcome_provider(fn) -> None:
+    global _outcome_provider
+    _outcome_provider = fn or _default_outcome
 _candidates: CandidateProvider = _default_candidates
 _assessor: Assessor = _default_assessor
 _reranker = _default_reranker
@@ -302,11 +320,41 @@ def _stream(request_id: str, req: SearchRequest) -> Iterator[str]:
     if stale():
         yield event("error", _error_payload("STALE_REVISION", "A newer revision replaced this search.", False))
         return
+    out_of_scope = False
     if interp is not None:
         payload = interp.payload()
         payload["decoding_mode"] = interp.decoding_mode
         payload["model"] = used_model  # D14 (additive): "primary" (70B) or "fallback" (8B)
+        # T39 (#100), D15: honest refusal. Only the primary model's `out_of_scope` counts (8B
+        # wrongly refused an in-scope development query), `unclear` never does, and a `confident`
+        # first response is never downgraded by the model alone.
+        payload["outcome_update"] = None
+        payload["clarification_suggestion"] = None
+        first = ...  # computed lazily: one cheap stored-index search, no LLM
+
+        def first_outcome():
+            nonlocal first
+            if first is ...:
+                try:
+                    first = _outcome_provider(req)
+                except Exception:
+                    first = None
+            return first
+
+        if SCOPE_REFUSAL and interp.scope == "out_of_scope" and used_model == "primary":
+            if first_outcome() in ("low_confidence", "no_evidence"):
+                payload["outcome_update"] = "out_of_scope"
+                out_of_scope = True
+        # B3 (#128), D16: when the fast path said too_broad, offer T18's validated business-language
+        # question as a narrowing suggestion. Generated text: the UI labels it as a suggestion.
+        if interp.clarification and first_outcome() == "too_broad":
+            payload["clarification_suggestion"] = interp.clarification
         yield event("interpretation", payload)
+    if out_of_scope:
+        yield event("progress", {"stage": "reranked", "state": "skipped", "reason": "out_of_scope"})
+        yield event("progress", {"stage": "assessment", "state": "skipped", "reason": "out_of_scope"})
+        yield event("complete", {"elapsed_ms": int((time.monotonic() - started) * 1000)} | timings)
+        return
 
     # Stage 1b (T30): enriched second retrieval pass over the validated expansions. The first
     # cards stay as they are until this validated ranking arrives; failure leaves them untouched.
