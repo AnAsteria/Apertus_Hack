@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <title>Bern Match — Technical report</title>
 <style>
-  @page { size: A4; margin: 14mm 15mm 14mm 15mm; }
+  @page { size: A4; margin: 12mm 14mm 12mm 14mm; }
   :root { --red: #e30613; --ink: #1d1d1d; --grey: #5f5f5f; --line: #d9d9d9; --soft: #f4f4f4; }
   * { box-sizing: border-box; }
-  body { font-family: "Helvetica Neue", Arial, sans-serif; color: var(--ink); font-size: 10pt; line-height: 1.4; margin: 0; }
+  body { font-family: "Helvetica Neue", Arial, sans-serif; color: var(--ink); font-size: 9.5pt; line-height: 1.36; margin: 0; }
   h1 { font-size: 20pt; margin: 0 0 2pt; letter-spacing: -0.2pt; }
   h2 { font-size: 12.2pt; margin: 11pt 0 4pt; padding-top: 3pt; border-top: 2px solid var(--red); }
   h2, h3 { break-after: avoid; } svg, table, .key { break-inside: avoid; }
@@ -17,7 +17,7 @@
   li { margin: 0 0 1.5pt; }
   .sub { color: var(--grey); font-size: 10pt; margin-bottom: 6pt; }
   .meta { font-size: 8.3pt; color: var(--grey); margin-bottom: 8pt; }
-  table { border-collapse: collapse; width: 100%; margin: 3pt 0 7pt; font-size: 8.9pt; }
+  table { border-collapse: collapse; width: 100%; margin: 3pt 0 7pt; font-size: 8.4pt; }
   th, td { border-bottom: 1px solid var(--line); padding: 2.6pt 4pt; text-align: left; vertical-align: top; }
   th { background: var(--ink); color: #fff; font-weight: 600; }
   tr:nth-child(even) td { background: var(--soft); }
@@ -97,6 +97,20 @@ Live: kaktamsdengami-bern-match.hf.space · Code: github.com/AnAsteria/Apertus_H
 <p><b>Offline.</b> A bounded crawl stores page versions and sentence-level text. Apertus 70B reads each page as numbered sentences and returns people, units, projects, infrastructure, roles and relations, each citing sentence numbers. Code maps the numbers to stored sentence IDs. Names must appear in the cited sentence and roles must be verbatim. Contacts are read by regex, never from model text. A group's expertise is never transferred to its members, and instruction-like page text is withheld (prompt-injection guard). A rule check plus a 70B judge then decides whether the cited sentences really state each claim: <b>4,314 of 5,130 extracted claims passed, 816 were rejected</b> (469 by rules, 347 by the judge). Same-name person entities are merged through T08 aliases (A6), which removed 56 duplicate cards. The index is one SQLite file plus vectors, about 138 MB, and it restores in ≈ 7 s.</p>
 <p><b>At query time.</b> BM25 and multilingual-e5-small run in parallel, are max-aggregated per entity <i>before</i> weighted reciprocal-rank fusion (BM25 weight 0.25), and are diversified with MMR. News, fact-sheet and navigation pages are not shown as contacts. A deterministic policy labels each answer <i>confident</i>, <i>low confidence</i>, <i>too broad</i> or <i>no evidence</i>. In the background, Apertus 70B interprets the request into editable needs, research terms in English and German, and a scope verdict. A second retrieval over those terms produces a refined ranking that never overrides a refusal or a <i>too broad</i> outcome. 8B writes per-candidate assessments, which are validated against the candidate's own evidence. If Apertus is slow, 8B takes over interpretation after 12 s; if it is down, the fast results stand.</p>
 
+<h3>Pipeline in detail</h3>
+<table>
+  <tr><th>Stage</th><th>What happens</th><th>Numbers / settings</th></tr>
+  <tr><td>Source inventory</td><td>Supplied UniBE subdomain inventory + ARTORG + DCB, one YAML per source (domains, paths, languages, budgets)</td><td>41 sources; focus sources 200 pages / depth 4, others 50 / depth 2</td></tr>
+  <tr><td>Crawl</td><td>robots.txt (fail closed), ≤ 0.5 req/s per host, back-off, cache; page versions with fetch date and content hash; split into passages and sentences</td><td>2,811 pages · 148,404 sentences</td></tr>
+  <tr><td>Extraction (T07)</td><td>Apertus 70B reads numbered sentences → people, units, projects, infrastructure, services, roles, expertise, relations; JSON-schema decoding; injection-like text withheld</td><td>5,130 claims · ≈ 1.05M in / 0.39M out tokens · ≈ 30 min</td></tr>
+  <tr><td>Support check + resolution (T08)</td><td>Rules + 70B judge keep a claim only if the cited sentences state it; contacts only via regex and only for current people; same-name persons merged (A6); "former"/"emeritus" read from the page (C3)</td><td>4,314 supported · 816 rejected · 105 person merges · 20 marked former</td></tr>
+  <tr><td>Index</td><td>SQLite FTS5 (BM25) + multilingual-e5-small int8 ONNX vectors per passage and per entity profile; incremental rebuild reuses vectors of unchanged text</td><td>2,488 served entities · 22,124 vectors · ≈ 138 MB · restore ≈ 7 s</td></tr>
+  <tr><td>Instant retrieval</td><td>BM25 ∥ dense; max per entity before weighted RRF (BM25 weight 0.25); MMR diversity; listing pages demoted ×0.5; news/navigation pages never shown as contacts; duplicates folded</td><td>server median ≈ 0.26 s · p95 ≈ 0.5 s · 0 LLM calls</td></tr>
+  <tr><td>Answer policy (T31)</td><td>Deterministic label: confident / low confidence / too broad (with narrowing suggestions) / no evidence (dense &lt; 0.83)</td><td>no card without a stored evidence sentence</td></tr>
+  <tr><td>Apertus refinement (T18/T30)</td><td>SSE stream after the first cards: 70B interpretation (needs, EN/DE terms tied to a source word, scope check) → second retrieval over the terms → refined ranking that never overrides <i>no evidence</i> / <i>too broad</i></td><td>70B deadline 12 s → 8B fallback · 60-min cache · nonsense refused (0/29 real requests refused)</td></tr>
+  <tr><td>Assessment (T19)</td><td>8B labels each candidate direct / related / insufficient with per-need coverage, citing only the candidate's own sentences; parallel batches of 2 with a straggler deadline</td><td>≈ 6 s per batch · labelled as AI · never reorders</td></tr>
+  <tr><td>Shortlist and drafts (T38/T23/T24/T28)</td><td>Shortlist with notes and source-only PDF; Apertus brief, e-mail draft and quote translation, withheld if they add contacts or numbers not in the evidence</td><td>no recipient, nothing sent · translations labelled "cite the original"</td></tr>
+</table>
 <h2>3. Purposeful AI: which model does what, and why</h2>
 <table>
   <tr><th>Step</th><th>Model</th><th>Measured</th><th>Decision</th></tr>
@@ -182,7 +196,7 @@ Live: kaktamsdengami-bern-match.hf.space · Code: github.com/AnAsteria/Apertus_H
 
 <h2>6. Sovereign deployability</h2>
 <ul>
-  <li><b>Swiss model on Swiss compute.</b> Apertus (Swiss AI Initiative) is served through the organisers' Keera gateway on CSCS. No non-Swiss LLM is used anywhere.</li>
+  <li><b>Swiss model on Swiss compute.</b> Apertus (Swiss AI Initiative) is served through the organisers' Keera gateway on CSCS. The product uses no other LLM.</li>
   <li><b>Open, replaceable components.</b> FastAPI, SQLite FTS5, ONNX Runtime, multilingual-e5-small (MIT) and Apertus (Apache-2.0 per its model card). The LLM endpoint is a single OpenAI-compatible base URL, so a local llama.cpp server can replace the gateway.</li>
   <li><b>One command.</b> <code>docker compose up</code> runs the same image as the live Space, restores the index bundle, binds to localhost only and never crawls. A profile adds a local Apertus 8B (community Q4_K_M GGUF, about 7 tokens/s on a laptop CPU).</li>
   <li><b>Shown so far:</b>
@@ -219,8 +233,23 @@ Live: kaktamsdengami-bern-match.hf.space · Code: github.com/AnAsteria/Apertus_H
 <p><b>Fair discoverability.</b> Scores are max-aggregated per entity, so a group with one page competes on equal terms with a page-rich institute. Across 350 served cards, 34 of 41 sources appear and no single host dominates (largest 15%). There is deliberately no equal-exposure quota: relevance comes first. <b>Legal.</b> Built for the Swiss nDSG and the GDPR where applicable: only public content, data minimisation, removal and retention as above. Copyright of the source pages stays with the institutions; we store sentences only to quote and link them. Outputs are to be published as Open Commons per the challenge terms (§6).</p>
 <p class="note">These are design commitments, not a claim of legal compliance.</p>
 
+<h2>What we delivered</h2>
+<div class="two">
+<ul>
+  <li><b>Live service</b> on a Hugging Face Space, one-command deploy with smoke test and rollback, <code>docker compose up</code> runbook and in-container air-gap check.</li>
+  <li><b>Corpus and knowledge</b>: 41 sources, 2,811 pages, 4,314 verified claims; an extended crawl (+1,529 pages) collected and measured, not yet shipped.</li>
+  <li><b>Search</b>: hybrid multilingual retrieval, answer policy, contacts-only cards, "Why this result" (matched words, channels, ranks).</li>
+  <li><b>Apertus features</b>: request interpretation with editable needs, term expansion, scope check, refined ranking, per-candidate assessment, brief, e-mail draft, quote translation.</li>
+</ul>
+<ul>
+  <li><b>Interface</b>: EN/DE/FR, instant cards then optional refined ranking, confidence labels, "people to contact" strip, out-of-scope message, shortlist with notes and PDF export.</li>
+  <li><b>Operations</b>: protected admin with per-source coverage, refresh executor, feedback persisted across restarts, suppression and removal (410), rate limiting.</li>
+  <li><b>Evaluation</b>: frozen gold set and HTTP harness (instant and end-to-end modes), grounding checker, red-team suite, load test, support-rating sheets.</li>
+  <li><b>Documentation</b>: README with architecture, crawling safeguards, data policy, decisions D1–D16, measurements, attribution.</li>
+</ul>
+</div>
 <h2>8. Implementation feasibility, readiness and limits</h2>
-<p><b>How we worked.</b> Every challenge requirement became a GitHub issue with acceptance criteria (175 issues and PRs, 240 commits on <code>main</code>). Design choices are recorded as decisions D1–D16. Nothing was merged without tests, and ranking changes were merged only after a development-split measurement; evaluation-split runs were disclosed. Ideas that did not measurably help were not shipped (section 4).</p>
+<p><b>How we worked.</b> Every challenge requirement became a GitHub issue with acceptance criteria (175 issues and PRs, 240 commits on <code>main</code>). Design choices are recorded as decisions D1–D16. Changes were merged after CI (360+ deterministic tests), ranking changes were merged only after a development-split measurement; evaluation-split runs were disclosed. Ideas that did not measurably help were not shipped (section 4).</p>
 <p><b>Operation.</b>
 One-command deploy with smoke test and commit check; rollback by restoring the previous bundle. Feedback and admin state survive restarts; rate limiting; protected admin with per-source coverage. CI runs 360+ deterministic tests with no network and no paid inference. A new source is a YAML file validated by the loader (example: BFH engineering research).</p>
 <p><b>Needed for production:</b>
@@ -253,5 +282,21 @@ Swiss or on-premises hosting; scheduled refresh crawls; monitoring and alerting;
 <b>Data:</b> public pages of the 41 supplied UniBE, ARTORG and DCB domains, crawled 18–19 Oct 2026. The corpus and index are not published in the repository because they contain names from public pages. The full inventory is in <code>docs/attribution.md</code>.
 </p>
 
+<h2>Appendix: results by question type and cost formulas</h2>
+<div class="two">
+<table>
+  <tr><th>Frozen evaluation split (live, 19 Oct)</th><th class="num">n</th><th class="num">Instant</th><th class="num">+ Apertus</th></tr>
+  <tr><td>Cross-lingual (EN/DE/FR/IT/RU)</td><td class="num">9</td><td class="num">0.67</td><td class="num">0.78</td></tr>
+  <tr><td>Synonym</td><td class="num">2</td><td class="num">1.00</td><td class="num">1.00</td></tr>
+  <tr><td>Lay wording</td><td class="num">2</td><td class="num">0.50</td><td class="num">0.50</td></tr>
+  <tr><td>Professional · misleading · partial · person/unit</td><td class="num">1 each</td><td class="num">1.00</td><td class="num">1.00</td></tr>
+  <tr><td><b>All scored questions</b></td><td class="num">17</td><td class="num"><b>0.77</b></td><td class="num"><b>0.82</b></td></tr>
+  <tr><td>"No answer" questions: correct abstention</td><td class="num">2</td><td class="num">0/2</td><td class="num">0/2</td></tr>
+</table>
+<div>
+<p class="note"><b>Cost model</b> (Keera prices not public to us, so tokens are reported): corpus processing ≈ 1.05M input + 0.39M output tokens, once, then only changed pages; an enriched request ≈ 1.7k input + 1.2k output tokens; a plain search 0 tokens. Hosting: CPU Space at USD 0.03 / h ≈ USD 22 / month. At an assumed CHF 1 / 3 per 1M input / output tokens for 70B (placeholder, not a quote), 300 enriched requests a year cost under CHF 1 in tokens; hosting dominates.</p>
+<p class="note"><b>Reproduce:</b> <code>python -m evaluation run --base-url &lt;app&gt; --split development [--enriched]</code>, then <code>python -m evaluation report</code>; grounding: <code>python -m evaluation.grounding</code>; air-gap check: <code>docker compose exec -T app python - &lt; scripts/airgap_check.py</code>.</p>
+</div>
+</div>
 </body>
 </html>
