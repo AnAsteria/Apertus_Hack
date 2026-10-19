@@ -177,7 +177,8 @@ def test_out_of_scope_refusal_folds_the_cards_and_hidden_always_wins():
     assert 'outcome_update === "out_of_scope"' in handler and "renderRefusal()" in handler
     refusal = js[js.index("function renderRefusal"):js.index("function renderOutcome")]
     assert "This request is outside what the indexed corpus covers." in refusal
-    assert "Show the {n} direct results anyway" in refusal  # folded, never deleted
+    assert "Show the {n} direct results anyway" not in refusal  # 19 Oct: the red box is the whole answer
+    assert "res.hidden = true" in refusal
     assert "[hidden] { display: none !important; }" in css
 
 
@@ -208,7 +209,7 @@ def test_contacts_first_keeps_people_and_teams_and_folds_pages():
     node = shutil.which("node")
     if not node:
         pytest.skip("node not installed")
-    rules = js[js.index("var TEAM_URL"):js.index("var othersOpen")]
+    rules = js[js.index("var TEAM_URL"):js.index("var moreOpen")]
     assert "\b" not in rules  # no stray control characters in the regexes
     def card(name, url, kind="unit"):
         return {"display_name": name, "entity_type": kind, "evidence": [{"url": url}]}
@@ -223,3 +224,15 @@ def test_contacts_first_keeps_people_and_teams_and_folds_pages():
     script = rules + "\nconsole.log(JSON.stringify(%s.map(isContact)));" % json.dumps(cases)
     out = subprocess.run([node, "-e", script], capture_output=True, text=True, check=True).stdout
     assert json.loads(out) == [True, True, True, True, False, False, False, False]
+
+
+def test_weak_results_wait_for_apertus_and_red_never_shows_people():
+    js = _static("app.js")
+    hold = js[js.index("function holdWeak"):js.index("// Red means nothing found")]
+    assert 'b.outcome !== "low_confidence"' in hold and "HOLD_MS" in hold   # only weak results wait, at most HOLD_MS
+    assert "if (isRed()) return;" in hold                                    # red: cards and people stay hidden
+    run = js[js.index("function runSearch"):]
+    assert "holdWeak(b);" in run[:run.index("startEnrichment(body")+40]
+    assert "releaseHold();" in js[js.index("function fallback"):js.index("function fallback")+200]
+    people = js[js.index("function renderPeople"):js.index("function renderPeople")+4000]
+    assert "box.hidden = holding || isRed();" in people

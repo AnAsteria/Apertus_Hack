@@ -90,6 +90,55 @@ var FIELD_LABELS = { role: "Role", affiliation: "Affiliation", part_of: "Part of
                      contact: "Official contact (role only, not expertise)" };
 
 function typeName(k) { return TYPE_NAMES[k] ? t("type." + k, TYPE_NAMES[k]) : k; }
+// 19 Oct (UI freeze): what a reader calls the card. Never "unit" or "page": a unit is a research
+// group, a lab or an institute, told apart by its name and page address only.
+var HUMAN_TYPES = { group: "Research group", lab: "Lab", institute: "Institute", platform: "Platform",
+                    project: "Project", person: "Person", service: "Service" };
+var HUMAN_PLURALS = { group: "research groups", lab: "labs", institute: "institutes", platform: "platforms",
+                      project: "projects", person: "people", service: "services" };
+var LAB_NAME = /\b(lab|labs|labor|labore|laboratory|laboratories|laboratorium|laboratoire)\b/i;
+var INSTITUTE_NAME = /institut|center|centre|zentrum|klinik|clinic|department|departement|faculty|fakult|hospital|spital|universit/i;
+function humanKind(r) {
+  var name = r.display_name || "";
+  if (r.entity_type === "person") return "person";
+  if (r.entity_type === "project") return "project";
+  if (r.entity_type === "service") return "service";
+  if (r.entity_type === "infrastructure") return LAB_NAME.test(name) ? "lab" : "platform";
+  if (LAB_NAME.test(name)) return "lab";
+  if (isContact(r)) return "group";
+  return INSTITUTE_NAME.test(name) || SITE_PAGE.test(name) ? "institute" : "group";
+}
+// 19 Oct: per-card confidence, shown as a coloured label and used to sort (high first).
+// From Apertus' verdict when it has one (direct / related / insufficient), else from retrieval:
+// the request's outcome (green signal or not) and whether the card is far below the best one.
+// A label, not a probability.
+var CONF_LABELS = { 3: "Strong match", 2: "Possible match", 1: "Weak match" };
+function confLevel(r) {
+  var a = !noNeed && assessShown[r.entity_id];
+  if (a) return a.category === "direct_match" ? 3 : a.category === "related_capability" ? 2 : 1;
+  var weak = !!(r.retrieval && r.retrieval.weaker_match);
+  var outcome = currentResponse && currentResponse.outcome;
+  if (outcome === "confident" || topicConfident) return weak ? 2 : 3;
+  if (outcome === "low_confidence" || outcome === "too_broad") return weak ? 1 : 2;
+  return 1;
+}
+function confBadge(level) {
+  var b = el("span", "badge conf conf-" + level, t("conf." + level, CONF_LABELS[level]));
+  b.title = t("conf.title", "How well this result matches your request (Apertus' verdict when available, otherwise the search signals)");
+  return b;
+}
+var resultById = {};
+// Re-label every card on screen (and shortlist entries) after new information, e.g. an Apertus verdict.
+function refreshConfidence() {
+  Array.prototype.forEach.call(document.querySelectorAll("#results .card"), function (c) {
+    var r = resultById[c.dataset.entity]; if (!r) return;
+    var lv = confLevel(r); c.dataset.conf = String(lv);
+    var old = c.querySelector(".badge.conf"); if (old) old.parentNode.replaceChild(confBadge(lv), old);
+  });
+  slOrder.forEach(function (id) { var it = shortlist[id]; if (it) it.conf = confLevel(it.result); });
+}
+
+function humanType(r) { var k = humanKind(r); return t("ht." + k, HUMAN_TYPES[k]); }
 function typeChip(tp) { return t("chip." + (tp[0] || "any"), tp[1]); }
 function fieldLabel(k) { return t("field." + k, FIELD_LABELS[k]); }
 
@@ -233,7 +282,12 @@ function setShortlist(r, state, card) {
     sendFeedback(r, state);
   }
   slOrder = slOrder.filter(function (id) { return shortlist[id] && shortlist[id].state === "select" && id !== r.entity_id; });
-  if (shortlist[r.entity_id] && shortlist[r.entity_id].state === "select") slOrder.push(r.entity_id);
+  if (shortlist[r.entity_id] && shortlist[r.entity_id].state === "select") {
+    // New entries go in by confidence (high first); the analyst can still reorder by hand.
+    var lv = shortlist[r.entity_id].conf = confLevel(r);
+    var at = slOrder.findIndex(function (id) { return (shortlist[id].conf || 0) < lv; });
+    if (at < 0) slOrder.push(r.entity_id); else slOrder.splice(at, 0, r.entity_id);
+  }
   if (card) refreshCardState(card, r.entity_id);
   renderShortlist();
 }
@@ -282,6 +336,38 @@ function renderEntry(id, pos) {
   head.appendChild(up); head.appendChild(down);
   head.appendChild(button(t("remove", "Remove"), function () { removeEntry(id); }));
   li.appendChild(head);
+  // The final page: who to contact, what they are, the key facts, one quote with its link.
+  var src = sourceOf(r.evidence[0].url);
+  var kick = el("p", "kicker");
+  kick.appendChild(confBadge(item.conf || confLevel(r)));
+  kick.appendChild(document.createTextNode(humanType(r) + " · " + (src.full || src.label)));
+  li.appendChild(kick);
+  var contactKeys = ["official_contact", "contact"].filter(function (k) { return r.fields && r.fields[k] && r.fields[k].length; });
+  var contact = el("p", "sl-contact");
+  contact.appendChild(el("strong", null, t("sl.contact", "Contact:") + " "));
+  if (contactKeys.length) contact.appendChild(document.createTextNode(r.fields[contactKeys[0]].map(function (v) { return v.value; }).join("; ")));
+  else {
+    var cp = el("a", null, t("sl.contactPage", "see the source page") + " ↗");
+    if (/^https?:\/\//i.test(r.evidence[0].url)) { cp.href = r.evidence[0].url; cp.target = "_blank"; cp.rel = "noopener noreferrer"; }
+    contact.appendChild(cp);
+  }
+  li.appendChild(contact);
+  renderFields(r.fields, li);
+  li.appendChild(renderEvidence(quoteOrder(r.evidence)[0]));
+  if (item.assessment) {
+    var ai = el("details", "sl-ai");
+    var sum = el("summary");
+    sum.appendChild(el("span", "ai-tag", "Apertus"));
+    sum.appendChild(document.createTextNode(" " + t("sl.aiFold", "AI assessment (not source text)")));
+    ai.appendChild(sum);
+    var a = item.assessment;
+    var cat = el("p", "reason");
+    cat.appendChild(el("span", "badge cat-" + a.category, CATEGORY_LABELS[a.category] ? t("cat." + a.category, CATEGORY_LABELS[a.category]) : a.category));
+    cat.appendChild(document.createTextNode(" " + a.explanation));
+    ai.appendChild(cat);
+    if (item.assessedFor !== lastQuery) ai.appendChild(el("p", "meta", t("pv.aiOlder", "Apertus' assessment is from an earlier search and is not included.")));
+    li.appendChild(ai);
+  }
   var fields = supportedFields(r);
   if (fields.length) {
     var fs = el("div", "sl-fields");
@@ -309,7 +395,10 @@ function refreshCardState(card, id) {
   var st = shortlist[id] ? shortlist[id].state : "";
   card.classList.toggle("excluded", st === "exclude");
   var sel = card.querySelector(".act-select"), exc = card.querySelector(".act-exclude");
-  if (sel) sel.setAttribute("aria-pressed", String(st === "select"));
+  if (sel) {
+    sel.setAttribute("aria-pressed", String(st === "select"));
+    if (sel.classList.contains("add-sl")) sel.textContent = st === "select" ? t("card.added", "✓ In shortlist") : t("card.add", "Add to shortlist");
+  }
   if (exc) exc.setAttribute("aria-pressed", String(st === "exclude"));
 }
 
@@ -317,7 +406,7 @@ function renderShortlist() {
   var sel = document.getElementById("sl-selected"), exc = document.getElementById("sl-excluded");
   clearNode(sel); clearNode(exc);
   slOrder.forEach(function (id, i) { sel.appendChild(renderEntry(id, i)); });
-  if (!sel.firstChild) sel.appendChild(el("li", "none", t("sl.emptySelected", "Nothing yet. Use Select on a result card.")));
+  if (!sel.firstChild) sel.appendChild(el("li", "none", t("sl.emptySelected2", "Nothing yet. Use “Add to shortlist” on a result card.")));
   Object.keys(shortlist).forEach(function (id) {
     if (shortlist[id].state !== "exclude") return;
     var li = el("li");
@@ -326,7 +415,7 @@ function renderShortlist() {
     exc.appendChild(li);
   });
   if (!exc.firstChild) exc.appendChild(el("li", "none", t("sl.emptyExcluded", "Nothing yet")));
-  document.getElementById("shortlist-count").textContent = String(slOrder.length);
+  document.getElementById("shortlist-count").textContent = "(" + slOrder.length + ")";
   document.getElementById("sl-export").disabled = !slOrder.length;
   document.getElementById("sl-json").disabled = !slOrder.length;
 }
@@ -363,7 +452,8 @@ function exportData() {
     var older = withAi && item.assessment && item.assessedFor !== lastQuery;
     // From the card itself, not from what the analyst chose to show in the export.
     var hasContact = ["official_contact", "contact"].some(function (k) { return r.fields && r.fields[k] && r.fields[k].length; });
-    return { entity_id: r.entity_id, name: r.display_name, type: r.entity_type, source: sourceOf(r.evidence[0].url).label,
+    return { entity_id: r.entity_id, name: r.display_name, type: r.entity_type, type_label: humanType(r),
+             confidence: t("conf." + (item.conf || confLevel(r)), CONF_LABELS[item.conf || confLevel(r)]), source: sourceOf(r.evidence[0].url).label,
              fields: fields, evidence: quotes, analyst_note: item.note.trim() || null,
              // No contact data in the index: the next step is the source page itself.
              start_from: hasContact ? null : r.evidence[0].url,
@@ -396,7 +486,7 @@ function buildPrintView(data) {
   data.entries.forEach(function (e, i) {
     var s = el("section", "pv-entry");
     s.appendChild(el("h2", null, (i + 1) + ". " + e.name));
-    s.appendChild(el("p", "meta", typeName(e.type) + " · " + e.source));
+    s.appendChild(el("p", "meta", (e.confidence ? e.confidence + " · " : "") + (e.type_label || typeName(e.type)) + " · " + e.source));
     var keys = Object.keys(e.fields);
     if (keys.length) {
       var dl = el("dl", "fields");
@@ -512,23 +602,49 @@ function renderCard(r, index) {
   card.style.animationDelay = Math.round(landing + Math.min(index || 0, 7) * 70) + "ms";
   card.dataset.entity = r.entity_id;
   card.dataset.contact = isContact(r) ? "1" : "0";
+  card.dataset.weaker = r.retrieval && r.retrieval.weaker_match ? "1" : "0";
+  card.dataset.rank = String(r.rank);
+  resultById[r.entity_id] = r;
+  var lv = confLevel(r);
+  card.dataset.conf = String(lv);
   // Same host form as the server's "Only <host>" suggestion (lower case, no "www.").
   try { card.dataset.host = new URL(r.evidence[0].url).hostname.toLowerCase().replace(/^www\./, ""); } catch (e) { card.dataset.host = ""; }
+  // Compact, search-engine style: type, name, one quote line, link. Everything else is under Details.
   var head = el("div", "card-head");
   var heading = el("div");
-  if (TYPE_NAMES[r.entity_type]) heading.appendChild(el("p", "kicker", typeName(r.entity_type)));
+  var kick = el("p", "kicker");
+  kick.appendChild(confBadge(lv));
+  kick.appendChild(document.createTextNode(humanType(r) + " · " + (src.full || src.label)));
+  heading.appendChild(kick);
   var title = el("h3");
   title.appendChild(el("span", "rank", r.rank + "."));
   title.appendChild(document.createTextNode(r.display_name));
   heading.appendChild(title);
   head.appendChild(heading);
   var actions = el("div", "actions");
-  var sel = button(t("card.select", "Select"), function () { setShortlist(r, "select", card); }); sel.classList.add("act-select");
-  var exc = button(t("card.exclude", "Exclude"), function () { setShortlist(r, "exclude", card); }); exc.classList.add("act-exclude");
-  sel.setAttribute("aria-pressed", "false"); exc.setAttribute("aria-pressed", "false");
-  actions.appendChild(sel); actions.appendChild(exc);
+  var sel = button(t("card.add", "Add to shortlist"), function () { setShortlist(r, "select", card); }, "primary add-sl act-select");
+  sel.setAttribute("aria-pressed", "false");
+  actions.appendChild(sel);
   head.appendChild(actions);
   card.appendChild(head);
+  // The best quotes first: one line on the card, the rest under Details.
+  var quotes = quoteOrder(r.evidence);
+  // The one line on the card: a real sentence (6+ words) with the request's words if there is one,
+  // not a heading like "Methods". Still an exact stored quote; the rest stays under Details.
+  var nWords = function (e) { return ((e.text || "").match(/\p{L}+/gu) || []).length; };
+  var hits = function (e) { var low = (e.text || "").toLowerCase(); return queryTerms.some(function (w) { return low.indexOf(w) >= 0; }); };
+  var lead = quotes.filter(function (e) { return nWords(e) >= 6 && hits(e); })[0] ||
+             quotes.filter(function (e) { return nWords(e) >= 6; })[0] || quotes[0];
+  var first = el("p", "quote-line");
+  highlighted(first, "“" + lead.text + "”", queryTerms);
+  card.appendChild(first);
+  var link = el("a", "src", shortUrl(lead.url) + " ↗");
+  if (/^https?:\/\//i.test(lead.url)) { link.href = lead.url; link.rel = "noopener noreferrer"; link.target = "_blank"; }
+  link.title = lead.url;
+  var linkLine = el("p", "link-line"); linkLine.appendChild(link);
+  card.appendChild(linkLine);
+  var details = el("details", "card-details");
+  details.appendChild(el("summary", null, t("card.details", "Details")));
   // Badges in plain words; anything we cannot say clearly is not shown.
   var tags = el("div", "tags");
   var srcTag = el("span", "badge tag-" + src.key, src.full || src.label);
@@ -546,20 +662,22 @@ function renderCard(r, index) {
     lt.title = t("card.srcInTitle", "Found across languages: your request is in {q}, the source page is in {e}.", { q: langName(ql), e: langName(rt.evidence_language) });
     tags.appendChild(lt);
   }
-  card.appendChild(tags);
+  details.appendChild(tags);
   var why = renderWhy(r);
-  renderFields(r.fields, card);
-  // The best quotes first; the rest fold away so one card never fills the screen.
-  var quotes = quoteOrder(r.evidence);
-  quotes.slice(0, QUOTES_SHOWN).forEach(function (ev) { card.appendChild(renderEvidence(ev)); });
+  renderFields(r.fields, details);
+  quotes.slice(0, QUOTES_SHOWN).forEach(function (ev) { details.appendChild(renderEvidence(ev)); });
   if (r.evidence.length > QUOTES_SHOWN) {
     var more = el("details", "more-quotes");
     var n = r.evidence.length - QUOTES_SHOWN;
     more.appendChild(el("summary", null, t(n === 1 ? "card.moreQuote" : "card.moreQuotes", n === 1 ? "Show {n} more quote" : "Show {n} more quotes", { n: n })));
     quotes.slice(QUOTES_SHOWN).forEach(function (ev) { more.appendChild(renderEvidence(ev)); });
-    card.appendChild(more);
+    details.appendChild(more);
   }
-  if (why) card.appendChild(why);
+  if (why) details.appendChild(why);
+  var exc = button(t("card.exclude", "Exclude"), function () { setShortlist(r, "exclude", card); }); exc.classList.add("act-exclude");
+  exc.setAttribute("aria-pressed", "false");
+  details.appendChild(exc);
+  card.appendChild(details);
   refreshCardState(card, r.entity_id);
   return card;
 }
@@ -579,7 +697,7 @@ function rerankCards(results) {
     card.classList.remove("appear");
     var was = oldRank[r.entity_id];
     var note = !was ? t("ap.found", "Found by Apertus") : was > r.rank ? t("ap.up", "Moved up by Apertus (was #{n})", { n: was }) : was < r.rank ? t("ap.down", "Moved down by Apertus (was #{n})", { n: was }) : "";
-    if (note) { card.classList.add("moved"); card.querySelector(".tags").appendChild(el("span", "badge moved-badge", note)); }
+    if (note) { card.classList.add("moved"); card.querySelector(".kicker").appendChild(el("span", "badge moved-badge", note)); }
     out.appendChild(card);
     if (still) return;
     var top = card.getBoundingClientRect().top;
@@ -609,24 +727,35 @@ function isContact(r) {
   if (SITE_PAGE.test(name) || NOT_TEAM_URL.test(url)) return false;
   return TEAM_URL.test(url) || TEAM_NAME.test(name);
 }
-var othersOpen = false;
+// One list, sorted by confidence (high first). Within the same level, contacts (people and small
+// teams) come before institutions and general pages (#169), then the search's own rank.
+var moreOpen = false;
 function foldOthers() {
   var out = document.getElementById("results");
   var cards = Array.prototype.slice.call(out.querySelectorAll(".card"));
-  var old = out.querySelector(".other-pages");
-  if (old) { othersOpen = old.open; out.removeChild(old); }
-  var others = cards.filter(function (c) { return c.dataset.contact !== "1"; });
-  if (!others.length || others.length === cards.length) { cards.forEach(function (c) { out.appendChild(c); }); return; }
-  cards.forEach(function (c) { if (c.dataset.contact === "1") out.appendChild(c); });
-  var box = el("details", "other-pages");
-  box.open = othersOpen;
-  box.appendChild(el("summary", null, t("other.summary", "Other pages and institutions ({n})", { n: others.length })));
-  box.appendChild(el("p", "meta", t("other.note", "Larger institutions and general pages that match your request. Usually not the person to contact first.")));
-  others.forEach(function (c) { box.appendChild(c); });
-  out.appendChild(box);
+  cards.sort(function (x, y) {
+    return (+y.dataset.conf || 0) - (+x.dataset.conf || 0) || (+y.dataset.contact || 0) - (+x.dataset.contact || 0) ||
+           (+x.dataset.rank || 0) - (+y.dataset.rank || 0);
+  });
+  var oldMore = out.querySelector(".more-results");
+  if (oldMore) { moreOpen = oldMore.open; out.removeChild(oldMore); }
+  // Cards far below the best match (retrieval.weaker_match, #166) fold under "More results", but
+  // never the first 5 and not on a low-confidence request: there all scores are close and folding
+  // hides good cards.
+  var lowConf = currentResponse && currentResponse.outcome === "low_confidence" && !topicConfident;
+  var weaker = lowConf ? [] : cards.filter(function (c, i) { return i >= 5 && c.dataset.weaker === "1"; });
+  cards.forEach(function (c) { if (weaker.indexOf(c) < 0) out.appendChild(c); });
+  if (!weaker.length) return;
+  var more = el("details", "more-results");
+  more.open = moreOpen;
+  more.appendChild(el("summary", null, t("more.summary", "More results ({n})", { n: weaker.length })));
+  more.appendChild(el("p", "meta", t("more.note", "Weaker matches: they score well below the best results.")));
+  weaker.forEach(function (c) { more.appendChild(c); });
+  out.appendChild(more);
 }
 
 function setStatus(text, kind) {
+  if (text && isRed()) text = "", kind = "";
   var s = document.getElementById("status");
   s.textContent = text;
   s.className = "status " + (kind || "");
@@ -658,9 +787,17 @@ function renderSummary(b, query, elapsedMs, byApertus) {
   lastSummary = [b, query, elapsedMs, byApertus];
   var box = document.getElementById("summary");
   clearNode(box);
+  if (isRed()) { box.hidden = true; return; }
   box.hidden = false;
   var total = b.timing_ms && typeof b.timing_ms.request_total === "number" ? b.timing_ms.request_total : elapsedMs;
   var count = t(b.results.length === 1 ? "sum.result" : "sum.results", b.results.length === 1 ? "{n} result" : "{n} results", { n: b.results.length });
+  // One line on top, as a search engine would say it: "Found 4 research groups, 2 platforms, 1 person".
+  var kinds = {}, order = [];
+  b.results.forEach(function (r) { var k = humanKind(r); if (!kinds[k]) { kinds[k] = 0; order.push(k); } kinds[k] += 1; });
+  order.sort(function (x, y) { return kinds[y] - kinds[x]; });
+  if (order.length) box.appendChild(el("p", "found-line", t("sum.found", "Found {list}", { list: order.map(function (k) {
+    return kinds[k] + " " + (kinds[k] === 1 ? t("ht." + k, HUMAN_TYPES[k]).toLowerCase() : t("htp." + k, HUMAN_PLURALS[k]));
+  }).join(", ") })));
   box.appendChild(el("span", "pill latency", byApertus ? t("sum.byApertus", "{count}, ranked by Apertus in {s} s", { count: count, s: (elapsedMs / 1000).toFixed(1).replace(".", uiLang === "fr" ? "," : ".") })
                                                        : t("sum.direct", "{count} in {ms} ms", { count: count, ms: Math.round(total) })));
   var first = b.results[0] && b.results[0].retrieval;
@@ -684,7 +821,7 @@ var OUTCOME_TEXT = {
 function looksLikeName(q) {
   var words = String(q || "").trim().split(/\s+/);
   if (words.length < 1 || words.length > 3) return false;
-  if (selectedType === "person") return words.every(function (w) { return /^\p{L}[\p{L}'.-]*$/u.test(w); });
+  if (selectedType === "person") return words.every(function (w) { return /^\p{Lu}[\p{L}'.-]*$/u.test(w); });
   return words.length >= 2 && words.every(function (w) { return /^\p{Lu}[\p{L}'-]+$/u.test(w); });
 }
 function plain(s) { return String(s || "").normalize("NFD").replace(/\p{M}/gu, "").toLowerCase(); }
@@ -718,8 +855,9 @@ function loadPeople(query, myRevision) {
                            company_context: null, needs: [], enrichment_requested: false }) })
     .then(function (r) { return r.ok ? r.json() : null; })
     .then(function (b) {
-      if (!b || myRevision !== revision || outOfScope || noMatch) return;
-      var people = b.results.filter(strongPerson).slice(0, PEOPLE_SHOWN);
+      if (!b || myRevision !== revision || isRed()) return;
+      var people = b.results.filter(strongPerson).slice(0, PEOPLE_SHOWN)
+        .sort(function (x, y) { return confLevel(y) - confLevel(x) || x.rank - y.rank; });
       if (people.length) renderPeople(people);
     }).catch(function () { /* the strip is optional; the results are unaffected */ });
 }
@@ -732,7 +870,10 @@ function renderPeople(list) {
   list.forEach(function (r, i) {
     var c = el("article", "person-card appear");
     c.style.animationDelay = Math.round(Math.max(0, transitionEndsAt - performance.now() - 250) + i * 70) + "ms";
-    c.appendChild(el("p", "kicker", typeName("person")));
+    var pk = el("p", "kicker");
+    pk.appendChild(confBadge(confLevel(r)));
+    pk.appendChild(document.createTextNode(t("ht.person", "Person")));
+    c.appendChild(pk);
     c.appendChild(el("h3", null, r.display_name));
     var f = r.fields || {};
     var line = [].concat((f.role || []).slice(0, 1), (f.affiliation || []).slice(0, 1))
@@ -743,7 +884,7 @@ function renderPeople(list) {
     var a = el("a", "src", t("people.profile", "Profile page") + " ↗");
     a.href = r.evidence[0].url; a.target = "_blank"; a.rel = "noopener noreferrer";
     acts.appendChild(a);
-    var sel = button(t("card.select", "Select"), function () {
+    var sel = button(t("card.add", "Add to shortlist"), function () {
       setShortlist(r, "select", null);
       sel.setAttribute("aria-pressed", String(!!(shortlist[r.entity_id] && shortlist[r.entity_id].state === "select")));
     });
@@ -754,7 +895,7 @@ function renderPeople(list) {
     row.appendChild(c);
   });
   box.appendChild(row);
-  box.hidden = false;
+  box.hidden = holding || isRed(); // shown when the hold ends, never next to a red box
 }
 
 // T39 (#100): Apertus (70B) judged the request outside the corpus. The cards fold away behind one
@@ -770,39 +911,100 @@ function checkNoMatch(b) {
   document.getElementById("results").hidden = true;
   document.getElementById("people").hidden = true;
 }
+// 19 Oct (Dimitry): a nonsense request must not show people, not even for the seconds before Apertus
+// answers. Weak direct results (low confidence) wait behind "Apertus is checking..." until Apertus
+// has read the request, at most HOLD_MS; confident results still show at once. The search itself
+// never waits; only the display of weak cards does.
+var HOLD_MS = 8000, holding = false, holdTimer = null;
+function holdWeak(b) {
+  if (!b || b.outcome !== "low_confidence") return;
+  holding = true;
+  document.getElementById("results").hidden = true;
+  document.getElementById("people").hidden = true;
+  document.getElementById("summary").hidden = true;
+  setStatus(t("st.checking", "Apertus is checking your request…"), "loading");
+  clearTimeout(holdTimer);
+  holdTimer = setTimeout(releaseHold, HOLD_MS);
+}
+function releaseHold() {
+  clearTimeout(holdTimer);
+  if (!holding) return;
+  holding = false;
+  if (isRed()) return; // the red box is the whole answer
+  document.getElementById("results").hidden = false;
+  ["people", "summary"].forEach(function (id) { var n = document.getElementById(id); if (n.firstChild) n.hidden = false; });
+  if (lastStatus && lastStatus.text === t("st.checking", "Apertus is checking your request…")) setStatus("", "");
+}
+
+// Red means nothing found: no "Found 5 people" line, no counts, no status, no Apertus panel around
+// it. Only the red box, and the results only behind its button.
+function isRed() {
+  return outOfScope || noMatch || !!(currentResponse && currentResponse.outcome === "no_evidence");
+}
+function hideAroundRed() {
+  ["summary", "needs", "people", "limits-box"].forEach(function (id) { document.getElementById(id).hidden = true; });
+  setStatus("", "");
+}
 function renderRefusal() {
   var box = document.getElementById("outcome"), res = document.getElementById("results");
   clearNode(box);
   box.hidden = false;
-  var h = el("h2");
+  hideAroundRed();
   if (outOfScope) {
-    h.appendChild(el("span", "ai-tag", "Apertus"));
-    h.appendChild(document.createTextNode(" " + t("out.scope", "Outside the indexed corpus")));
-    box.appendChild(h);
+    signalHead(box, "red", t("sig.red", "Nothing found") + " · " + t("out.scope", "Outside the indexed corpus"));
     box.appendChild(el("p", null, t("out.scope.text", "This request is outside what the indexed corpus covers.")));
     box.appendChild(el("p", "meta", t("out.scope.who", "Judged by Apertus. Bern Match searches public research pages of the University of Bern (including ARTORG) and Diabetes Center Berne.")));
   } else {
-    h.appendChild(document.createTextNode(t("out.noMatch", "No match found")));
-    box.appendChild(h);
+    signalHead(box, "red", t("out.noMatch", "No match found"));
     box.appendChild(el("p", null, t("out.noMatch.need", "Apertus found no research topic in this request, and the search found only weak matches.")));
     var nm = nameMissing(lastQuery, shownResults);
     if (nm) box.appendChild(el("p", "meta", t("out.noName.text", "No card here is named “{q}”. The person may not be on the indexed pages.", { q: lastQuery })));
     box.appendChild(el("p", "meta", t("out.noMatch.who", "Bern Match searches public research pages of the University of Bern (including ARTORG) and Diabetes Center Berne. Try the method, disease or technology you need.")));
   }
-  var n = res.querySelectorAll(".card").length;
-  if (n) {
-    var chips = el("div", "chips");
-    chips.appendChild(button(res.hidden ? t("out.scope.show", "Show the {n} direct results anyway", { n: n }) : t("out.scope.hide", "Hide the results"),
-      function () { res.hidden = !res.hidden; renderRefusal(); }, "chip"));
-    box.appendChild(chips);
-  }
+  // 19 Oct (Dimitry): no "show anyway" button. For a nonsense request the red box is the whole answer.
+  res.hidden = true;
 }
 
+// 19 Oct: one traffic light per search. Green: clear match. Yellow: uncertain, and the box says why.
+// Red: nothing found (no evidence, outside the corpus, or no research topic and only weak matches).
+// With a type filter (People ...) the server's outcome is nearly always "low confidence": profile
+// pages score lower than topic pages, even for "diabetes". The topic is then judged on the same
+// request without the filter (topicConfident); the filter only narrows what is shown.
+var topicConfident = false; // the same request without the type filter is a confident match
+var apertusDirect = 0;      // cards Apertus rated a direct match for this request
+function signalHead(box, level, title) {
+  box.className = "outcome sig-" + level;
+  var h = el("h2");
+  var light = el("span", "light");
+  light.setAttribute("aria-hidden", "true");
+  h.appendChild(light);
+  h.appendChild(document.createTextNode(title));
+  box.appendChild(h);
+}
 function renderOutcome(b, byApertus) {
   checkNoMatch(b);
   if (outOfScope || noMatch) { renderRefusal(); return; }
   var box = document.getElementById("outcome");
   clearNode(box);
+  var nameGone = nameMissing(lastQuery, shownResults || b.results);
+  var green = !noClearMatch && !nameGone && (b.outcome === "confident" ||
+    (b.outcome === "low_confidence" && (topicConfident || apertusDirect > 0)));
+  if (green) {
+    box.hidden = false;
+    signalHead(box, "green", t("sig.green", "Clear match"));
+    box.appendChild(el("p", null, b.outcome === "confident" || topicConfident
+      ? t("sig.green.text", "The indexed pages have strong evidence for this request. Each card quotes its source.")
+      : t("sig.green.ai", "Apertus rated {n} of these cards a direct match. Each card quotes its source.", { n: apertusDirect })));
+    return;
+  }
+  if (b.outcome === "no_evidence") {
+    box.hidden = false;
+    signalHead(box, "red", t("sig.red", "Nothing found"));
+    hideAroundRed();
+    box.appendChild(el("p", null, t("out.no_evidence.text", OUTCOME_TEXT.no_evidence[1])));
+    (b.suggestions || []).forEach(function (s) { if (s.kind === "coverage") box.appendChild(el("p", "meta", serverText(s.label))); });
+    return;
+  }
   var info = OUTCOME_TEXT[b.outcome] && [t("out." + b.outcome, OUTCOME_TEXT[b.outcome][0]), t("out." + b.outcome + ".text", OUTCOME_TEXT[b.outcome][1])];
   // The outcome was measured on the direct search. Over Apertus' ranking, say exactly that.
   if (byApertus && b.outcome === "low_confidence")
@@ -815,7 +1017,7 @@ function renderOutcome(b, byApertus) {
   if (nameLine) info = info ? [info[0], nameLine + " " + info[1]] : [t("out.noName", "Name not found"), nameLine];
   if (!info) { box.hidden = true; return; }
   box.hidden = false;
-  box.appendChild(el("h2", null, info[0]));
+  signalHead(box, "yellow", t("sig.yellow", "Uncertain") + " · " + info[0]);
   box.appendChild(el("p", null, info[1]));
   var chips = el("div", "chips");
   var notes = [];
@@ -970,15 +1172,17 @@ function initHero() {
   });
   setType("");
   var toggle = document.getElementById("shortlist-toggle"), drawer = document.getElementById("shortlist");
-  toggle.addEventListener("click", function () {
-    drawer.hidden = !drawer.hidden;
-    toggle.setAttribute("aria-expanded", String(!drawer.hidden));
-  });
-  document.getElementById("shortlist-close").addEventListener("click", function () {
-    drawer.hidden = true; toggle.setAttribute("aria-expanded", "false"); toggle.focus();
-  });
+  // The shortlist is the final page: while it is open, the results are out of view (kept, not cleared).
+  function showList(open) {
+    drawer.hidden = !open;
+    document.body.classList.toggle("sl-open", open);
+    toggle.setAttribute("aria-expanded", String(open));
+    window.scrollTo(0, 0);
+  }
+  toggle.addEventListener("click", function () { showList(drawer.hidden); });
+  document.getElementById("shortlist-close").addEventListener("click", function () { showList(false); toggle.focus(); });
   document.addEventListener("keydown", function (ev) {
-    if (ev.key === "Escape" && !drawer.hidden) { drawer.hidden = true; toggle.setAttribute("aria-expanded", "false"); toggle.focus(); }
+    if (ev.key === "Escape" && !drawer.hidden) { showList(false); toggle.focus(); }
   });
   var ln = document.getElementById("sl-list-note");
   ln.addEventListener("input", function () { listNote = ln.value; });
@@ -1011,16 +1215,18 @@ function aiHead(text) {
 
 function needNote(text) {
   lastNeedNote = text; lastNeedsPayload = null;
+  if (isRed()) { document.getElementById("needs").hidden = true; return; }
   var box = document.getElementById("needs");
   clearNode(box);
   box.hidden = false;
   var busy = /^Interpreting/.test(text);
-  box.appendChild(aiHead(busy ? t("ai.working", "Working on your request") : "Apertus"));
-  box.appendChild(el("p", "meta" + (busy ? " busy" : ""),
-    busy ? t("ai.reading", "Reading your request and searching the terms researchers use: synonyms, technical terms, other languages.") : text));
+  var line = aiHead(busy ? t("ai.working", "Working on your request") : "Apertus");
+  line.appendChild(el("span", "needs-hint" + (busy ? " busy" : ""), busy ? t("ai.readingShort", "reading your request…") : text));
+  box.appendChild(line);
 }
 
 var refineOpen = false; // keep "Refine" open while the analyst edits needs
+var needsOpen = false;  // "How we read your request" stays closed unless the analyst opens it
 
 // Apertus' clarifying question, answerable in one click: its "e.g." options become chips,
 // and a box takes any other answer. Either one is added to the request and the search runs again.
@@ -1051,10 +1257,26 @@ function button(label, onclick, cls) {
 
 function renderNeeds(payload) {
   lastNeedsPayload = payload; lastNeedNote = null;
-  var box = document.getElementById("needs");
-  clearNode(box);
-  box.hidden = false;
-  box.appendChild(aiHead(t("ai.read", "How Apertus read your request")));
+  if (isRed()) { document.getElementById("needs").hidden = true; return; }
+  var outer = document.getElementById("needs");
+  clearNode(outer);
+  outer.hidden = false;
+  // Closed by default (19 Oct): the results come first; the analyst opens Apertus' reading on demand.
+  var box = el("details", "needs-fold");
+  box.open = needsOpen;
+  box.addEventListener("toggle", function () { needsOpen = box.open; });
+  var sum = el("summary");
+  sum.appendChild(aiHead(t("ai.readUs", "How we read your request")));
+  var bits = [];
+  if (payload.expanded_queries && payload.expanded_queries.length)
+    bits.push(t(payload.expanded_queries.length === 1 ? "ai.hint.word1" : "ai.hint.words", payload.expanded_queries.length === 1 ? "1 other wording" : "{n} other wordings", { n: payload.expanded_queries.length }));
+  if (bestFits.length) bits.push(t(bestFits.length === 1 ? "ai.hint.fit1" : "ai.hint.fits", bestFits.length === 1 ? "1 best fit" : "{n} best fits", { n: bestFits.length }));
+  var clarQ = String(payload.clarification || "").trim();
+  if (clarQ && !/^(null|none|n\/a)$/i.test(clarQ)) bits.push(t("ai.hint.q", "a question to focus the search"));
+  if (checking && !noNeed) bits.push(t("ai.hint.checking", "checking cards…"));
+  sum.appendChild(el("span", "needs-hint", bits.length ? bits.join(" · ") : t("ai.hint.open", "show")));
+  box.appendChild(sum);
+  outer.appendChild(box);
   if (payload.synthetic || payload.decoding_mode === "synthetic") box.appendChild(el("p", "synthetic", "SYNTHETIC fixture interpretation: not a real model output."));
   // The headline: the other wordings Apertus searched, so different terms still find the experts.
   if (payload.expanded_queries && payload.expanded_queries.length) {
@@ -1229,8 +1451,9 @@ function renderAssessment(a) {
   }
   // Right under the badges, so the AI's verdict is the first thing read on the card.
   var tags = card.querySelector(".tags");
-  if (tags && tags.nextSibling) card.insertBefore(box, tags.nextSibling); else card.appendChild(box);
+  if (tags && tags.nextSibling) tags.parentNode.insertBefore(box, tags.nextSibling); else card.appendChild(box);
   assessShown[a.entity_id] = a;
+  refreshConfidence();
   card.classList.remove("flash");
   void card.offsetWidth; // restart the highlight animation
   card.classList.add("flash");
@@ -1252,6 +1475,10 @@ var pendingRerank = null;  // Apertus' ranking that arrived and is offered, not 
 
 function showRefining() {
   refining = true;
+  if (currentResponse && currentResponse.outcome === "low_confidence") {
+    setStatus(t("st.refiningWeak", "Refining with Apertus… The direct matches are weak; a refined ranking replaces them in about 15 seconds."), "loading refining-strong");
+    return;
+  }
   setStatus(t("st.refining", "Direct results. Apertus is looking for other wordings and a refined ranking (usually 10 to 20 seconds); you can read on."), "loading");
 }
 
@@ -1266,6 +1493,8 @@ function applyRerank(results) {
 
 function offerRerank(results) {
   refining = false;
+  // Weak direct match: Apertus' ranking is the better answer, so it replaces the cards at once.
+  if (currentResponse && currentResponse.outcome === "low_confidence" && !topicConfident) { applyRerank(results); return; }
   var changed = results.filter(function (r) { var was = baseRanks[r.entity_id]; return !was || was > r.rank; }).length;
   if (!changed) { applyRerank(results); setStatus(t("st.sameRanking", "Apertus checked other wordings; the ranking stays the same."), "by-apertus"); return; }
   pendingRerank = results;
@@ -1309,7 +1538,7 @@ function showApertusResults(results) {
     var card = renderCard(r, i);
     var was = baseRanks[r.entity_id];
     var note = !was ? t("ap.found", "Found by Apertus") : was > r.rank ? t("ap.up", "Moved up by Apertus (was #{n})", { n: was }) : "";
-    if (note) { card.classList.add("moved"); card.querySelector(".tags").appendChild(el("span", "badge moved-badge", note)); }
+    if (note) { card.classList.add("moved"); card.querySelector(".kicker").appendChild(el("span", "badge moved-badge", note)); }
     out.appendChild(card);
   });
   foldOthers();
@@ -1331,7 +1560,9 @@ function checkClearMatch() {
   var ids = Object.keys(cats);
   var none = ids.length > 0 && ids.every(function (id) { return cats[id] === "insufficient_evidence"; });
   noClearMatch = none ? ids.length : 0;
-  if (noClearMatch && lastNotes) renderOutcome.apply(null, lastNotes);
+  apertusDirect = noNeed ? 0 : ids.filter(function (id) { return cats[id] === "direct_match"; }).length;
+  if ((noClearMatch || apertusDirect) && lastNotes) renderOutcome.apply(null, lastNotes);
+  refreshConfidence(); foldOthers(); renderShortlist(); // sorted by confidence once all verdicts are in
   // A match that is not card 1 is easy to miss: name up to 3 of them in Apertus' panel.
   // Only "Direct match" counts: a "related" card 1 used to hide a direct match at card 6 (round 3).
   var isDirect = function (id) { var a = assessShown[id]; return a && a.category === "direct_match"; };
@@ -1346,6 +1577,7 @@ function startEnrichment(body, requestId, myRevision) {
   needNote("Interpreting your request…");
   function fallback(note) {
     if (myRevision !== revision) return;
+    releaseHold();
     if (showDirect) showDirect(note);
     else if (refining) { refining = false; setStatus(note || "", ""); }
   }
@@ -1385,6 +1617,7 @@ function startEnrichment(body, requestId, myRevision) {
       noNeed = !d.payload.needs.length && !(d.payload.expanded_queries || []).length;
       renderNeeds(d.payload);
       if (noNeed && lastNotes) renderOutcome.apply(null, lastNotes); // results already on screen: re-check "no match"
+      releaseHold();
       // No other wordings means no Apertus ranking will come: show the direct results now, not after ~30 s.
       if (!(d.payload.expanded_queries || []).length)
         fallback(t("st.noWordings", "Apertus found no other wordings for this request. These are the direct results."));
@@ -1436,6 +1669,20 @@ function startEnrichment(body, requestId, myRevision) {
   });
 }
 
+// The same request without the type filter (retrieval only, no AI): is the topic itself well covered?
+function checkTopic(query, myRevision) {
+  fetch("/api/v1/search", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ schema_version: "1", query: query, revision: myRevision, entity_type: null,
+                           company_context: null, needs: [], enrichment_requested: false }) })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (b) {
+      if (!b || myRevision !== revision || b.outcome !== "confident") return;
+      topicConfident = true;
+      if (lastNotes) renderOutcome.apply(null, lastNotes);
+      refreshConfidence(); foldOthers();
+    }).catch(function () { /* the yellow signal simply stays */ });
+}
+
 function runSearch(needs) {
   var query = document.getElementById("query").value.trim();
   if (!query) { setStatus(t("st.empty", "Enter a keyword or a short description."), "warn"); return; }
@@ -1446,10 +1693,13 @@ function runSearch(needs) {
   closeEvents();
   clearTimeout(fallbackTimer);
   resultsShown = true; showDirect = null; pendingAssess = []; refining = false; pendingRerank = null;
-  outOfScope = false; noMatch = false; document.getElementById("results").hidden = false;
+  outOfScope = false; noMatch = false; holding = false; clearTimeout(holdTimer); document.getElementById("results").hidden = false;
+  topicConfident = false; apertusDirect = 0; currentResponse = null; resultById = {}; needsOpen = false;
   shownResults = null; assessShown = {}; noNeed = false; assessFailed = false; noClearMatch = 0; rerankSkipped = false; bestFits = []; hiddenVerdicts = {}; checking = 0; lastSummary = null; lastNotes = null; lastNeedsPayload = null; lastNeedNote = null;
   var started = performance.now();
   searchStarted = started;
+  document.body.classList.remove("sl-open");
+  document.getElementById("shortlist").hidden = true;
   enterResults();
   queryTerms = termsOf(query);
   lastQuery = query;
@@ -1479,6 +1729,7 @@ function runSearch(needs) {
     }
     var b = res.body;
     lastRequestId = b.request_id; lastRevision = b.revision;
+    if (type && b.outcome === "low_confidence") checkTopic(query, myRevision);
     var directMs = performance.now() - started;
     currentResponse = b;
     showDirect = function (note) {
@@ -1498,6 +1749,7 @@ function runSearch(needs) {
       b.results.forEach(function (r) { baseRanks[r.entity_id] = r.rank; });
       showDirect();
       showRefining();
+      holdWeak(b);
       startEnrichment(body, b.request_id, myRevision);
     } else {
       resultsShown = false; // set true above for the wait; without this the cards never render (Apertus off/unavailable)
@@ -1544,13 +1796,14 @@ function goHome(ev) {
   closeEvents();
   clearTimeout(fallbackTimer);
   transitionEndsAt = 0;
-  outOfScope = false; noMatch = false; document.getElementById("results").hidden = false;
+  outOfScope = false; noMatch = false; holding = false; clearTimeout(holdTimer); document.getElementById("results").hidden = false;
   document.getElementById("query").value = "";
   clearResults();
   clearNode(document.getElementById("limitations"));
   ["summary", "outcome", "needs", "limits-box", "people"].forEach(function (id) { document.getElementById(id).hidden = true; });
   setStatus("", "");
-  document.body.classList.remove("searched", "leaving");
+  document.body.classList.remove("searched", "leaving", "sl-open");
+  document.getElementById("shortlist").hidden = true;
   window.scrollTo(0, 0);
   document.getElementById("query").focus();
 }

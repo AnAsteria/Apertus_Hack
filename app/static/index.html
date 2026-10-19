@@ -6,13 +6,14 @@
   <meta name="color-scheme" content="light dark">
   <title>Bern Match</title>
   <link rel="preload" as="image" href="hero.webp" type="image/webp">
-  <link rel="stylesheet" href="style.css?v=8">
+  <link rel="stylesheet" href="style.css?v=14">
 </head>
 <body>
   <!-- data-i18n* attributes name the text's key in i18n.js; the English below is the default. -->
   <a class="skip" href="#results" data-i18n="skip">Skip to results</a>
   <header class="top">
     <a class="brand" id="home" href="./" title="Back to the start page" data-i18n-title="top.home">Bern Match <span class="logo" aria-hidden="true"></span></a>
+    <a class="howitworks" href="https://github.com/AnAsteria/Apertus_Hack#how-it-works" target="_blank" rel="noopener noreferrer" data-i18n="top.how">How it works</a>
     <a class="powered" href="https://www.apertus-ai.org/" target="_blank" rel="noopener noreferrer" title="Apertus: the fully open Swiss LLM by EPFL, ETH Zurich and CSCS" data-i18n-title="top.poweredTitle">
       <i class="ap" aria-hidden="true"></i><span data-i18n="top.powered">Powered by</span> <b>Apertus</b>
     </a>
@@ -22,14 +23,14 @@
       <button type="button" data-lang="fr" lang="fr" title="Français">FR</button>
     </div>
     <button type="button" id="shortlist-toggle" class="ghost" aria-controls="shortlist" aria-expanded="false">
-      <span data-i18n="top.shortlist">Shortlist</span> <span id="shortlist-count" class="count">0</span>
+      <span data-i18n="top.shortlist">Shortlist</span> <span id="shortlist-count" class="count">(0)</span>
     </button>
   </header>
   <main>
     <section class="hero" id="hero">
       <div class="hero-copy">
       <p class="eyebrow" data-i18n="hero.eyebrow">Research expertise in Bern</p>
-      <h1 data-i18n="hero.h1">Describe the need. Apertus finds the experts.</h1>
+      <h1 data-i18n="hero.h1b">Describe the need. Bern Match finds the experts.</h1>
       <p class="sub" data-i18n="hero.sub">Experts at UniBE, ARTORG and Diabetes Center Berne. Every result quotes its source.</p>
       <form id="form" role="search">
         <label for="query" class="sr" data-i18n="hero.queryLabel">Keywords, a question, or a pasted company description</label>
@@ -40,10 +41,10 @@
         </div>
         <div class="row">
           <div class="chips" role="radiogroup" aria-label="Looking for" data-i18n-aria="hero.lookingFor" id="type-chips"></div>
-          <label class="switch" title="On: Apertus finds other wordings, re-ranks and explains each card (everything it adds is labelled as AI). Off: fast keyword and meaning search only, no AI." data-i18n-title="hero.switchTitle">
+          <label class="switch" title="Instant results first, refined ranking in ~15 s. Apertus finds other wordings, re-ranks and explains each card (everything it adds is labelled as AI). Off: fast keyword and meaning search only, no AI." data-i18n-title="hero.switchTitle2">
             <input type="checkbox" id="interpret" checked>
             <span class="track" aria-hidden="true"></span>
-            <span><span data-i18n="hero.use">Use</span> <span class="ai-tag">Apertus</span></span>
+            <span><span data-i18n="hero.refine">Refine with AI</span> <span class="ai-tag">Apertus</span> <span class="switch-hint" data-i18n="hero.refineHint">instant results first, refined ranking in ~15 s</span></span>
           </label>
         </div>
         <p class="privacy" data-i18n="hero.privacy">With Apertus on, your text is sent to the organisers' Apertus gateway. Bern Match does not save it.</p>
@@ -71,10 +72,11 @@
     <p data-i18n="footer.search">Search runs on our own index of public UniBE, ARTORG and Diabetes Center Berne pages. AI text is always labelled and never shown as a source fact.</p>
     <p data-i18n="footer.host">Hosted on a Hugging Face Space.</p>
   </footer>
-  <aside id="shortlist" class="drawer" hidden aria-label="Shortlist" data-i18n-aria="sl.title">
+  <aside id="shortlist" class="drawer sl-page" hidden aria-label="Shortlist" data-i18n-aria="sl.title">
+    <div class="sl-inner">
     <div class="drawer-head">
-      <h2 data-i18n="sl.title">Shortlist</h2>
-      <button type="button" id="shortlist-close" class="ghost" aria-label="Close shortlist" data-i18n-aria="sl.close">✕</button>
+      <h2 data-i18n="sl.titlePage">Your shortlist</h2>
+      <button type="button" id="shortlist-close" class="ghost" aria-label="Back to results" data-i18n-aria="sl.back"><span data-i18n="sl.backText">← Back to results</span></button>
     </div>
     <p class="meta" data-i18n="sl.intro">Your selections for this session. Select and exclude are sent as feedback; notes stay in this browser tab and are never sent.</p>
     <h3><span data-i18n="sl.selected">Selected</span> <span class="meta" data-i18n="sl.reorder">(drag or use the arrows to reorder)</span></h3>
@@ -87,14 +89,15 @@
       <button type="button" id="sl-export" class="primary" data-i18n="sl.exportPdf">Export PDF</button>
       <button type="button" id="sl-json" class="ghost" data-i18n="sl.json">Download JSON</button>
       <button type="button" id="sl-brief" class="ghost" data-i18n="sl.brief">Draft brief (Apertus)</button>
-      <button type="button" id="sl-email" class="ghost" data-i18n="sl.email" disabled>Draft e-mail (Apertus)</button>
+      <button type="button" id="sl-email" class="ghost" data-i18n="sl.emailNotSent" disabled>E-mail draft (Apertus, not sent)</button>
     </div>
     <div id="sl-ai-out" class="sl-ai-out" aria-live="polite"></div>
     <h3 data-i18n="sl.excluded">Excluded</h3>
     <ul id="sl-excluded" class="sl"></ul>
+    </div>
   </aside>
   <section id="print-view" aria-hidden="true"></section>
-  <script src="i18n.js?v=8"></script>
-  <script src="app.js?v=8"></script>
+  <script src="i18n.js?v=14"></script>
+  <script src="app.js?v=14"></script>
 </body>
 </html>
