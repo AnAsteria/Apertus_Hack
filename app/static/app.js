@@ -895,7 +895,7 @@ function renderPeople(list) {
     row.appendChild(c);
   });
   box.appendChild(row);
-  box.hidden = false;
+  box.hidden = holding || isRed(); // shown when the hold ends, never next to a red box
 }
 
 // T39 (#100): Apertus (70B) judged the request outside the corpus. The cards fold away behind one
@@ -911,6 +911,31 @@ function checkNoMatch(b) {
   document.getElementById("results").hidden = true;
   document.getElementById("people").hidden = true;
 }
+// 19 Oct (Dimitry): a nonsense request must not show people, not even for the seconds before Apertus
+// answers. Weak direct results (low confidence) wait behind "Apertus is checking..." until Apertus
+// has read the request, at most HOLD_MS; confident results still show at once. The search itself
+// never waits; only the display of weak cards does.
+var HOLD_MS = 8000, holding = false, holdTimer = null;
+function holdWeak(b) {
+  if (!b || b.outcome !== "low_confidence") return;
+  holding = true;
+  document.getElementById("results").hidden = true;
+  document.getElementById("people").hidden = true;
+  document.getElementById("summary").hidden = true;
+  setStatus(t("st.checking", "Apertus is checking your request…"), "loading");
+  clearTimeout(holdTimer);
+  holdTimer = setTimeout(releaseHold, HOLD_MS);
+}
+function releaseHold() {
+  clearTimeout(holdTimer);
+  if (!holding) return;
+  holding = false;
+  if (isRed()) return; // the red box is the whole answer
+  document.getElementById("results").hidden = false;
+  ["people", "summary"].forEach(function (id) { var n = document.getElementById(id); if (n.firstChild) n.hidden = false; });
+  if (lastStatus && lastStatus.text === t("st.checking", "Apertus is checking your request…")) setStatus("", "");
+}
+
 // Red means nothing found: no "Found 5 people" line, no counts, no status, no Apertus panel around
 // it. Only the red box, and the results only behind its button.
 function isRed() {
@@ -936,13 +961,8 @@ function renderRefusal() {
     if (nm) box.appendChild(el("p", "meta", t("out.noName.text", "No card here is named “{q}”. The person may not be on the indexed pages.", { q: lastQuery })));
     box.appendChild(el("p", "meta", t("out.noMatch.who", "Bern Match searches public research pages of the University of Bern (including ARTORG) and Diabetes Center Berne. Try the method, disease or technology you need.")));
   }
-  var n = res.querySelectorAll(".card").length;
-  if (n) {
-    var chips = el("div", "chips");
-    chips.appendChild(button(res.hidden ? t("out.scope.show", "Show the {n} direct results anyway", { n: n }) : t("out.scope.hide", "Hide the results"),
-      function () { res.hidden = !res.hidden; renderRefusal(); }, "chip"));
-    box.appendChild(chips);
-  }
+  // 19 Oct (Dimitry): no "show anyway" button. For a nonsense request the red box is the whole answer.
+  res.hidden = true;
 }
 
 // 19 Oct: one traffic light per search. Green: clear match. Yellow: uncertain, and the box says why.
@@ -1557,6 +1577,7 @@ function startEnrichment(body, requestId, myRevision) {
   needNote("Interpreting your request…");
   function fallback(note) {
     if (myRevision !== revision) return;
+    releaseHold();
     if (showDirect) showDirect(note);
     else if (refining) { refining = false; setStatus(note || "", ""); }
   }
@@ -1596,6 +1617,7 @@ function startEnrichment(body, requestId, myRevision) {
       noNeed = !d.payload.needs.length && !(d.payload.expanded_queries || []).length;
       renderNeeds(d.payload);
       if (noNeed && lastNotes) renderOutcome.apply(null, lastNotes); // results already on screen: re-check "no match"
+      releaseHold();
       // No other wordings means no Apertus ranking will come: show the direct results now, not after ~30 s.
       if (!(d.payload.expanded_queries || []).length)
         fallback(t("st.noWordings", "Apertus found no other wordings for this request. These are the direct results."));
@@ -1671,7 +1693,7 @@ function runSearch(needs) {
   closeEvents();
   clearTimeout(fallbackTimer);
   resultsShown = true; showDirect = null; pendingAssess = []; refining = false; pendingRerank = null;
-  outOfScope = false; noMatch = false; document.getElementById("results").hidden = false;
+  outOfScope = false; noMatch = false; holding = false; clearTimeout(holdTimer); document.getElementById("results").hidden = false;
   topicConfident = false; apertusDirect = 0; currentResponse = null; resultById = {}; needsOpen = false;
   shownResults = null; assessShown = {}; noNeed = false; assessFailed = false; noClearMatch = 0; rerankSkipped = false; bestFits = []; hiddenVerdicts = {}; checking = 0; lastSummary = null; lastNotes = null; lastNeedsPayload = null; lastNeedNote = null;
   var started = performance.now();
@@ -1727,6 +1749,7 @@ function runSearch(needs) {
       b.results.forEach(function (r) { baseRanks[r.entity_id] = r.rank; });
       showDirect();
       showRefining();
+      holdWeak(b);
       startEnrichment(body, b.request_id, myRevision);
     } else {
       resultsShown = false; // set true above for the wait; without this the cards never render (Apertus off/unavailable)
@@ -1773,7 +1796,7 @@ function goHome(ev) {
   closeEvents();
   clearTimeout(fallbackTimer);
   transitionEndsAt = 0;
-  outOfScope = false; noMatch = false; document.getElementById("results").hidden = false;
+  outOfScope = false; noMatch = false; holding = false; clearTimeout(holdTimer); document.getElementById("results").hidden = false;
   document.getElementById("query").value = "";
   clearResults();
   clearNode(document.getElementById("limitations"));
