@@ -86,9 +86,9 @@ Target "< 3 s to first cards": **met with a large margin** for server compute (p
 | Assessment of 8 candidates (T19) | 8B | **5.7–6.3 s** total (2 batches of 4, 2.5–3.6 s each) | ~1.3k in / ~1.0k out | 3 runs |
 | Assessment of 8 candidates (T19) | 70B | 18.1 s | ~1.35k in / ~1.1k out | 1 valid run |
 | Interpretation + expansion fan-out in search (T20 ablation) | 70B | median **5.1 s**, p95 7.5 s per query | 708 tokens/query | 17 |
-| Expansion (cached) + assessment of top 10 (T20 ablation) | 8B | median **18.6 s**, p95 23.8 s per query (2–3 sequential batches; median batch 9.3 s, max 12.0 s) | 2,783 tokens/query incl. expansion | 17 |
+| Expansion (cached) + assessment of top 10 (T20 ablation) | 70B (local default, see note) | median **18.6 s**, p95 23.8 s per query (2–3 sequential batches; median batch 9.3 s, max 12.0 s) | 2,783 tokens/query incl. expansion | 17 |
 
-Target "complete enrichment < 15 s": **not met on the full corpus.** With real cards (longer evidence), 8B assessment batches took a median 9.3 s instead of 2.5–3.6 s on the earlier 8-candidate sample, so assessing the top 10 alone took a median 18.6 s. Interpretation adds 1.5–52 s (shared-gateway variance). Mitigations: assess fewer candidates, run batches concurrently, or trim evidence per candidate. The first cards never wait for enrichment (T18/T19 run over SSE), so this delay affects only the suggestions panel and assessment labels.
+Target "complete enrichment < 15 s": **not met on the full corpus.** With real cards (longer evidence), assessment batches took a median 9.3 s, so assessing the top 10 alone took a median 18.6 s. **Correction (2026-10-19):** this T20 run assessed with **70B**, not 8B: the runner uses the default model, and the local `.env` set `APERTUS_MODEL=apertus-v1-5-70b`. The deployed Space assesses with 8B; see §7 for live timings. Interpretation adds 1.5–52 s (shared-gateway variance). Mitigations: assess fewer candidates, run batches concurrently, or trim evidence per candidate. The first cards never wait for enrichment (T18/T19 run over SSE), so this delay affects only the suggestions panel and assessment labels.
 
 ## 7. Live enrichment on the deployed Space (2026-10-18, 21:57 Zurich, 10 fictional companies)
 

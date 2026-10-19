@@ -1,6 +1,6 @@
 # End-to-end test on three fictional company descriptions (EXTRA B4, #129)
 
-Run 2026-10-19 ~09:30 Zurich, branch `EXTRA-ruihan` (`8acd5bd`), local server on bundle `9a0e0951…`, Keera 70B interpretation + 8B assessment. Fictional profiles only (see `PROFILE_CASES` in `tools/enrichment_check.py`). One run each (n = 1 per profile), so this is indicative, not a benchmark.
+Run 2026-10-19 ~09:30 Zurich, branch `EXTRA-ruihan` (`8acd5bd`), local server on bundle `9a0e0951…`, Keera 70B interpretation + 70B assessment and brief (the local `.env` set `APERTUS_MODEL=apertus-v1-5-70b`; the deployed Space uses 8B for both). Fictional profiles only (see `PROFILE_CASES` in `tools/enrichment_check.py`). One run each (n = 1 per profile), so this is indicative, not a benchmark.
 
 ```bash
 python tools/enrichment_check.py --base-url http://127.0.0.1:8765 --cases profiles --out data/runs/b4-profiles.json

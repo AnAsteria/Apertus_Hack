@@ -33,7 +33,7 @@ All structured output uses the gateway's JSON-schema constrained decoding, still
 | Hybrid, in-process on the bundle | 0.65 | 56 ms | 0 |
 | **Hybrid + Apertus expansion (70B)** | **0.82** | 4.9 s (background) | 700 |
 | Hybrid + expansion with 8B instead | 0.65 | 1.3 s (background) | 580 |
-| + Apertus assessment (8B) | same ranking; 86% of expected answers labelled direct/related (n = 14) | 18.6 s (background) | 2,880 |
+| + Apertus assessment (70B, local run; the deployed Space assesses with 8B) | same ranking; 86% of expected answers labelled direct/related (n = 14) | 18.6 s (background) | 2,880 |
 
 *Note on the hybrid row:* the same frozen evaluation split re-scored over HTTP against the live service gives **0.76** (#16), while the in-process run on the bundle gives **0.65** at both BM25 weights tested (1.0 and 0.25). The gap is not the BM25 weight; it lies between the in-process path and the live service (API wrappers, the x86 ONNX build or configuration) and is being investigated (G2 #147). Neither number should be read as "the shipped" result without this note. The expansion gain (+0.17 to +0.18) is measured within one consistent setup.
 
@@ -57,4 +57,4 @@ All structured output uses the gateway's JSON-schema constrained decoding, still
 
 ## Limitations
 
-Small samples for the 8B/70B comparisons; single-rater hand checks; latency measured from one location on a shared gateway (70B ranged 1.5–52 s); 3 of 799 long pages couldn't be extracted; FR/IT corpus content is sparse; the gold set was written by a team member, with no partner review yet.
+Small samples for the 8B/70B comparisons; the assessment-quality row above was measured with 70B (the local default at the time), so 8B assessment quality on the gold set is not measured; single-rater hand checks; latency measured from one location on a shared gateway (70B ranged 1.5–52 s); 3 of 799 long pages couldn't be extracted; FR/IT corpus content is sparse; the gold set was written by a team member, with no partner review yet.
