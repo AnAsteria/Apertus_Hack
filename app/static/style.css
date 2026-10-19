@@ -47,21 +47,33 @@ a { color: var(--red-text); }
 main { max-width: 76rem; margin: 0 auto; padding: 0 1.5rem 4rem; }
 main > :not(.hero) { max-width: 60rem; margin-left: auto; margin-right: auto; }
 
-/* Welcome: copy and composer on the left, a Bern illustration on the right */
-.hero { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 3rem; align-items: center; padding: 3rem 0 2rem; min-height: min(44rem, calc(100vh - 5rem)); }
-.hero-copy { position: relative; z-index: 1; animation: rise .6s var(--ease) both; }
+/* Welcome: a full-width photo of Bern (hero.webp) behind the heading and the search composer.
+   The copy sits on the photo's bright, misty left side; a soft ivory fade keeps it readable. */
+/* The full-width hero uses 100vw, which includes the scrollbar: clip the few pixels it adds */
+html, body { overflow-x: clip; }
+body:not(.searched) .top { position: absolute; left: 0; right: 0; z-index: 2; }
+.hero { position: relative; isolation: isolate; display: flex; align-items: center;
+  margin: 0 calc(50% - 50vw); padding: 7.5rem max(1.5rem, calc(50vw - 36.5rem)) 4rem;
+  min-height: min(56rem, 100vh); overflow: hidden; }
+.hero::before, .hero::after { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+.hero::before { background: url("hero.webp") center right / cover no-repeat, var(--bg); animation: settle 1.4s var(--ease) both; }
+.hero::after { background: linear-gradient(90deg, rgba(246, 243, 238, .82) 0%, rgba(246, 243, 238, .55) 30%, rgba(246, 243, 238, 0) 52%),
+  linear-gradient(0deg, var(--bg) 0, rgba(246, 243, 238, 0) 7rem); }
+@media (prefers-color-scheme: dark) {
+  .hero::after { background: linear-gradient(90deg, rgba(20, 19, 17, .9) 0%, rgba(20, 19, 17, .7) 34%, rgba(20, 19, 17, .1) 60%),
+    linear-gradient(0deg, var(--bg) 0, rgba(20, 19, 17, 0) 7rem); }
+}
+.hero-copy { position: relative; z-index: 1; width: min(36rem, 100%); animation: rise .7s .15s var(--ease) both; }
 .eyebrow { margin: 0 0 1rem; font-size: .72rem; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); }
 .eyebrow::after { content: ""; display: block; width: 1.6rem; height: 2px; background: var(--red); margin-top: 1rem; }
-.hero h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(2.4rem, 5.2vw, 4.1rem); line-height: 1.04; letter-spacing: -.02em; margin: 0 0 1rem; max-width: 14ch; text-wrap: balance; }
-.sub { color: var(--muted); margin: 0 0 2rem; max-width: 34rem; font-size: 1.05rem; }
-.hero-art { position: relative; align-self: stretch; min-height: 30rem; border-radius: 6px; overflow: hidden; box-shadow: var(--shadow);
-  animation: settle 1.1s var(--ease) both; }
-.hero-art svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-@media (prefers-color-scheme: dark) { .hero-art svg { filter: brightness(.78) saturate(.9); } }
-body.searched .hero { display: block; min-height: 0; padding: 1.5rem 0 .5rem; max-width: 60rem; margin: 0 auto; }
+.hero h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(2.4rem, 5.2vw, 4.3rem); line-height: 1.04; letter-spacing: -.02em; margin: 0 0 1rem; max-width: 14ch; text-wrap: balance; }
+.sub { color: var(--muted); margin: 0 0 2rem; max-width: 30rem; font-size: 1.05rem; }
+.hero #form { animation: rise .7s .3s var(--ease) both; box-shadow: 0 2px 6px rgba(23, 23, 21, .05), 0 24px 60px rgba(23, 23, 21, .12); }
+body.searched .hero { display: block; min-height: 0; margin: 0 auto; padding: 1.5rem 0 .5rem; max-width: 60rem; overflow: visible; }
+body.searched .hero::before, body.searched .hero::after { display: none; }
 body.searched .hero h1, body.searched .hero .sub, body.searched .eyebrow, body.searched .examples-wrap,
-body.searched .howto, body.searched .hero-art { display: none; }
-body.searched .hero-copy { animation: none; }
+body.searched .howto { display: none; }
+body.searched .hero-copy, body.searched .hero #form { animation: none; width: auto; }
 
 /* The floating search composer */
 #form { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: .6rem .75rem .9rem; box-shadow: var(--shadow); }
@@ -264,8 +276,10 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 .
 
 /* Tablet and phone: the illustration becomes a short band under the composer, then disappears */
 @media (max-width: 60rem) {
-  .hero { grid-template-columns: 1fr; gap: 2rem; padding-top: 2rem; min-height: 0; }
-  .hero-art { min-height: 16rem; max-height: 20rem; }
+  /* Tablet: the fade covers more of the photo so the copy stays readable */
+  .hero { padding-top: 6.5rem; min-height: 0; }
+  .hero::after { background: linear-gradient(90deg, rgba(246, 243, 238, .9) 0%, rgba(246, 243, 238, .7) 55%, rgba(246, 243, 238, .25) 100%),
+    linear-gradient(0deg, var(--bg) 0, rgba(246, 243, 238, 0) 6rem); }
 }
 @media (max-width: 36rem) {
   .top { padding: 1rem 1rem 0; gap: .4rem; }
@@ -276,9 +290,11 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 .
   .langs button { padding: .45rem .4rem; }
   .powered { display: none; }
   main { padding: 0 1rem 3rem; }
-  .hero { padding-top: 1.5rem; }
+  /* Phone: a simpler background, the photo stays as a faint wash behind the copy */
+  .hero { padding: 5.5rem 1rem 2rem; }
+  .hero::before { background-position: 72% center; }
+  .hero::after { background: rgba(246, 243, 238, .84); }
   .hero h1 { font-size: 2.05rem; }
-  .hero-art { display: none; }
   #form { padding: .5rem .6rem .8rem; }
   .searchbox { flex-wrap: wrap; }
   .searchbox .icon { display: none; }
@@ -353,3 +369,10 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 .
 .ai-text .badge.ai, .badge.ai { font-size: .7rem; padding: 0 .35rem; border-radius: .3rem; background: var(--ai-bg); color: var(--ai); border: 1px solid var(--ai-line); }
 .mt { font-style: italic; opacity: .85; }
 .analyst { border-left: 3px solid var(--line-strong); padding-left: .5rem; }
+
+/* Dark mode on tablets and phones: the fade over the hero photo stays dark under light text */
+@media (prefers-color-scheme: dark) and (max-width: 60rem) {
+  .hero::after { background: linear-gradient(90deg, rgba(20, 19, 17, .9) 0%, rgba(20, 19, 17, .78) 60%, rgba(20, 19, 17, .45) 100%),
+    linear-gradient(0deg, var(--bg) 0, rgba(20, 19, 17, 0) 6rem); }
+}
+@media (prefers-color-scheme: dark) and (max-width: 36rem) { .hero::after { background: rgba(20, 19, 17, .86); } }
