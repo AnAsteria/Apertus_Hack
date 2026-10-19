@@ -159,7 +159,17 @@ def test_reranked_event_carries_validated_cards_and_failure_keeps_stream_alive(c
 
 def test_ui_replaces_cards_on_reranked_event():
     js = open(os.path.join(os.path.dirname(__file__), "..", "..", "app", "static", "app.js"), encoding="utf-8").read()
-    assert 'addEventListener("reranked"' in js and "rerankCards(d.payload.results)" in js
+    # Instant first: the reranked ranking is offered on screen and applied with the slide animation.
+    assert 'addEventListener("reranked"' in js and "offerRerank(d.payload.results)" in js
+    assert "function applyRerank(results)" in js and "rerankCards(results)" in js
+
+
+def test_ui_first_cards_never_wait_for_apertus():
+    js = open(os.path.join(os.path.dirname(__file__), "..", "..", "app", "static", "app.js"), encoding="utf-8").read()
+    pending = js[js.index('if (b.enrichment_state === "pending" && b.results.length) {'):]
+    pending = pending[:pending.index("} else {")]
+    assert "showDirect();" in pending and "showRefining();" in pending
+    assert "waitForApertus()" not in pending and "30000" not in pending
 
 
 def test_guarded_original_outcome_skips_reranking_and_keeps_cards(client):
