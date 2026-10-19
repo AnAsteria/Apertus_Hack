@@ -1102,6 +1102,35 @@ var showDirect = null;     // shows the direct results (fallback); null once any
 var fallbackTimer = null;
 var searchStarted = 0;
 var currentResponse = null; // the direct search response of the current request
+// Instant first: direct results are shown at once; Apertus' refined ranking is offered when it
+// arrives (button), never forced on a reader mid-scroll, and the first cards never wait for it.
+var refining = false;      // Apertus is still working on a refined ranking for the cards on screen
+var pendingRerank = null;  // Apertus' ranking that arrived and is offered, not yet applied
+
+function showRefining() {
+  refining = true;
+  setStatus(t("st.refining", "Direct results. Apertus is looking for other wordings and a refined ranking (usually 10 to 20 seconds); you can read on."), "loading");
+}
+
+function applyRerank(results) {
+  pendingRerank = null;
+  rerankCards(results);
+  renderSummary({ results: results }, lastQuery, performance.now() - searchStarted, true);
+  if (currentResponse) renderNotes(currentResponse, true);
+  flushAssessments();
+  setStatus(t("st.ranked", "Ranked by Apertus, also using the other wordings it found."), "by-apertus");
+}
+
+function offerRerank(results) {
+  refining = false;
+  var changed = results.filter(function (r) { var was = baseRanks[r.entity_id]; return !was || was > r.rank; }).length;
+  if (!changed) { applyRerank(results); setStatus(t("st.sameRanking", "Apertus checked other wordings; the ranking stays the same."), "by-apertus"); return; }
+  pendingRerank = results;
+  setStatus(t("st.refined", "Apertus found a refined ranking: {n} result(s) new or moved up.", { n: changed }) + " ", "by-apertus");
+  var b = button(t("st.showRefined", "Show Apertus' ranking"), function () { if (pendingRerank === results) applyRerank(results); });
+  b.classList.add("skip-wait");
+  document.getElementById("status").appendChild(b);
+}
 
 // Outcome box and limitations appear together with the results, never before them,
 // so a new search never shows the previous one's verdict.
@@ -1171,7 +1200,11 @@ function checkClearMatch() {
 function startEnrichment(body, requestId, myRevision) {
   closeEvents();
   needNote("Interpreting your request…");
-  function fallback(note) { if (myRevision === revision && showDirect) showDirect(note); }
+  function fallback(note) {
+    if (myRevision !== revision) return;
+    if (showDirect) showDirect(note);
+    else if (refining) { refining = false; setStatus(note || "", ""); }
+  }
   fetch("/api/v1/search/" + encodeURIComponent(requestId) + "/enrichment", {
     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body)
   }).then(function (r) { return r.ok ? r.json() : null; }).then(function (start) {
@@ -1204,8 +1237,8 @@ function startEnrichment(body, requestId, myRevision) {
       // T30: validated ranking over the original query plus Apertus expansions replaces the cards.
       var d = parse(e);
       if (!d || !d.payload.results.length) return;
-      if (resultsShown) rerankCards(d.payload.results); // direct results already on screen (fallback)
-      else { showApertusResults(d.payload.results); if (currentResponse) renderNotes(currentResponse, true); }
+      if (resultsShown) { offerRerank(d.payload.results); return; } // direct results on screen: offer, don't reshuffle
+      showApertusResults(d.payload.results); if (currentResponse) renderNotes(currentResponse, true);
       renderSummary({ results: d.payload.results }, lastQuery, performance.now() - searchStarted, true);
       setStatus(t("st.ranked", "Ranked by Apertus, also using the other wordings it found."), "by-apertus");
     });
@@ -1255,7 +1288,7 @@ function runSearch(needs) {
   var myRevision = revision;
   closeEvents();
   clearTimeout(fallbackTimer);
-  resultsShown = true; showDirect = null; pendingAssess = [];
+  resultsShown = true; showDirect = null; pendingAssess = []; refining = false; pendingRerank = null;
   shownResults = null; assessShown = {}; noNeed = false; assessFailed = false; noClearMatch = 0; rerankSkipped = false; bestFits = []; hiddenVerdicts = {}; checking = 0; lastSummary = null; lastNotes = null; lastNeedsPayload = null; lastNeedNote = null;
   var started = performance.now();
   searchStarted = started;
@@ -1300,13 +1333,12 @@ function runSearch(needs) {
       flushAssessments();
     };
     if (b.enrichment_state === "pending" && b.results.length) {
+      // The first cards never wait for Apertus (AGENTS.md; first-card target <= 3 s).
       resultsShown = false;
       baseRanks = {};
       b.results.forEach(function (r) { baseRanks[r.entity_id] = r.rank; });
-      waitForApertus();
-      fallbackTimer = setTimeout(function () {
-        if (showDirect) showDirect(t("st.slow", "Apertus is taking longer than usual. These are the direct results; they update if Apertus finishes."));
-      }, 30000);
+      showDirect();
+      showRefining();
       startEnrichment(body, b.request_id, myRevision);
     } else {
       showDirect();
