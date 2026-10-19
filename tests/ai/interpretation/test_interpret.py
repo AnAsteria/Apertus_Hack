@@ -337,3 +337,37 @@ def test_scope_refusal_is_off_by_default(api):
         enrichment.set_outcome_provider(None)
     interp = next(e for e in ev if e.event_type == "interpretation").payload
     assert interp["scope"] == "out_of_scope" and interp["outcome_update"] is None
+
+
+# --- B3 (#128): clarification suggestion for too_broad ---------------------------------
+def _broad(req):
+    r = interpret(req.query, None, [], client=fake_client(MODEL_OUT | {"is_broad": True}))
+    return r
+
+
+@pytest.mark.parametrize("first,expect", [("too_broad", "Which sport?"), ("confident", None), ("low_confidence", None)])
+def test_clarification_suggestion_only_for_too_broad(api, first, expect):
+    enrichment.set_interpreter(_broad, fallback=_quick)
+    enrichment.set_outcome_provider(lambda req: first)
+    body = BODY | {"company_context": None, "needs": [], "query": "medtech partners"}
+    try:
+        api.post("/api/v1/search/req_b/enrichment", json=body)
+        ev = events(api.get("/api/v1/search/req_b/events?revision=1"))
+    finally:
+        enrichment.set_outcome_provider(None)
+    assert next(e for e in ev if e.event_type == "interpretation").payload["clarification_suggestion"] == expect
+
+
+def test_clarification_suggestion_is_discarded_when_stale(api):
+    def broad_then_superseded(req):
+        enrichment.registry.register("req_c", enrichment.SearchRequest(**(BODY | {"revision": 2})))
+        return _broad(req)
+
+    enrichment.set_interpreter(broad_then_superseded, fallback=None)
+    enrichment.set_outcome_provider(lambda req: "too_broad")
+    try:
+        api.post("/api/v1/search/req_c/enrichment", json=BODY | {"company_context": None})
+        ev = events(api.get("/api/v1/search/req_c/events?revision=1"))
+    finally:
+        enrichment.set_outcome_provider(None)
+    assert "interpretation" not in [e.event_type for e in ev] and ev[-1].payload["code"] == "STALE_REVISION"

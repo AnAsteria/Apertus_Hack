@@ -329,14 +329,26 @@ def _stream(request_id: str, req: SearchRequest) -> Iterator[str]:
         # wrongly refused an in-scope development query), `unclear` never does, and a `confident`
         # first response is never downgraded by the model alone.
         payload["outcome_update"] = None
+        payload["clarification_suggestion"] = None
+        first = ...  # computed lazily: one cheap stored-index search, no LLM
+
+        def first_outcome():
+            nonlocal first
+            if first is ...:
+                try:
+                    first = _outcome_provider(req)
+                except Exception:
+                    first = None
+            return first
+
         if SCOPE_REFUSAL and interp.scope == "out_of_scope" and used_model == "primary":
-            try:
-                first = _outcome_provider(req)
-            except Exception:
-                first = None
-            if first in ("low_confidence", "no_evidence"):
+            if first_outcome() in ("low_confidence", "no_evidence"):
                 payload["outcome_update"] = "out_of_scope"
                 out_of_scope = True
+        # B3 (#128), D16: when the fast path said too_broad, offer T18's validated business-language
+        # question as a narrowing suggestion. Generated text: the UI labels it as a suggestion.
+        if interp.clarification and first_outcome() == "too_broad":
+            payload["clarification_suggestion"] = interp.clarification
         yield event("interpretation", payload)
     if out_of_scope:
         yield event("progress", {"stage": "reranked", "state": "skipped", "reason": "out_of_scope"})
