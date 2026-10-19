@@ -91,3 +91,17 @@ def test_verdict_from_an_earlier_search_is_not_exported():
     assert "AI_TEXT_MARKER" not in json.dumps(out)
     assert "from an earlier search" in out["printText"]
     assert "No AI-generated text is included." in out["printText"]
+
+
+def test_new_verdict_for_the_current_request_replaces_an_older_one_and_exports_cited_sentences():
+    out = run("newer")
+    e = out["data"]["entries"][0]
+    a = e["apertus_assessment"]
+    assert e["apertus_assessment_from_earlier_search"] is False
+    assert "AI_TEXT_MARKER" not in json.dumps(out)  # the older verdict is gone
+    # the exact stored sentence Apertus cited, once; an id that is not on the card is left out
+    assert a["cited"] == [{"text": RESULT["evidence"][2]["text"], "url": RESULT["evidence"][2]["url"]}]
+    assert RESULT["evidence"][2]["text"] in out["printText"] and "Cited by Apertus:" in out["printText"]
+    # the server's fixed sentence is not Apertus' own text, and the export says so
+    assert a["explanation_by"].startswith("Bern Match standard sentence")
+    assert "Standard sentence from Bern Match" in out["printText"]

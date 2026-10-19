@@ -128,6 +128,7 @@ button.small[aria-pressed="true"] { background: var(--accent); color: var(--acce
 .card:hover { box-shadow: var(--shadow-hover); }
 .more-quotes { margin-top: .5rem; font-size: .88rem; }
 .more-quotes > summary { cursor: pointer; color: var(--accent); width: fit-content; }
+.more-values > summary { cursor: pointer; color: var(--accent); width: fit-content; font-size: .88rem; }
 .evidence .src { font-weight: 600; text-decoration: none; }
 .evidence .src:hover { text-decoration: underline; }
 .card.src-unibe { border-left-color: var(--unibe); } .card.src-artorg { border-left-color: var(--artorg); } .card.src-dcb { border-left-color: var(--dcb); }

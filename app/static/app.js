@@ -184,6 +184,7 @@ function renderEvidence(ev) {
 }
 
 // Only fields that have supported values are shown; empty ones are simply left out.
+var FIELD_VALUES_SHOWN = 2; // a field with up to 3 values shows them all
 function renderFields(fields, card) {
   var dl = el("dl", "fields");
   Object.keys(FIELD_LABELS).forEach(function (k) {
@@ -191,7 +192,15 @@ function renderFields(fields, card) {
     if (!vals.length) return;
     dl.appendChild(el("dt", null, fieldLabel(k)));
     var dd = el("dd");
-    vals.forEach(function (v) { dd.appendChild(el("div", null, v.value)); });
+    // Long lists fold after 2 values, so one card never fills a phone screen (round 4, 2617 px card).
+    var shown = vals.length > FIELD_VALUES_SHOWN + 1 ? FIELD_VALUES_SHOWN : vals.length;
+    vals.slice(0, shown).forEach(function (v) { dd.appendChild(el("div", null, v.value)); });
+    if (vals.length > shown) {
+      var more = el("details", "more-values");
+      more.appendChild(el("summary", null, t("card.moreValues", "{n} more", { n: vals.length - shown })));
+      vals.slice(shown).forEach(function (v) { more.appendChild(el("div", null, v.value)); });
+      dd.appendChild(more);
+    }
     dl.appendChild(dd);
   });
   if (dl.childNodes.length) card.appendChild(dl);
@@ -322,6 +331,20 @@ function renderShortlist() {
   document.getElementById("sl-json").disabled = !slOrder.length;
 }
 
+// The exact stored sentences Apertus cited, taken from the card's own evidence (same sentence id).
+// A cited sentence that is not on the card is left out rather than fetched or guessed.
+function citedSentences(a, r) {
+  var byId = {}, out = [], seen = {};
+  (r.evidence || []).forEach(function (e) { if (e.sentence_id) byId[e.sentence_id] = e; });
+  (a.need_coverage || []).forEach(function (c) {
+    (c.evidence || []).forEach(function (x) {
+      var e = byId[x.sentence_id];
+      if (e && !seen[x.sentence_id]) { seen[x.sentence_id] = true; out.push({ text: e.text, url: e.url }); }
+    });
+  });
+  return out;
+}
+
 // Built from the stored card payload only: names, supported fields, exact quotes, URLs, dates.
 // Apertus' assessments only with the analyst's opt-in, labelled as AI text. The request text only with opt-in.
 function exportData() {
@@ -345,6 +368,8 @@ function exportData() {
              // No contact data in the index: the next step is the source page itself.
              start_from: hasContact ? null : r.evidence[0].url,
              apertus_assessment: a ? { category: a.category, explanation: a.explanation, generated_by: "Apertus v1.5 8B",
+                                       explanation_by: isStandardSentence(a.explanation) ? "Bern Match standard sentence (Apertus text replaced)" : "Apertus v1.5 8B",
+                                       cited: citedSentences(a, r),
                                        ai_generated: true, is_source_fact: false } : null,
              apertus_assessment_from_earlier_search: !!older };
   });
@@ -396,6 +421,14 @@ function buildPrintView(data) {
       ai.appendChild(el("h3", null, t("as.head", "AI-generated assessment (Apertus), not source text")));
       var cat = e.apertus_assessment.category;
       ai.appendChild(el("p", null, (CATEGORY_LABELS[cat] ? t("cat." + cat, CATEGORY_LABELS[cat]) : cat) + ": " + e.apertus_assessment.explanation));
+      if (isStandardSentence(e.apertus_assessment.explanation))
+        ai.appendChild(el("p", "meta", t("as.standard", "Standard sentence from Bern Match: Apertus' own text was empty or named details that are not in the source.")));
+      (e.apertus_assessment.cited || []).forEach(function (c) {
+        var q = el("blockquote", "pv-quote");
+        q.appendChild(el("p", null, "“" + c.text + "”"));
+        q.appendChild(el("p", "meta", t("pv.cited", "Cited by Apertus:") + " " + c.url));
+        ai.appendChild(q);
+      });
       s.appendChild(ai);
     }
     if (e.analyst_note) {
@@ -608,6 +641,24 @@ var OUTCOME_TEXT = {
   no_evidence: ["Nothing found", "The indexed corpus has no supported evidence for this request."]
 };
 
+// A request that looks like a person's name ("Stefan Weber"), or any short request with type Person.
+function looksLikeName(q) {
+  var words = String(q || "").trim().split(/\s+/);
+  if (words.length < 1 || words.length > 3) return false;
+  if (selectedType === "person") return words.every(function (w) { return /^\p{L}[\p{L}'.-]*$/u.test(w); });
+  return words.length >= 2 && words.every(function (w) { return /^\p{Lu}[\p{L}'-]+$/u.test(w); });
+}
+function plain(s) { return String(s || "").normalize("NFD").replace(/\p{M}/gu, "").toLowerCase(); }
+// True when no card on screen carries every word of a name-like request in its name (round 5, q04).
+// Without the Person type, only when most cards are people (so "Machine Learning" never counts as a name).
+function nameMissing(q, results) {
+  if (!looksLikeName(q) || !results || !results.length) return false;
+  var people = results.filter(function (r) { return r.entity_type === "person"; }).length;
+  if (selectedType !== "person" && people * 2 <= results.length) return false;
+  var words = plain(q).split(/\s+/).filter(function (w) { return w.length > 1; });
+  return !results.some(function (r) { var n = plain(r.display_name); return words.every(function (w) { return n.indexOf(w) >= 0; }); });
+}
+
 function renderOutcome(b, byApertus) {
   var box = document.getElementById("outcome");
   clearNode(box);
@@ -618,6 +669,9 @@ function renderOutcome(b, byApertus) {
   // Apertus checked the cards and found none that clearly matches: that comes first.
   if (noClearMatch)
     info = [t("out.noClear", "No clear match"), t("out.noClear.text", "Apertus checked {n} of these cards and rated none a clear match. Check the quotes before using any of them.", { n: noClearMatch })];
+  var nameLine = nameMissing(lastQuery, shownResults || b.results)
+    ? t("out.noName.text", "No card here is named “{q}”. The person may not be on the indexed pages.", { q: lastQuery }) : "";
+  if (nameLine) info = info ? [info[0], nameLine + " " + info[1]] : [t("out.noName", "Name not found"), nameLine];
   if (!info) { box.hidden = true; return; }
   box.hidden = false;
   box.appendChild(el("h2", null, info[0]));
@@ -708,7 +762,9 @@ var noNeed = false;       // Apertus found no research need: its card verdicts a
 var assessFailed = false; // only the assessment stage failed; interpretation and ranking still stand
 var noClearMatch = 0;     // > 0: Apertus checked this many cards and rated none a clear match
 var rerankSkipped = false; // Apertus' wordings were NOT used for the ranking (skipped or failed)
-var bestFits = [];        // [entity_id, name] of cards Apertus rated a match, when card 1 is not one
+var bestFits = [];        // [entity_id, name] of cards Apertus rated a direct match (other than card 1)
+var hiddenVerdicts = {};  // entity_id -> category, when verdicts are not shown (no need found)
+var checking = 0;         // > 0: Apertus is assessing this many cards right now
 var lastSummary = null, lastNotes = null, lastNeedsPayload = null, lastNeedNote = null, lastStatus = null;
 
 // The static page: every element tagged data-i18n* in index.html (English kept as the default).
@@ -887,6 +943,7 @@ function renderNeeds(payload) {
     });
     box.appendChild(fits);
   }
+  if (checking && !noNeed) box.appendChild(el("p", "meta busy", t("ai.checking", "Apertus is checking {n} cards…", { n: checking })));
   if (assessFailed && !noNeed) box.appendChild(el("p", "meta", t("ai.assessFail", "Apertus could not finish its card assessments this time.")));
   var refine = el("details", "refine");
   refine.open = refineOpen;
@@ -971,9 +1028,23 @@ var CATEGORY_LABELS = { direct_match: "Direct match", related_capability: "Relat
                         insufficient_evidence: "Insufficient evidence" };
 var SUPPORT_LABELS = { supported: "supported", partial: "partly supported", none: "not supported" };
 
+// The server's fixed replacements (app/ai/assess.py) when Apertus' own text was empty or named
+// contacts/numbers that the cited evidence does not contain. Not Apertus' words, so labelled.
+var STANDARD_SENTENCES = {
+  "The cited evidence describes work matching at least one need.": 1,
+  "The cited evidence describes related work; fit needs confirmation.": 1,
+  "Evidence for the requested capability was not found in the indexed sources.": 1
+};
+function isStandardSentence(text) { return !!STANDARD_SENTENCES[String(text || "").trim()]; }
+
 function renderAssessment(a) {
-  if (noNeed) return; // a verdict without a recognised need can be badly wrong (jury round 1, q09)
+  // A verdict without a recognised need can be badly wrong (jury round 1, q09): not shown, only
+  // counted, so "none of these fit" can still be said (round 5, junk requests).
+  if (noNeed) { hiddenVerdicts[a.entity_id] = a.category; return; }
   if (!resultsShown) { pendingAssess.push(a); return; } // shown with the cards once they appear
+  // A selected entry always keeps the verdict written for the current request (export checks the request).
+  var sl = shortlist[a.entity_id];
+  if (sl) { sl.assessment = a; sl.assessedFor = lastQuery; }
   var card = document.querySelector('.card[data-entity="' + String(a.entity_id).replace(/"/g, "") + '"]');
   if (!card) return; // assessment for a card that is not on screen: ignore
   var old = card.querySelector(".assessment");
@@ -987,6 +1058,8 @@ function renderAssessment(a) {
   cat.appendChild(el("span", "badge cat-" + a.category, CATEGORY_LABELS[a.category] ? t("cat." + a.category, CATEGORY_LABELS[a.category]) : a.category));
   cat.appendChild(document.createTextNode(" " + a.explanation));
   box.appendChild(cat);
+  if (isStandardSentence(a.explanation))
+    box.appendChild(el("p", "meta", t("as.standard", "Standard sentence from Bern Match: Apertus' own text was empty or named details that are not in the source.")));
   if (a.need_coverage && a.need_coverage.length) {
     var ul = el("ul", "needlist");
     a.need_coverage.forEach(function (c) {
@@ -1015,9 +1088,6 @@ function renderAssessment(a) {
   var tags = card.querySelector(".tags");
   if (tags && tags.nextSibling) card.insertBefore(box, tags.nextSibling); else card.appendChild(box);
   assessShown[a.entity_id] = a;
-  // Selected before Apertus finished: keep the verdict, but never replace one written for another request.
-  var sl = shortlist[a.entity_id];
-  if (sl && (!sl.assessment || sl.assessedFor === lastQuery)) { sl.assessment = a; sl.assessedFor = lastQuery; }
   card.classList.remove("flash");
   void card.offsetWidth; // restart the highlight animation
   card.classList.add("flash");
@@ -1074,16 +1144,27 @@ function showApertusResults(results) {
 }
 
 // After the last assessment: if every card Apertus checked is "insufficient evidence", say so above the cards.
+function stopChecking() {
+  if (!checking) return;
+  checking = 0;
+  if (lastNeedsPayload) renderNeeds(lastNeedsPayload);
+}
+
 function checkClearMatch() {
-  var ids = Object.keys(assessShown);
-  var none = !noNeed && ids.length > 0 && ids.every(function (id) { return assessShown[id].category === "insufficient_evidence"; });
+  // With no need found the verdicts stay hidden, but "none of these fit" is still safe to say (round 5, junk).
+  var cats = {};
+  if (noNeed) cats = hiddenVerdicts;
+  else Object.keys(assessShown).forEach(function (id) { cats[id] = assessShown[id].category; });
+  var ids = Object.keys(cats);
+  var none = ids.length > 0 && ids.every(function (id) { return cats[id] === "insufficient_evidence"; });
   noClearMatch = none ? ids.length : 0;
   if (noClearMatch && lastNotes) renderOutcome.apply(null, lastNotes);
   // A match that is not card 1 is easy to miss: name up to 3 of them in Apertus' panel.
   // Only "Direct match" counts: a "related" card 1 used to hide a direct match at card 6 (round 3).
   var isDirect = function (id) { var a = assessShown[id]; return a && a.category === "direct_match"; };
-  bestFits = noNeed || !shownResults || !shownResults.length || isDirect(shownResults[0].entity_id) ? []
-    : shownResults.filter(function (r) { return isDirect(r.entity_id); }).slice(0, 3).map(function (r) { return [r.entity_id, r.display_name]; });
+  // Card 1 is read anyway; a direct match further down is named even when card 1 is one too (round 5, q08).
+  bestFits = noNeed || !shownResults || !shownResults.length ? []
+    : shownResults.slice(1).filter(function (r) { return isDirect(r.entity_id); }).slice(0, 3).map(function (r) { return [r.entity_id, r.display_name]; });
   if (bestFits.length && lastNeedsPayload) renderNeeds(lastNeedsPayload);
 }
 
@@ -1130,6 +1211,9 @@ function startEnrichment(body, requestId, myRevision) {
     });
     es.addEventListener("progress", function (e) {
       var d = parse(e);
+      if (d && d.payload.stage === "assessment" && d.payload.state === "started" && d.payload.candidates) {
+        checking = d.payload.candidates; if (lastNeedsPayload) renderNeeds(lastNeedsPayload);
+      }
       if (d && d.payload.stage === "reranked" && d.payload.state === "skipped") {
         rerankSkipped = true; if (lastNeedsPayload) renderNeeds(lastNeedsPayload);
       }
@@ -1140,19 +1224,20 @@ function startEnrichment(body, requestId, myRevision) {
       var d = parse(e);
       if (d) renderAssessment(d.payload);
     });
-    es.addEventListener("complete", function () { fallback(""); checkClearMatch(); closeEvents(); });
+    es.addEventListener("complete", function () { stopChecking(); fallback(""); checkClearMatch(); closeEvents(); });
     es.addEventListener("error", function (e) {
       if (e.data) {
         var d = parse(e);
         if (d && d.payload.stage === "reranked") { rerankSkipped = true; if (lastNeedsPayload) renderNeeds(lastNeedsPayload); fallback(t("st.rerankFail", "Apertus could not re-rank this time. These are the direct results.")); return; } // the stream goes on with assessments
         if (d && d.payload.stage === "assessment") {
           // Only the card assessments failed: keep Apertus' reading of the request and its ranking on screen.
-          assessFailed = true;
+          assessFailed = true; checking = 0;
           if (lastNeedsPayload) renderNeeds(lastNeedsPayload); else needNote(t("ai.assessFail", "Apertus could not finish its card assessments this time."));
           fallback(""); checkClearMatch(); closeEvents(); return;
         }
         if (d && d.payload.code !== "STALE_REVISION") needNote(t("st.aiDown", "AI interpretation is unavailable. The direct results below are unaffected."));
       }
+      stopChecking();
       fallback("");
       closeEvents(); // no replay: the analyst can search again
     });
@@ -1171,7 +1256,7 @@ function runSearch(needs) {
   closeEvents();
   clearTimeout(fallbackTimer);
   resultsShown = true; showDirect = null; pendingAssess = [];
-  shownResults = null; assessShown = {}; noNeed = false; assessFailed = false; noClearMatch = 0; rerankSkipped = false; bestFits = []; lastSummary = null; lastNotes = null; lastNeedsPayload = null; lastNeedNote = null;
+  shownResults = null; assessShown = {}; noNeed = false; assessFailed = false; noClearMatch = 0; rerankSkipped = false; bestFits = []; hiddenVerdicts = {}; checking = 0; lastSummary = null; lastNotes = null; lastNeedsPayload = null; lastNeedNote = null;
   var started = performance.now();
   searchStarted = started;
   document.body.classList.add("searched");
