@@ -14,7 +14,7 @@ from app.contracts import (Document,Version,Sentence,Passage,Entity,Claim,Eviden
 from app.search.build import build_index
 from app.search.backend import HybridBackend,freshness
 from app.search.encoder import normalize
-from app.search.ranking import entity_max,reciprocal_rank_fusion,diversify,non_entity_page
+from app.search.ranking import entity_max,reciprocal_rank_fusion,diversify,non_entity_page,not_an_actor
 from app.search.analysis import analyze,query_terms,match_expression
 from app.storage.indexes import current_generation
 
@@ -116,7 +116,30 @@ def test_listing_pages_are_recognised_without_hiding_entities():
     assert not non_entity_page('Prevention research group',['https://example.invalid/research/prevention'])
 
 
-def test_demoted_listing_page_ranks_below_entity_page(tmp_path):
+def test_news_and_navigation_pages_are_not_contact_cards():
+    # Titles and URLs from live development top 10s (19 Oct): news posts, fact sheets, menus.
+    dcb = 'https://www.dcberne.com/en/dcb-innovation-challenge-meet-the-top-20-diabetes-devices/'
+    assert not_an_actor('DCB Innovation Challenge: Meet the Top 20 Diabetes Devices!', 'unit', [dcb])
+    assert not_an_actor('New hope for cancer-related fatigue', 'unit',
+                        ['https://www.ikim.unibe.ch/research/factsheets/new_hope_for_cancer_related_fatigue/index_eng.htm'])
+    assert not_an_actor('About us', 'unit', ['https://www.artorg.unibe.ch/ueber_uns/index_ger.html'])
+    assert not_an_actor('Research - Faculty of Medicine', 'unit', ['https://www.medizin.unibe.ch/forschung/index_ger.html'])
+    assert not_an_actor('IML | Alle', 'unit', ['https://www.iml.unibe.ch/themen/kategorien/alle'])
+    # Groups, labs, clinics, platforms, projects and people stay, whatever page they came from.
+    news = ['https://www.example.invalid/news/x']
+    for name, kind in [('Rottenberg Lab', 'unit'), ('Research Group: Cancer', 'unit'),
+                       ('Universitätsklinik für Hämatologie und Hämatologische Zentrallabor', 'unit'),
+                       ('Next Generation Sequencing (NGS) Platform', 'infrastructure'),
+                       ('SPN-005 – Pilotstudie zur schmerzfreien Blutzuckermessung', 'project')]:
+        assert not not_an_actor(name, kind, news), name
+    assert not not_an_actor('Airway and Resistome Microbiology - Markus Hilty', 'unit',
+                            ['https://www.ifik.unibe.ch/forschung/airway_and_resistome_microbiology____markus_hilty/index_ger.html'])
+    assert not not_an_actor('Cancer Therapy Resistance - CTR', 'unit', ['https://www.dbmr.unibe.ch/research/research_programs/index_eng.html'])
+    assert not not_an_actor('Daniel Ahmed, Prof. Dr.', 'person', [dcb])
+
+
+def test_demoted_listing_page_ranks_below_entity_page(tmp_path, monkeypatch):
+    monkeypatch.setenv('BERNMATCH_ACTORS_ONLY','0')  # the demotion itself; the default drops it (below)
     encoder=FixtureEncoder(tmp_path/'model')
     records=[record('news',text='Laser laser instruments, laser instruments.',eid='ent_anews'),
              record('lab',text='Laser precision instruments laboratory.',eid='ent_zlab')]
@@ -125,6 +148,9 @@ def test_demoted_listing_page_ranks_below_entity_page(tmp_path):
     response=HybridBackend(current_generation(data)[0],encoder=encoder).search(req('laser instruments'))
     assert [r.entity_id for r in response.results]==['ent_zlab','ent_anews']
     assert response.results[1].retrieval['demoted_listing_page'] is True
+    monkeypatch.setenv('BERNMATCH_ACTORS_ONLY','1')
+    response=HybridBackend(current_generation(data)[0],encoder=encoder).search(req('laser instruments'))
+    assert [r.entity_id for r in response.results]==['ent_zlab']  # a news page is not a contact card
 
 
 def test_query_level_dense_abstention(built):
