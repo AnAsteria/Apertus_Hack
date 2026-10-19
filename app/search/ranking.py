@@ -78,6 +78,26 @@ def not_an_actor(name, entity_type, urls):
     return entity_type != 'project' and len(words) >= 5 and sum(w.casefold() in FUNCTION_WORDS for w in words) >= 2
 
 
+def relevance_cut(results, gap, keep_min=3):
+    """Drop trailing cards whose meaning similarity is clearly below the best card's.
+
+    `results` are card dicts in rank order with `retrieval.dense` (cosine, E5). A card stays if its
+    dense score is within `gap` of the best card in the list; at least `keep_min` cards stay.
+    Chosen on the development split with T37-style ratings (#88): gap 0.02 kept Recall@10 at 0.824 and
+    cut the cards per query from 9.8 to 4.4, but on the evaluation split (checked once) it lost 2 of 17
+    answers, so the API only flags these cards (`retrieval.weaker_match`). gap <= 0 disables it."""
+    if gap <= 0 or len(results) <= keep_min:
+        return results
+    scores = [(r.get('retrieval') or {}).get('dense') for r in results]
+    if any(s is None for s in scores[:keep_min]) or all(s is None for s in scores):
+        return results
+    top = max(s for s in scores if s is not None)
+    kept = [r for r, s in zip(results, scores) if s is not None and s >= top - gap]
+    if len(kept) < keep_min:
+        kept = results[:keep_min]
+    return [r | {'rank': i} for i, r in enumerate(kept, 1)]
+
+
 def entity_max(scores, entries, allowed):
     best = {}
     for index,score in scores:
