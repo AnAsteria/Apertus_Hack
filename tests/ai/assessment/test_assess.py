@@ -327,3 +327,39 @@ def test_evidence_selection_is_opt_in(monkeypatch):
     c2 = fake([verdict(1, "insufficient_evidence", [])])
     assess("needle-free glucose", NEEDS, [many], client=c2)
     assert "through the skin" in c2.calls[0]["messages"][1]["content"]
+
+
+# --- B1 follow-up: a straggling batch cannot hold the stream ----------------------------
+def test_straggling_batch_is_dropped_after_the_grace_period(monkeypatch):
+    import threading, time as _t
+    monkeypatch.setattr("app.ai.assess.BATCH_SIZE", 1)
+    monkeypatch.setattr("app.ai.assess.STRAGGLER_MIN_S", 0.2)
+    monkeypatch.setattr("app.ai.assess.STRAGGLER_FACTOR", 3)
+    calls = []
+    lock = threading.Lock()
+
+    def handler(req):
+        with lock:
+            calls.append(1); n = len(calls)
+        if n == 1:
+            _t.sleep(1.5)  # the straggler
+        body = {"assessments": [verdict(1, "insufficient_evidence", [])]}
+        return httpx.Response(200, json={"choices": [{"message": {"content": json.dumps(body)}}],
+                                         "usage": {"prompt_tokens": 1, "completion_tokens": 1}})
+
+    c = ApertusClient(InferenceConfig(base_url="https://fake.test/v1", api_key="k", max_retries=0, max_concurrency=4),
+                      transport=httpx.MockTransport(handler), sleep=lambda s: None)
+    seen = []
+    t0 = _t.perf_counter()
+    out, stats = assess("topic", NEEDS, [card(i, f"Sentence {i}.") for i in range(1, 4)], client=c, on_result=seen.append)
+    elapsed = _t.perf_counter() - t0
+    assert elapsed < 1.0 and len(out) == 2 and stats.corrections == {"batch_timeout": 1}
+    _t.sleep(1.6)  # let the straggler finish: it must not publish late
+    assert len(seen) == 2 and len(out) == 2
+
+
+def test_all_batches_on_time_have_no_timeout(monkeypatch):
+    monkeypatch.setattr("app.ai.assess.BATCH_SIZE", 2)
+    c = fake([verdict(1, "insufficient_evidence", []), verdict(2, "insufficient_evidence", [])])
+    out, stats = assess("topic", NEEDS, [card(i, f"Sentence {i}.") for i in range(1, 5)], client=c)
+    assert len(out) == 4 and "batch_timeout" not in stats.corrections
