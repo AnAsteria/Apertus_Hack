@@ -64,3 +64,44 @@ def test_notes_are_labelled_plain_text_and_facts_are_not_editable():
     assert "No AI-generated text is included." in out["printText"]
     # an entry offers field-visibility checkboxes and the note box only; quotes and facts have no inputs
     assert sorted(set(out["controls"])) == ["INPUT:checkbox", "TEXTAREA:"]
+
+
+def test_apertus_assessment_only_with_opt_in_and_labelled():
+    off = run("no-request")
+    assert "AI_TEXT_MARKER" not in json.dumps(off)
+    assert off["data"]["entries"][0]["apertus_assessment"] is None and off["data"]["includes_ai_text"] is False
+    on = run("with-ai")
+    a = on["data"]["entries"][0]["apertus_assessment"]
+    assert a["ai_generated"] is True and a["is_source_fact"] is False and a["generated_by"].startswith("Apertus")
+    assert "AI_TEXT_MARKER" in on["printText"]
+    assert "AI-generated assessment (Apertus), not source text" in on["printText"]
+    assert "No AI-generated text is included." not in on["printText"]  # the footer must not lie
+    assert "not the person" in on["printText"]
+
+
+def test_no_contact_field_points_to_the_source_page():
+    e = run("no-request")["data"]["entries"][0]
+    assert e["start_from"] == RESULT["evidence"][0]["url"]
+
+
+def test_verdict_from_an_earlier_search_is_not_exported():
+    out = run("older")
+    e = out["data"]["entries"][0]
+    assert e["apertus_assessment"] is None and e["apertus_assessment_from_earlier_search"] is True
+    assert "AI_TEXT_MARKER" not in json.dumps(out)
+    assert "from an earlier search" in out["printText"]
+    assert "No AI-generated text is included." in out["printText"]
+
+
+def test_new_verdict_for_the_current_request_replaces_an_older_one_and_exports_cited_sentences():
+    out = run("newer")
+    e = out["data"]["entries"][0]
+    a = e["apertus_assessment"]
+    assert e["apertus_assessment_from_earlier_search"] is False
+    assert "AI_TEXT_MARKER" not in json.dumps(out)  # the older verdict is gone
+    # the exact stored sentence Apertus cited, once; an id that is not on the card is left out
+    assert a["cited"] == [{"text": RESULT["evidence"][2]["text"], "url": RESULT["evidence"][2]["url"]}]
+    assert RESULT["evidence"][2]["text"] in out["printText"] and "Cited by Apertus:" in out["printText"]
+    # the server's fixed sentence is not Apertus' own text, and the export says so
+    assert a["explanation_by"].startswith("Bern Match standard sentence")
+    assert "Standard sentence from Bern Match" in out["printText"]

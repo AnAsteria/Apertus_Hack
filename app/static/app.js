@@ -39,7 +39,14 @@ function el(tag, cls, text) {
 }
 
 function dateLine(label, value) {
-  return label + ": " + (value ? value : t("unknown", "unknown"));
+  return label + ": " + (value ? (shortDate(value) || value) : t("unknown", "unknown"));
+}
+
+// Same quotes, but ones like "." or "Q" after the real sentences (stable: the rest keeps its order).
+function quoteOrder(list) {
+  var words = function (e) { return ((e.text || "").match(/\p{L}/gu) || []).length >= 2 ? 0 : 1; };
+  return list.map(function (e, i) { return [e, i]; })
+    .sort(function (x, y) { return words(x[0]) - words(y[0]) || x[1] - y[1]; }).map(function (x) { return x[0]; });
 }
 
 var queryTerms = [];       // words of the current query, for highlighting evidence
@@ -177,6 +184,7 @@ function renderEvidence(ev) {
 }
 
 // Only fields that have supported values are shown; empty ones are simply left out.
+var FIELD_VALUES_SHOWN = 2; // a field with up to 3 values shows them all
 function renderFields(fields, card) {
   var dl = el("dl", "fields");
   Object.keys(FIELD_LABELS).forEach(function (k) {
@@ -184,7 +192,15 @@ function renderFields(fields, card) {
     if (!vals.length) return;
     dl.appendChild(el("dt", null, fieldLabel(k)));
     var dd = el("dd");
-    vals.forEach(function (v) { dd.appendChild(el("div", null, v.value)); });
+    // Long lists fold after 2 values, so one card never fills a phone screen (round 4, 2617 px card).
+    var shown = vals.length > FIELD_VALUES_SHOWN + 1 ? FIELD_VALUES_SHOWN : vals.length;
+    vals.slice(0, shown).forEach(function (v) { dd.appendChild(el("div", null, v.value)); });
+    if (vals.length > shown) {
+      var more = el("details", "more-values");
+      more.appendChild(el("summary", null, t("card.moreValues", "{n} more", { n: vals.length - shown })));
+      vals.slice(shown).forEach(function (v) { more.appendChild(el("div", null, v.value)); });
+      dd.appendChild(more);
+    }
     dl.appendChild(dd);
   });
   if (dl.childNodes.length) card.appendChild(dl);
@@ -211,7 +227,9 @@ function setShortlist(r, state, card) {
   if (cur && cur.state === state) { delete shortlist[r.entity_id]; }
   else {
     shortlist[r.entity_id] = { name: r.display_name, state: state, result: r,
-                               note: cur ? cur.note : "", hidden: cur ? cur.hidden : {} };
+                               note: cur ? cur.note : "", hidden: cur ? cur.hidden : {},
+                               assessment: (!noNeed && assessShown[r.entity_id]) || (cur && cur.assessment) || null,
+                               assessedFor: (!noNeed && assessShown[r.entity_id]) ? lastQuery : (cur ? cur.assessedFor : null) };
     sendFeedback(r, state);
   }
   slOrder = slOrder.filter(function (id) { return shortlist[id] && shortlist[id].state === "select" && id !== r.entity_id; });
@@ -313,26 +331,52 @@ function renderShortlist() {
   document.getElementById("sl-json").disabled = !slOrder.length;
 }
 
+// The exact stored sentences Apertus cited, taken from the card's own evidence (same sentence id).
+// A cited sentence that is not on the card is left out rather than fetched or guessed.
+function citedSentences(a, r) {
+  var byId = {}, out = [], seen = {};
+  (r.evidence || []).forEach(function (e) { if (e.sentence_id) byId[e.sentence_id] = e; });
+  (a.need_coverage || []).forEach(function (c) {
+    (c.evidence || []).forEach(function (x) {
+      var e = byId[x.sentence_id];
+      if (e && !seen[x.sentence_id]) { seen[x.sentence_id] = true; out.push({ text: e.text, url: e.url }); }
+    });
+  });
+  return out;
+}
+
 // Built from the stored card payload only: names, supported fields, exact quotes, URLs, dates.
-// AI-generated assessments are never included. The request text only with the analyst's opt-in.
+// Apertus' assessments only with the analyst's opt-in, labelled as AI text. The request text only with opt-in.
 function exportData() {
   var withRequest = document.getElementById("sl-include-request").checked;
+  var withAi = !!document.getElementById("sl-include-ai").checked;
   var fetched = [];
   var entries = slOrder.map(function (id) {
     var item = shortlist[id], r = item.result;
     var fields = {};
     supportedFields(r).forEach(function (k) { if (!item.hidden[k]) fields[k] = r.fields[k].map(function (v) { return v.value; }); });
-    var quotes = r.evidence.slice(0, 2).map(function (e) {
+    var quotes = quoteOrder(r.evidence).slice(0, 2).map(function (e) {
       if (e.fetched_at) fetched.push(e.fetched_at);
       return { text: e.text, url: e.url, content_date: e.content_date, last_modified: e.last_modified, fetched_at: e.fetched_at };
     });
+    var a = withAi && item.assessment && item.assessedFor === lastQuery ? item.assessment : null;
+    var older = withAi && item.assessment && item.assessedFor !== lastQuery;
+    // From the card itself, not from what the analyst chose to show in the export.
+    var hasContact = ["official_contact", "contact"].some(function (k) { return r.fields && r.fields[k] && r.fields[k].length; });
     return { entity_id: r.entity_id, name: r.display_name, type: r.entity_type, source: sourceOf(r.evidence[0].url).label,
-             fields: fields, evidence: quotes, analyst_note: item.note.trim() || null };
+             fields: fields, evidence: quotes, analyst_note: item.note.trim() || null,
+             // No contact data in the index: the next step is the source page itself.
+             start_from: hasContact ? null : r.evidence[0].url,
+             apertus_assessment: a ? { category: a.category, explanation: a.explanation, generated_by: "Apertus v1.5 8B",
+                                       explanation_by: isStandardSentence(a.explanation) ? "Bern Match standard sentence (Apertus text replaced)" : "Apertus v1.5 8B",
+                                       cited: citedSentences(a, r),
+                                       ai_generated: true, is_source_fact: false } : null,
+             apertus_assessment_from_earlier_search: !!older };
   });
   fetched.sort();
   return { title: t("pv.title", "Bern Match shortlist"), exported_at: new Date().toISOString(), request: withRequest ? lastQuery : null,
            analyst_note: listNote.trim() || null, fetched_from: fetched[0] || null, fetched_to: fetched[fetched.length - 1] || null,
-           entries: entries };
+           includes_ai_text: entries.some(function (e) { return e.apertus_assessment; }), entries: entries };
 }
 
 function buildPrintView(data) {
@@ -369,6 +413,24 @@ function buildPrintView(data) {
       b.appendChild(el("p", "meta", dateLine(t("date.content", "Source content date"), q.content_date) + " | " + dateLine(t("date.modified", "Last modified"), q.last_modified) + " | " + dateLine(t("date.fetched", "Fetched"), q.fetched_at)));
       s.appendChild(b);
     });
+    if (e.start_from) s.appendChild(el("p", "meta", t("pv.startFrom", "No contact data in Bern Match. Start from the source page: {url}", { url: e.start_from })));
+    if (e.apertus_assessment_from_earlier_search)
+      s.appendChild(el("p", "meta", t("pv.aiOlder", "Apertus' assessment is from an earlier search and is not included.")));
+    if (e.apertus_assessment) {
+      var ai = el("div", "pv-ai");
+      ai.appendChild(el("h3", null, t("as.head", "AI-generated assessment (Apertus), not source text")));
+      var cat = e.apertus_assessment.category;
+      ai.appendChild(el("p", null, (CATEGORY_LABELS[cat] ? t("cat." + cat, CATEGORY_LABELS[cat]) : cat) + ": " + e.apertus_assessment.explanation));
+      if (isStandardSentence(e.apertus_assessment.explanation))
+        ai.appendChild(el("p", "meta", t("as.standard", "Standard sentence from Bern Match: Apertus' own text was empty or named details that are not in the source.")));
+      (e.apertus_assessment.cited || []).forEach(function (c) {
+        var q = el("blockquote", "pv-quote");
+        q.appendChild(el("p", null, "“" + c.text + "”"));
+        q.appendChild(el("p", "meta", t("pv.cited", "Cited by Apertus:") + " " + c.url));
+        ai.appendChild(q);
+      });
+      s.appendChild(ai);
+    }
     if (e.analyst_note) {
       var n = el("div", "pv-note");
       n.appendChild(el("h3", null, t("pv.note", "Analyst note (not a source fact)")));
@@ -377,7 +439,11 @@ function buildPrintView(data) {
     }
     view.appendChild(s);
   });
-  view.appendChild(el("p", "meta pv-footer", t("pv.footer", "Facts and quotes come from the public pages named under each quote, as stored in the Bern Match index on the fetch dates shown. " +
+  view.appendChild(el("p", "meta pv-footer", data.includes_ai_text
+    ? t("pv.footerAi", "Facts and quotes come from the public pages named under each quote, as stored in the Bern Match index on the fetch dates shown. " +
+        "Analyst notes are the analyst's own text and are not source facts. Text under \u201cAI-generated assessment (Apertus)\u201d was written by Apertus v1.5 8B: " +
+        "it is not a source fact and judges the match to this request, not the person. Check it against the quotes.")
+    : t("pv.footer", "Facts and quotes come from the public pages named under each quote, as stored in the Bern Match index on the fetch dates shown. " +
     "Analyst notes are the analyst's own text and are not source facts. No AI-generated text is included.")));
 }
 
@@ -478,12 +544,13 @@ function renderCard(r, index) {
   var why = renderWhy(r);
   renderFields(r.fields, card);
   // The best quotes first; the rest fold away so one card never fills the screen.
-  r.evidence.slice(0, QUOTES_SHOWN).forEach(function (ev) { card.appendChild(renderEvidence(ev)); });
+  var quotes = quoteOrder(r.evidence);
+  quotes.slice(0, QUOTES_SHOWN).forEach(function (ev) { card.appendChild(renderEvidence(ev)); });
   if (r.evidence.length > QUOTES_SHOWN) {
     var more = el("details", "more-quotes");
     var n = r.evidence.length - QUOTES_SHOWN;
     more.appendChild(el("summary", null, t(n === 1 ? "card.moreQuote" : "card.moreQuotes", n === 1 ? "Show {n} more quote" : "Show {n} more quotes", { n: n })));
-    r.evidence.slice(QUOTES_SHOWN).forEach(function (ev) { more.appendChild(renderEvidence(ev)); });
+    quotes.slice(QUOTES_SHOWN).forEach(function (ev) { more.appendChild(renderEvidence(ev)); });
     card.appendChild(more);
   }
   if (why) card.appendChild(why);
@@ -555,7 +622,7 @@ function renderSummary(b, query, elapsedMs, byApertus) {
   box.hidden = false;
   var total = b.timing_ms && typeof b.timing_ms.request_total === "number" ? b.timing_ms.request_total : elapsedMs;
   var count = t(b.results.length === 1 ? "sum.result" : "sum.results", b.results.length === 1 ? "{n} result" : "{n} results", { n: b.results.length });
-  box.appendChild(el("span", "pill latency", byApertus ? t("sum.byApertus", "{count}, ranked by Apertus in {s} s", { count: count, s: (elapsedMs / 1000).toFixed(1) })
+  box.appendChild(el("span", "pill latency", byApertus ? t("sum.byApertus", "{count}, ranked by Apertus in {s} s", { count: count, s: (elapsedMs / 1000).toFixed(1).replace(".", uiLang === "fr" ? "," : ".") })
                                                        : t("sum.direct", "{count} in {ms} ms", { count: count, ms: Math.round(total) })));
   var first = b.results[0] && b.results[0].retrieval;
   var ql = first && first.query_language && requestLang(first.query_language);
@@ -570,9 +637,27 @@ function renderSummary(b, query, elapsedMs, byApertus) {
 
 var OUTCOME_TEXT = {
   low_confidence: ["Low confidence", "These results are weak matches. Check the quotes before relying on them."],
-  too_broad: ["Request is too broad", "Many things match. Narrow it down with one of the options below."],
+  too_broad: ["Short or broad request", "These are examples, not a ranked answer. Add what you need it for, or pick an option below."],
   no_evidence: ["Nothing found", "The indexed corpus has no supported evidence for this request."]
 };
+
+// A request that looks like a person's name ("Stefan Weber"), or any short request with type Person.
+function looksLikeName(q) {
+  var words = String(q || "").trim().split(/\s+/);
+  if (words.length < 1 || words.length > 3) return false;
+  if (selectedType === "person") return words.every(function (w) { return /^\p{L}[\p{L}'.-]*$/u.test(w); });
+  return words.length >= 2 && words.every(function (w) { return /^\p{Lu}[\p{L}'-]+$/u.test(w); });
+}
+function plain(s) { return String(s || "").normalize("NFD").replace(/\p{M}/gu, "").toLowerCase(); }
+// True when no card on screen carries every word of a name-like request in its name (round 5, q04).
+// Without the Person type, only when most cards are people (so "Machine Learning" never counts as a name).
+function nameMissing(q, results) {
+  if (!looksLikeName(q) || !results || !results.length) return false;
+  var people = results.filter(function (r) { return r.entity_type === "person"; }).length;
+  if (selectedType !== "person" && people * 2 <= results.length) return false;
+  var words = plain(q).split(/\s+/).filter(function (w) { return w.length > 1; });
+  return !results.some(function (r) { var n = plain(r.display_name); return words.every(function (w) { return n.indexOf(w) >= 0; }); });
+}
 
 function renderOutcome(b, byApertus) {
   var box = document.getElementById("outcome");
@@ -581,14 +666,22 @@ function renderOutcome(b, byApertus) {
   // The outcome was measured on the direct search. Over Apertus' ranking, say exactly that.
   if (byApertus && b.outcome === "low_confidence")
     info = [t("out.weakWording", "Weak match on your exact wording"), t("out.weakWording.text", "The direct search found only weak matches, so Apertus widened it with other wordings. Check the quotes before relying on a result.")];
+  // Apertus checked the cards and found none that clearly matches: that comes first.
+  if (noClearMatch)
+    info = [t("out.noClear", "No clear match"), t("out.noClear.text", "Apertus checked {n} of these cards and rated none a clear match. Check the quotes before using any of them.", { n: noClearMatch })];
+  var nameLine = nameMissing(lastQuery, shownResults || b.results)
+    ? t("out.noName.text", "No card here is named “{q}”. The person may not be on the indexed pages.", { q: lastQuery }) : "";
+  if (nameLine) info = info ? [info[0], nameLine + " " + info[1]] : [t("out.noName", "Name not found"), nameLine];
   if (!info) { box.hidden = true; return; }
   box.hidden = false;
   box.appendChild(el("h2", null, info[0]));
   box.appendChild(el("p", null, info[1]));
   var chips = el("div", "chips");
   var notes = [];
+  var reqLang = guessLanguage(lastQuery || "");
   (b.suggestions || []).forEach(function (s) {
     if (s.kind === "coverage") { notes.push(serverText(s.label)); return; } // information, not an action
+    if (/^Try the request in English or German/.test(s.label) && (reqLang === "EN" || reqLang === "DE")) return; // already is
     chips.appendChild(button(suggestionLabel(s), function () { applySuggestion(s, box); }, "chip"));
   });
   if (chips.firstChild) box.appendChild(chips);
@@ -664,6 +757,14 @@ function setType(value) {
 
 // What is on screen now, so a language switch can redraw it without searching again.
 var shownResults = null, shownMode = "direct", assessShown = {};
+// What Apertus said about the request as a whole (jury round 1).
+var noNeed = false;       // Apertus found no research need: its card verdicts are not shown
+var assessFailed = false; // only the assessment stage failed; interpretation and ranking still stand
+var noClearMatch = 0;     // > 0: Apertus checked this many cards and rated none a clear match
+var rerankSkipped = false; // Apertus' wordings were NOT used for the ranking (skipped or failed)
+var bestFits = [];        // [entity_id, name] of cards Apertus rated a direct match (other than card 1)
+var hiddenVerdicts = {};  // entity_id -> category, when verdicts are not shown (no need found)
+var checking = 0;         // > 0: Apertus is assessing this many cards right now
 var lastSummary = null, lastNotes = null, lastNeedsPayload = null, lastNeedNote = null, lastStatus = null;
 
 // The static page: every element tagged data-i18n* in index.html (English kept as the default).
@@ -814,10 +915,14 @@ function renderNeeds(payload) {
   if (payload.synthetic || payload.decoding_mode === "synthetic") box.appendChild(el("p", "synthetic", "SYNTHETIC fixture interpretation: not a real model output."));
   // The headline: the other wordings Apertus searched, so different terms still find the experts.
   if (payload.expanded_queries && payload.expanded_queries.length) {
-    box.appendChild(el("p", "meta", t("ai.also", "Also searched as (the terms researchers use; added to the search, never to your requirements):")));
+    // Only say "searched as" when the ranking really used them; otherwise each one is a new search to try.
+    box.appendChild(el("p", "meta", rerankSkipped
+      ? t("ai.alsoUnused", "Other wordings Apertus suggests. Not used here: the direct ranking was kept. Click one to search with it:")
+      : t("ai.also", "Also searched as (the terms researchers use; added to the search, never to your requirements):")));
     var also = el("div", "also");
     payload.expanded_queries.forEach(function (q) {
-      var chip = el("span", "wording");
+      var chip = el(rerankSkipped ? "button" : "span", "wording");
+      if (rerankSkipped) { chip.type = "button"; chip.addEventListener("click", function () { rerunWith(q.text); }); }
       chip.appendChild(el("span", "lang", q.language));
       chip.appendChild(document.createTextNode(q.text));
       chip.title = t("ai.expands", "expands:") + " " + q.source;
@@ -825,7 +930,21 @@ function renderNeeds(payload) {
     });
     box.appendChild(also);
   }
-  if (payload.clarification) box.appendChild(renderClarification(payload.clarification));
+  var clar = String(payload.clarification || "").trim();
+  if (clar && !/^(null|none|n\/a)$/i.test(clar)) box.appendChild(renderClarification(clar)); // the model sometimes writes "null"
+  if (noNeed) box.appendChild(el("p", "meta", t("ai.noNeed", "Apertus found no research need in this request, so its verdicts on the cards are not shown.")));
+  if (bestFits.length) {
+    var fits = el("p", "meta best-fits", t("ai.bestFits", "Best fits according to Apertus:") + " ");
+    bestFits.forEach(function (f) {
+      fits.appendChild(button(f[1], function () {
+        var c = document.querySelector('.card[data-entity="' + String(f[0]).replace(/"/g, "") + '"]');
+        if (c) { c.scrollIntoView({ behavior: "smooth", block: "start" }); c.setAttribute("tabindex", "-1"); c.focus({ preventScroll: true }); }
+      }, "chip"));
+    });
+    box.appendChild(fits);
+  }
+  if (checking && !noNeed) box.appendChild(el("p", "meta busy", t("ai.checking", "Apertus is checking {n} cards…", { n: checking })));
+  if (assessFailed && !noNeed) box.appendChild(el("p", "meta", t("ai.assessFail", "Apertus could not finish its card assessments this time.")));
   var refine = el("details", "refine");
   refine.open = refineOpen;
   refine.addEventListener("toggle", function () { refineOpen = refine.open; });
@@ -840,18 +959,18 @@ function renderNeeds(payload) {
     input.type = "text"; input.value = n.text; input.maxLength = 300;
     input.addEventListener("input", function () { n.text = input.value; });
     li.appendChild(input);
-    li.appendChild(el("span", "badge", t("kind." + n.kind, n.kind)));
+    li.appendChild(el("span", "badge", kindLabel(n.kind)));
     li.appendChild(button(t("remove", "Remove"), function () { userNeeds.splice(i, 1); renderNeeds(payload); }));
     list.appendChild(li);
   });
   box.appendChild(list);
   if (suggestedNeeds.length) {
-    box.appendChild(el("h3", null, t("ai.suggested", "Suggested by the model (not used until you accept)")));
+    box.appendChild(el("h3", null, t("ai.suggested", "Suggested by Apertus. The card verdicts already use them.")));
     var sl = el("ul", "needlist suggested");
     suggestedNeeds.forEach(function (n, i) {
       var li = el("li");
       li.appendChild(el("span", null, n.text));
-      li.appendChild(el("span", "badge", t("kind." + n.kind, n.kind)));
+      li.appendChild(el("span", "badge", kindLabel(n.kind)));
       li.appendChild(button(t("ai.accept", "Accept"), function () {
         suggestedNeeds.splice(i, 1);
         needCounter += 1;
@@ -877,12 +996,55 @@ function addNeed(text, payload) {
   renderNeeds(payload);
 }
 
+// The sentence Apertus cited, shown under its line with a link to the public page (not the raw API answer).
+function showCited(link, li) {
+  var box = li.querySelector('.cited[data-href="' + link.getAttribute("href").replace(/"/g, "") + '"]');
+  if (box) { box.parentNode.removeChild(box); return; }
+  if (link.dataset.busy) return; // a double click must not add the sentence twice
+  link.dataset.busy = "1";
+  fetch(link.getAttribute("href")).then(function (r) { return r.ok ? r.json() : { gone: r.status === 410 }; })
+    .catch(function () { return {}; }).then(function (d) {
+    delete link.dataset.busy;
+    d = d || {};
+    var q = el("blockquote", "cited");
+    q.dataset.href = link.getAttribute("href");
+    if (!d.text) {
+      q.appendChild(el("p", "meta", d.gone ? t("as.citedGone", "This sentence is no longer available.") : t("as.citedFail", "Could not load this sentence. Try again.")));
+      li.appendChild(q); return;
+    }
+    q.appendChild(el("p", "quote", d.text));
+    if (/^https?:\/\//.test(d.url || "")) {
+      var a = el("a", "meta", sourceOf(d.url).label); a.href = d.url; a.target = "_blank"; a.rel = "noopener noreferrer";
+      q.appendChild(a);
+    }
+    li.appendChild(q);
+  });
+}
+
+var KIND_LABELS = { product: "product", problem: "problem", competency: "competency", entity_type: "type", constraint: "constraint" };
+function kindLabel(k) { return t("kind." + k, KIND_LABELS[k] || k); }
+
 var CATEGORY_LABELS = { direct_match: "Direct match", related_capability: "Related capability",
                         insufficient_evidence: "Insufficient evidence" };
 var SUPPORT_LABELS = { supported: "supported", partial: "partly supported", none: "not supported" };
 
+// The server's fixed replacements (app/ai/assess.py) when Apertus' own text was empty or named
+// contacts/numbers that the cited evidence does not contain. Not Apertus' words, so labelled.
+var STANDARD_SENTENCES = {
+  "The cited evidence describes work matching at least one need.": 1,
+  "The cited evidence describes related work; fit needs confirmation.": 1,
+  "Evidence for the requested capability was not found in the indexed sources.": 1
+};
+function isStandardSentence(text) { return !!STANDARD_SENTENCES[String(text || "").trim()]; }
+
 function renderAssessment(a) {
+  // A verdict without a recognised need can be badly wrong (jury round 1, q09): not shown, only
+  // counted, so "none of these fit" can still be said (round 5, junk requests).
+  if (noNeed) { hiddenVerdicts[a.entity_id] = a.category; return; }
   if (!resultsShown) { pendingAssess.push(a); return; } // shown with the cards once they appear
+  // A selected entry always keeps the verdict written for the current request (export checks the request).
+  var sl = shortlist[a.entity_id];
+  if (sl) { sl.assessment = a; sl.assessedFor = lastQuery; }
   var card = document.querySelector('.card[data-entity="' + String(a.entity_id).replace(/"/g, "") + '"]');
   if (!card) return; // assessment for a card that is not on screen: ignore
   var old = card.querySelector(".assessment");
@@ -896,17 +1058,23 @@ function renderAssessment(a) {
   cat.appendChild(el("span", "badge cat-" + a.category, CATEGORY_LABELS[a.category] ? t("cat." + a.category, CATEGORY_LABELS[a.category]) : a.category));
   cat.appendChild(document.createTextNode(" " + a.explanation));
   box.appendChild(cat);
+  if (isStandardSentence(a.explanation))
+    box.appendChild(el("p", "meta", t("as.standard", "Standard sentence from Bern Match: Apertus' own text was empty or named details that are not in the source.")));
   if (a.need_coverage && a.need_coverage.length) {
     var ul = el("ul", "needlist");
     a.need_coverage.forEach(function (c) {
       // "need_query" is the server's id for the request itself, not a need the analyst wrote.
       var label = c.need_id === "need_query" ? t("as.request", "Your request") : "“" + (needText[c.need_id] || t("as.need", "Your need")) + "”";
       var li = el("li", null, label + ": " + (SUPPORT_LABELS[c.support] ? t("sup." + c.support, SUPPORT_LABELS[c.support]) : c.support));
+      var seen = {};
       (c.evidence || []).forEach(function (e) {
-        if (!e.version_id || !e.sentence_id) return;
-        var link = el("a", null, " [" + t("as.cited", "cited sentence") + "]");
+        if (!e.version_id || !e.sentence_id || seen[e.version_id + "/" + e.sentence_id]) return; // same sentence once
+        seen[e.version_id + "/" + e.sentence_id] = true;
+        var n = Object.keys(seen).length;
+        var link = el("a", null, " [" + t("as.citedN", "source {n}", { n: n }) + "]");
         link.href = "/api/v1/evidence/" + encodeURIComponent(e.version_id) + "/" + encodeURIComponent(e.sentence_id);
-        link.target = "_blank"; link.rel = "noopener noreferrer";
+        link.setAttribute("aria-label", t("as.citedAria", "Show the source sentence Apertus cited ({n})", { n: n }));
+        link.addEventListener("click", function (ev) { ev.preventDefault(); showCited(link, li); });
         li.appendChild(link);
       });
       ul.appendChild(li);
@@ -975,6 +1143,31 @@ function showApertusResults(results) {
   flushAssessments();
 }
 
+// After the last assessment: if every card Apertus checked is "insufficient evidence", say so above the cards.
+function stopChecking() {
+  if (!checking) return;
+  checking = 0;
+  if (lastNeedsPayload) renderNeeds(lastNeedsPayload);
+}
+
+function checkClearMatch() {
+  // With no need found the verdicts stay hidden, but "none of these fit" is still safe to say (round 5, junk).
+  var cats = {};
+  if (noNeed) cats = hiddenVerdicts;
+  else Object.keys(assessShown).forEach(function (id) { cats[id] = assessShown[id].category; });
+  var ids = Object.keys(cats);
+  var none = ids.length > 0 && ids.every(function (id) { return cats[id] === "insufficient_evidence"; });
+  noClearMatch = none ? ids.length : 0;
+  if (noClearMatch && lastNotes) renderOutcome.apply(null, lastNotes);
+  // A match that is not card 1 is easy to miss: name up to 3 of them in Apertus' panel.
+  // Only "Direct match" counts: a "related" card 1 used to hide a direct match at card 6 (round 3).
+  var isDirect = function (id) { var a = assessShown[id]; return a && a.category === "direct_match"; };
+  // Card 1 is read anyway; a direct match further down is named even when card 1 is one too (round 5, q08).
+  bestFits = noNeed || !shownResults || !shownResults.length ? []
+    : shownResults.slice(1).filter(function (r) { return isDirect(r.entity_id); }).slice(0, 3).map(function (r) { return [r.entity_id, r.display_name]; });
+  if (bestFits.length && lastNeedsPayload) renderNeeds(lastNeedsPayload);
+}
+
 function startEnrichment(body, requestId, myRevision) {
   closeEvents();
   needNote("Interpreting your request…");
@@ -1001,7 +1194,11 @@ function startEnrichment(body, requestId, myRevision) {
       }
       suggestedNeeds = d.payload.needs.filter(function (n) { return n.origin === "suggested"; });
       d.payload.needs.forEach(function (n) { needText[n.need_id] = n.text; });
+      noNeed = !d.payload.needs.length && !(d.payload.expanded_queries || []).length;
       renderNeeds(d.payload);
+      // No other wordings means no Apertus ranking will come: show the direct results now, not after ~30 s.
+      if (!(d.payload.expanded_queries || []).length)
+        fallback(t("st.noWordings", "Apertus found no other wordings for this request. These are the direct results."));
     });
     es.addEventListener("reranked", function (e) {
       // T30: validated ranking over the original query plus Apertus expansions replaces the cards.
@@ -1010,10 +1207,16 @@ function startEnrichment(body, requestId, myRevision) {
       if (resultsShown) rerankCards(d.payload.results); // direct results already on screen (fallback)
       else { showApertusResults(d.payload.results); if (currentResponse) renderNotes(currentResponse, true); }
       renderSummary({ results: d.payload.results }, lastQuery, performance.now() - searchStarted, true);
-      setStatus(t("st.ranked", "Ranked by Apertus, using the other wordings listed above."), "by-apertus");
+      setStatus(t("st.ranked", "Ranked by Apertus, also using the other wordings it found."), "by-apertus");
     });
     es.addEventListener("progress", function (e) {
       var d = parse(e);
+      if (d && d.payload.stage === "assessment" && d.payload.state === "started" && d.payload.candidates) {
+        checking = d.payload.candidates; if (lastNeedsPayload) renderNeeds(lastNeedsPayload);
+      }
+      if (d && d.payload.stage === "reranked" && d.payload.state === "skipped") {
+        rerankSkipped = true; if (lastNeedsPayload) renderNeeds(lastNeedsPayload);
+      }
       if (d && d.payload.stage === "reranked" && d.payload.state === "skipped")
         fallback(t("st.kept", "Apertus kept the direct ranking: the request is too broad or the matches are weak."));
     });
@@ -1021,13 +1224,20 @@ function startEnrichment(body, requestId, myRevision) {
       var d = parse(e);
       if (d) renderAssessment(d.payload);
     });
-    es.addEventListener("complete", function () { fallback(""); closeEvents(); });
+    es.addEventListener("complete", function () { stopChecking(); fallback(""); checkClearMatch(); closeEvents(); });
     es.addEventListener("error", function (e) {
       if (e.data) {
         var d = parse(e);
-        if (d && d.payload.stage === "reranked") { fallback(t("st.rerankFail", "Apertus could not re-rank this time. These are the direct results.")); return; } // the stream goes on with assessments
+        if (d && d.payload.stage === "reranked") { rerankSkipped = true; if (lastNeedsPayload) renderNeeds(lastNeedsPayload); fallback(t("st.rerankFail", "Apertus could not re-rank this time. These are the direct results.")); return; } // the stream goes on with assessments
+        if (d && d.payload.stage === "assessment") {
+          // Only the card assessments failed: keep Apertus' reading of the request and its ranking on screen.
+          assessFailed = true; checking = 0;
+          if (lastNeedsPayload) renderNeeds(lastNeedsPayload); else needNote(t("ai.assessFail", "Apertus could not finish its card assessments this time."));
+          fallback(""); checkClearMatch(); closeEvents(); return;
+        }
         if (d && d.payload.code !== "STALE_REVISION") needNote(t("st.aiDown", "AI interpretation is unavailable. The direct results below are unaffected."));
       }
+      stopChecking();
       fallback("");
       closeEvents(); // no replay: the analyst can search again
     });
@@ -1046,7 +1256,7 @@ function runSearch(needs) {
   closeEvents();
   clearTimeout(fallbackTimer);
   resultsShown = true; showDirect = null; pendingAssess = [];
-  shownResults = null; assessShown = {}; lastSummary = null; lastNotes = null; lastNeedsPayload = null; lastNeedNote = null;
+  shownResults = null; assessShown = {}; noNeed = false; assessFailed = false; noClearMatch = 0; rerankSkipped = false; bestFits = []; hiddenVerdicts = {}; checking = 0; lastSummary = null; lastNotes = null; lastNeedsPayload = null; lastNeedNote = null;
   var started = performance.now();
   searchStarted = started;
   document.body.classList.add("searched");
