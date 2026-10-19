@@ -147,3 +147,9 @@ def test_ui_files_always_revalidate():
     for path in ("/", "/style.css", "/app.js"):
         assert client.get(path).headers.get("cache-control") == "no-cache"
     assert 'href="style.css?v=' in _static("index.html")
+
+
+def test_hero_image_is_served_as_webp():
+    from fastapi.testclient import TestClient
+    from app.main import app
+    assert TestClient(app).get("/hero.webp").headers["content-type"] == "image/webp"
