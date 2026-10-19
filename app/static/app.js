@@ -555,7 +555,7 @@ function renderSummary(b, query, elapsedMs, byApertus) {
   box.hidden = false;
   var total = b.timing_ms && typeof b.timing_ms.request_total === "number" ? b.timing_ms.request_total : elapsedMs;
   var count = t(b.results.length === 1 ? "sum.result" : "sum.results", b.results.length === 1 ? "{n} result" : "{n} results", { n: b.results.length });
-  box.appendChild(el("span", "pill latency", byApertus ? t("sum.byApertus", "{count}, ranked by Apertus in {s} s", { count: count, s: (elapsedMs / 1000).toFixed(1) })
+  box.appendChild(el("span", "pill latency", byApertus ? t("sum.byApertus", "{count}, ranked by Apertus in {s} s", { count: count, s: (elapsedMs / 1000).toFixed(1).replace(".", uiLang === "fr" ? "," : ".") })
                                                        : t("sum.direct", "{count} in {ms} ms", { count: count, ms: Math.round(total) })));
   var first = b.results[0] && b.results[0].retrieval;
   var ql = first && first.query_language && requestLang(first.query_language);
@@ -570,7 +570,7 @@ function renderSummary(b, query, elapsedMs, byApertus) {
 
 var OUTCOME_TEXT = {
   low_confidence: ["Low confidence", "These results are weak matches. Check the quotes before relying on them."],
-  too_broad: ["Request is too broad", "Many things match. Narrow it down with one of the options below."],
+  too_broad: ["Short or broad request", "These are examples, not a ranked answer. Add what you need it for, or pick an option below."],
   no_evidence: ["Nothing found", "The indexed corpus has no supported evidence for this request."]
 };
 
@@ -583,7 +583,7 @@ function renderOutcome(b, byApertus) {
     info = [t("out.weakWording", "Weak match on your exact wording"), t("out.weakWording.text", "The direct search found only weak matches, so Apertus widened it with other wordings. Check the quotes before relying on a result.")];
   // Apertus checked the cards and found none that clearly matches: that comes first.
   if (noClearMatch)
-    info = [t("out.noClear", "No clear match"), t("out.noClear.text", "Apertus rated none of these cards a clear match. They are the closest pages found. Check the quotes before using any of them.")];
+    info = [t("out.noClear", "No clear match"), t("out.noClear.text", "Apertus checked {n} of these cards and rated none a clear match. Check the quotes before using any of them.", { n: noClearMatch })];
   if (!info) { box.hidden = true; return; }
   box.hidden = false;
   box.appendChild(el("h2", null, info[0]));
@@ -670,7 +670,9 @@ var shownResults = null, shownMode = "direct", assessShown = {};
 // What Apertus said about the request as a whole (jury round 1).
 var noNeed = false;       // Apertus found no research need: its card verdicts are not shown
 var assessFailed = false; // only the assessment stage failed; interpretation and ranking still stand
-var noClearMatch = false; // every card Apertus checked came back "insufficient evidence"
+var noClearMatch = 0;     // > 0: Apertus checked this many cards and rated none a clear match
+var rerankSkipped = false; // Apertus' wordings were NOT used for the ranking (skipped or failed)
+var bestFits = [];        // [entity_id, name] of cards Apertus rated a match, when card 1 is not one
 var lastSummary = null, lastNotes = null, lastNeedsPayload = null, lastNeedNote = null, lastStatus = null;
 
 // The static page: every element tagged data-i18n* in index.html (English kept as the default).
@@ -821,10 +823,14 @@ function renderNeeds(payload) {
   if (payload.synthetic || payload.decoding_mode === "synthetic") box.appendChild(el("p", "synthetic", "SYNTHETIC fixture interpretation: not a real model output."));
   // The headline: the other wordings Apertus searched, so different terms still find the experts.
   if (payload.expanded_queries && payload.expanded_queries.length) {
-    box.appendChild(el("p", "meta", t("ai.also", "Also searched as (the terms researchers use; added to the search, never to your requirements):")));
+    // Only say "searched as" when the ranking really used them; otherwise each one is a new search to try.
+    box.appendChild(el("p", "meta", rerankSkipped
+      ? t("ai.alsoUnused", "Other wordings Apertus suggests. Not used here: the direct ranking was kept. Click one to search with it:")
+      : t("ai.also", "Also searched as (the terms researchers use; added to the search, never to your requirements):")));
     var also = el("div", "also");
     payload.expanded_queries.forEach(function (q) {
-      var chip = el("span", "wording");
+      var chip = el(rerankSkipped ? "button" : "span", "wording");
+      if (rerankSkipped) { chip.type = "button"; chip.addEventListener("click", function () { rerunWith(q.text); }); }
       chip.appendChild(el("span", "lang", q.language));
       chip.appendChild(document.createTextNode(q.text));
       chip.title = t("ai.expands", "expands:") + " " + q.source;
@@ -835,7 +841,17 @@ function renderNeeds(payload) {
   var clar = String(payload.clarification || "").trim();
   if (clar && !/^(null|none|n\/a)$/i.test(clar)) box.appendChild(renderClarification(clar)); // the model sometimes writes "null"
   if (noNeed) box.appendChild(el("p", "meta", t("ai.noNeed", "Apertus found no research need in this request, so its verdicts on the cards are not shown.")));
-  if (assessFailed) box.appendChild(el("p", "meta", t("ai.assessFail", "Apertus could not finish its card assessments this time.")));
+  if (bestFits.length) {
+    var fits = el("p", "meta best-fits", t("ai.bestFits", "Best fits according to Apertus:") + " ");
+    bestFits.forEach(function (f) {
+      fits.appendChild(button(f[1], function () {
+        var c = document.querySelector('.card[data-entity="' + String(f[0]).replace(/"/g, "") + '"]');
+        if (c) { c.scrollIntoView({ behavior: "smooth", block: "start" }); c.setAttribute("tabindex", "-1"); c.focus({ preventScroll: true }); }
+      }, "chip"));
+    });
+    box.appendChild(fits);
+  }
+  if (assessFailed && !noNeed) box.appendChild(el("p", "meta", t("ai.assessFail", "Apertus could not finish its card assessments this time.")));
   var refine = el("details", "refine");
   refine.open = refineOpen;
   refine.addEventListener("toggle", function () { refineOpen = refine.open; });
@@ -989,8 +1005,16 @@ function showApertusResults(results) {
 // After the last assessment: if every card Apertus checked is "insufficient evidence", say so above the cards.
 function checkClearMatch() {
   var ids = Object.keys(assessShown);
-  noClearMatch = !noNeed && ids.length > 0 && ids.every(function (id) { return assessShown[id].category === "insufficient_evidence"; });
+  var none = !noNeed && ids.length > 0 && ids.every(function (id) { return assessShown[id].category === "insufficient_evidence"; });
+  noClearMatch = none ? ids.length : 0;
   if (noClearMatch && lastNotes) renderOutcome.apply(null, lastNotes);
+  // A match that is not card 1 is easy to miss: name up to 3 of them in Apertus' panel.
+  var isFit = function (id) { var a = assessShown[id]; return a && (a.category === "direct_match" || a.category === "related_capability"); };
+  var order = (shownResults || []).filter(function (r) { return isFit(r.entity_id); });
+  order.sort(function (x, y) { return (assessShown[x.entity_id].category === "direct_match" ? 0 : 1) - (assessShown[y.entity_id].category === "direct_match" ? 0 : 1); });
+  bestFits = noNeed || !shownResults || !shownResults.length || isFit(shownResults[0].entity_id) ? []
+    : order.slice(0, 3).map(function (r) { return [r.entity_id, r.display_name]; });
+  if (bestFits.length && lastNeedsPayload) renderNeeds(lastNeedsPayload);
 }
 
 function startEnrichment(body, requestId, myRevision) {
@@ -1019,7 +1043,7 @@ function startEnrichment(body, requestId, myRevision) {
       }
       suggestedNeeds = d.payload.needs.filter(function (n) { return n.origin === "suggested"; });
       d.payload.needs.forEach(function (n) { needText[n.need_id] = n.text; });
-      noNeed = !d.payload.needs.length;
+      noNeed = !d.payload.needs.length && !(d.payload.expanded_queries || []).length;
       renderNeeds(d.payload);
       // No other wordings means no Apertus ranking will come: show the direct results now, not after ~30 s.
       if (!(d.payload.expanded_queries || []).length)
@@ -1036,6 +1060,9 @@ function startEnrichment(body, requestId, myRevision) {
     });
     es.addEventListener("progress", function (e) {
       var d = parse(e);
+      if (d && d.payload.stage === "reranked" && d.payload.state === "skipped") {
+        rerankSkipped = true; if (lastNeedsPayload) renderNeeds(lastNeedsPayload);
+      }
       if (d && d.payload.stage === "reranked" && d.payload.state === "skipped")
         fallback(t("st.kept", "Apertus kept the direct ranking: the request is too broad or the matches are weak."));
     });
@@ -1047,7 +1074,7 @@ function startEnrichment(body, requestId, myRevision) {
     es.addEventListener("error", function (e) {
       if (e.data) {
         var d = parse(e);
-        if (d && d.payload.stage === "reranked") { fallback(t("st.rerankFail", "Apertus could not re-rank this time. These are the direct results.")); return; } // the stream goes on with assessments
+        if (d && d.payload.stage === "reranked") { rerankSkipped = true; if (lastNeedsPayload) renderNeeds(lastNeedsPayload); fallback(t("st.rerankFail", "Apertus could not re-rank this time. These are the direct results.")); return; } // the stream goes on with assessments
         if (d && d.payload.stage === "assessment") {
           // Only the card assessments failed: keep Apertus' reading of the request and its ranking on screen.
           assessFailed = true;
@@ -1074,7 +1101,7 @@ function runSearch(needs) {
   closeEvents();
   clearTimeout(fallbackTimer);
   resultsShown = true; showDirect = null; pendingAssess = [];
-  shownResults = null; assessShown = {}; noNeed = false; assessFailed = false; noClearMatch = false; lastSummary = null; lastNotes = null; lastNeedsPayload = null; lastNeedNote = null;
+  shownResults = null; assessShown = {}; noNeed = false; assessFailed = false; noClearMatch = 0; rerankSkipped = false; bestFits = []; lastSummary = null; lastNotes = null; lastNeedsPayload = null; lastNeedNote = null;
   var started = performance.now();
   searchStarted = started;
   document.body.classList.add("searched");
