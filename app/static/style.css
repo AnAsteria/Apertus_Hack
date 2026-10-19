@@ -458,3 +458,9 @@ button.primary.add-sl[aria-pressed="true"] { background: var(--text); color: var
 body.sl-open main, body.sl-open .credit { display: none; }
 body.sl-open .drawer.sl-page { position: static; animation: none; overflow: visible; }
 body.sl-open .top { position: sticky; top: 0; z-index: 4; background: var(--bg); }
+/* Traffic-light outcome: green clear match, yellow uncertain, red nothing found */
+.outcome .light { display: inline-block; width: .8rem; height: .8rem; border-radius: 50%; margin-right: .55rem; vertical-align: .05em; }
+.outcome.sig-green { border-top-color: #1f8f3a; } .sig-green .light { background: #1f8f3a; box-shadow: 0 0 0 3px rgba(31, 143, 58, .18); }
+.outcome.sig-yellow { border-top-color: #d9a400; } .sig-yellow .light { background: #e0ac00; box-shadow: 0 0 0 3px rgba(224, 172, 0, .22); }
+.outcome.sig-red { border-top-color: var(--red); } .sig-red .light { background: var(--red); box-shadow: 0 0 0 3px rgba(227, 6, 19, .18); }
+.outcome.sig-green { padding: .7rem 1.25rem; } .outcome.sig-green h2 { font-size: 1.1rem; } .outcome.sig-green p { margin: .1rem 0 0; font-size: .9rem; color: var(--muted); }

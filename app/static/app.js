@@ -772,7 +772,7 @@ var OUTCOME_TEXT = {
 function looksLikeName(q) {
   var words = String(q || "").trim().split(/\s+/);
   if (words.length < 1 || words.length > 3) return false;
-  if (selectedType === "person") return words.every(function (w) { return /^\p{L}[\p{L}'.-]*$/u.test(w); });
+  if (selectedType === "person") return words.every(function (w) { return /^\p{Lu}[\p{L}'.-]*$/u.test(w); });
   return words.length >= 2 && words.every(function (w) { return /^\p{Lu}[\p{L}'-]+$/u.test(w); });
 }
 function plain(s) { return String(s || "").normalize("NFD").replace(/\p{M}/gu, "").toLowerCase(); }
@@ -862,16 +862,12 @@ function renderRefusal() {
   var box = document.getElementById("outcome"), res = document.getElementById("results");
   clearNode(box);
   box.hidden = false;
-  var h = el("h2");
   if (outOfScope) {
-    h.appendChild(el("span", "ai-tag", "Apertus"));
-    h.appendChild(document.createTextNode(" " + t("out.scope", "Outside the indexed corpus")));
-    box.appendChild(h);
+    signalHead(box, "red", t("sig.red", "Nothing found") + " · " + t("out.scope", "Outside the indexed corpus"));
     box.appendChild(el("p", null, t("out.scope.text", "This request is outside what the indexed corpus covers.")));
     box.appendChild(el("p", "meta", t("out.scope.who", "Judged by Apertus. Bern Match searches public research pages of the University of Bern (including ARTORG) and Diabetes Center Berne.")));
   } else {
-    h.appendChild(document.createTextNode(t("out.noMatch", "No match found")));
-    box.appendChild(h);
+    signalHead(box, "red", t("out.noMatch", "No match found"));
     box.appendChild(el("p", null, t("out.noMatch.need", "Apertus found no research topic in this request, and the search found only weak matches.")));
     var nm = nameMissing(lastQuery, shownResults);
     if (nm) box.appendChild(el("p", "meta", t("out.noName.text", "No card here is named “{q}”. The person may not be on the indexed pages.", { q: lastQuery })));
@@ -886,11 +882,45 @@ function renderRefusal() {
   }
 }
 
+// 19 Oct: one traffic light per search. Green: clear match. Yellow: uncertain, and the box says why.
+// Red: nothing found (no evidence, outside the corpus, or no research topic and only weak matches).
+// With a type filter (People ...) the server's outcome is nearly always "low confidence": profile
+// pages score lower than topic pages, even for "diabetes". The topic is then judged on the same
+// request without the filter (topicConfident); the filter only narrows what is shown.
+var topicConfident = false; // the same request without the type filter is a confident match
+var apertusDirect = 0;      // cards Apertus rated a direct match for this request
+function signalHead(box, level, title) {
+  box.className = "outcome sig-" + level;
+  var h = el("h2");
+  var light = el("span", "light");
+  light.setAttribute("aria-hidden", "true");
+  h.appendChild(light);
+  h.appendChild(document.createTextNode(title));
+  box.appendChild(h);
+}
 function renderOutcome(b, byApertus) {
   checkNoMatch(b);
   if (outOfScope || noMatch) { renderRefusal(); return; }
   var box = document.getElementById("outcome");
   clearNode(box);
+  var nameGone = nameMissing(lastQuery, shownResults || b.results);
+  var green = !noClearMatch && !nameGone && (b.outcome === "confident" ||
+    (b.outcome === "low_confidence" && (topicConfident || apertusDirect > 0)));
+  if (green) {
+    box.hidden = false;
+    signalHead(box, "green", t("sig.green", "Clear match"));
+    box.appendChild(el("p", null, b.outcome === "confident" || topicConfident
+      ? t("sig.green.text", "The indexed pages have strong evidence for this request. Each card quotes its source.")
+      : t("sig.green.ai", "Apertus rated {n} of these cards a direct match. Each card quotes its source.", { n: apertusDirect })));
+    return;
+  }
+  if (b.outcome === "no_evidence") {
+    box.hidden = false;
+    signalHead(box, "red", t("sig.red", "Nothing found"));
+    box.appendChild(el("p", null, t("out.no_evidence.text", OUTCOME_TEXT.no_evidence[1])));
+    (b.suggestions || []).forEach(function (s) { if (s.kind === "coverage") box.appendChild(el("p", "meta", serverText(s.label))); });
+    return;
+  }
   var info = OUTCOME_TEXT[b.outcome] && [t("out." + b.outcome, OUTCOME_TEXT[b.outcome][0]), t("out." + b.outcome + ".text", OUTCOME_TEXT[b.outcome][1])];
   // The outcome was measured on the direct search. Over Apertus' ranking, say exactly that.
   if (byApertus && b.outcome === "low_confidence")
@@ -903,7 +933,7 @@ function renderOutcome(b, byApertus) {
   if (nameLine) info = info ? [info[0], nameLine + " " + info[1]] : [t("out.noName", "Name not found"), nameLine];
   if (!info) { box.hidden = true; return; }
   box.hidden = false;
-  box.appendChild(el("h2", null, info[0]));
+  signalHead(box, "yellow", t("sig.yellow", "Uncertain") + " · " + info[0]);
   box.appendChild(el("p", null, info[1]));
   var chips = el("div", "chips");
   var notes = [];
@@ -1421,7 +1451,8 @@ function checkClearMatch() {
   var ids = Object.keys(cats);
   var none = ids.length > 0 && ids.every(function (id) { return cats[id] === "insufficient_evidence"; });
   noClearMatch = none ? ids.length : 0;
-  if (noClearMatch && lastNotes) renderOutcome.apply(null, lastNotes);
+  apertusDirect = noNeed ? 0 : ids.filter(function (id) { return cats[id] === "direct_match"; }).length;
+  if ((noClearMatch || apertusDirect) && lastNotes) renderOutcome.apply(null, lastNotes);
   // A match that is not card 1 is easy to miss: name up to 3 of them in Apertus' panel.
   // Only "Direct match" counts: a "related" card 1 used to hide a direct match at card 6 (round 3).
   var isDirect = function (id) { var a = assessShown[id]; return a && a.category === "direct_match"; };
@@ -1526,6 +1557,19 @@ function startEnrichment(body, requestId, myRevision) {
   });
 }
 
+// The same request without the type filter (retrieval only, no AI): is the topic itself well covered?
+function checkTopic(query, myRevision) {
+  fetch("/api/v1/search", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ schema_version: "1", query: query, revision: myRevision, entity_type: null,
+                           company_context: null, needs: [], enrichment_requested: false }) })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (b) {
+      if (!b || myRevision !== revision || b.outcome !== "confident") return;
+      topicConfident = true;
+      if (lastNotes) renderOutcome.apply(null, lastNotes);
+    }).catch(function () { /* the yellow signal simply stays */ });
+}
+
 function runSearch(needs) {
   var query = document.getElementById("query").value.trim();
   if (!query) { setStatus(t("st.empty", "Enter a keyword or a short description."), "warn"); return; }
@@ -1537,6 +1581,7 @@ function runSearch(needs) {
   clearTimeout(fallbackTimer);
   resultsShown = true; showDirect = null; pendingAssess = []; refining = false; pendingRerank = null;
   outOfScope = false; noMatch = false; document.getElementById("results").hidden = false;
+  topicConfident = false; apertusDirect = 0;
   shownResults = null; assessShown = {}; noNeed = false; assessFailed = false; noClearMatch = 0; rerankSkipped = false; bestFits = []; hiddenVerdicts = {}; checking = 0; lastSummary = null; lastNotes = null; lastNeedsPayload = null; lastNeedNote = null;
   var started = performance.now();
   searchStarted = started;
@@ -1571,6 +1616,7 @@ function runSearch(needs) {
     }
     var b = res.body;
     lastRequestId = b.request_id; lastRevision = b.revision;
+    if (type && b.outcome === "low_confidence") checkTopic(query, myRevision);
     var directMs = performance.now() - started;
     currentResponse = b;
     showDirect = function (note) {
