@@ -10,6 +10,7 @@
   body { font-family: "Helvetica Neue", Arial, sans-serif; color: var(--ink); font-size: 10pt; line-height: 1.4; margin: 0; }
   h1 { font-size: 20pt; margin: 0 0 2pt; letter-spacing: -0.2pt; }
   h2 { font-size: 12.2pt; margin: 11pt 0 4pt; padding-top: 3pt; border-top: 2px solid var(--red); }
+  h2, h3 { break-after: avoid; } svg, table, .key { break-inside: avoid; }
   h3 { font-size: 10pt; margin: 7pt 0 2pt; }
   p { margin: 0 0 5pt; }
   ul { margin: 0 0 5pt; padding-left: 14pt; }
@@ -47,6 +48,18 @@ Live: kaktamsdengami-bern-match.hf.space · Code: github.com/AnAsteria/Apertus_H
   <div><b>&lt; 1 s</b><span>first results, no LLM on the fast path (server p95 ≈ 0.5 s)</span></div>
   <div><b>0 tokens</b><span>per plain search; ≈ 2.9k Apertus tokens per refined request</span></div>
 </div>
+
+<h2>Challenge success criteria at a glance</h2>
+<table>
+  <tr><th>Criterion</th><th>Status</th><th>Evidence (frozen evaluation split unless noted)</th></tr>
+  <tr><td>1. ≥ 80% of expected experts/units in the top 10</td><td class="ok">Met after refinement</td><td>Recall@10 <b>0.82</b> with Apertus refinement; 0.77 instant (n = 17); development 0.82</td></tr>
+  <tr><td>2. Different wording (synonym, lay, other language)</td><td class="part">Mostly</td><td>Synonym 2/2 · cross-lingual 0.67 → 0.78 with Apertus terms (n = 9) · lay 0.5 (n = 2); development: cross-lingual 0.82 (n = 11), lay 1.0 (n = 2)</td></tr>
+  <tr><td>3. Every result traceable, nothing invented</td><td class="ok">Met</td><td>100% of cards link to the source; 0 quote mismatches; facts kept only if a cited sentence states them; semantic support is weaker on ranks 4–10 (section 4)</td></tr>
+  <tr><td>4. Structured fields where the source provides them</td><td class="part">Partly</td><td>Person, role, unit, expertise, projects, infrastructure/services, reason for match and source link are rendered when supported; 26% of cards carry at least one structured field</td></tr>
+  <tr><td>5. All three sources</td><td class="ok">Met</td><td>UniBE (inventory-based), ARTORG, DCB: 41 domains crawled; 34 appear in served results</td></tr>
+  <tr><td>6. Easy to extend</td><td class="ok">Met</td><td>A new website is one YAML file validated by the loader, then an incremental build (example: BFH; <code>docs/source-extension.md</code>)</td></tr>
+  <tr><td>Ethics: say when information is insufficient</td><td class="part">Partly</td><td>Answer labels (<i>low confidence / no evidence / too broad</i>); Apertus scope check refuses nonsense; the 2 "no answer" questions still get low-confidence cards</td></tr>
+</table>
 
 <h2>1. Problem and product</h2>
 <p>The Bern Economic Development Agency connects companies with research partners. An analyst today reads dozens of institute websites in German, English and French to find the right group, and has little to show as proof. <b>Bern Match turns the company's need, written in plain language (EN/DE/FR/IT), into a shortlist of contacts</b>: research groups, labs, platforms, projects and people at the University of Bern, ARTORG and the Diabetes Center Berne. Every card quotes the exact sentence from the source page with its link. The analyst collects entries across several searches into a <b>shortlist</b>, adds notes and exports a PDF for the team. Optional Apertus drafts (one-page brief, e-mail) are labelled as AI and are never sent by the system.</p>
@@ -203,6 +216,7 @@ Live: kaktamsdengami-bern-match.hf.space · Code: github.com/AnAsteria/Apertus_H
 </ul>
 </div>
 </div>
+<p><b>Fair discoverability.</b> Scores are max-aggregated per entity, so a group with one page competes on equal terms with a page-rich institute. Across 350 served cards, 34 of 41 sources appear and no single host dominates (largest 15%). There is deliberately no equal-exposure quota: relevance comes first. <b>Legal.</b> Built for the Swiss nDSG and the GDPR where applicable: only public content, data minimisation, removal and retention as above,. Copyright of the source pages stays with the institutions; we store sentences only to quote and link them. Outputs are to be published as Open Commons per the challenge terms (§6).</p>
 <p class="note">These are design commitments, not a claim of legal compliance.</p>
 
 <h2>8. Implementation feasibility, readiness and limits</h2>
