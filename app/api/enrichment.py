@@ -48,7 +48,8 @@ INTERPRET_TIMEOUT_S = float(os.environ.get("BERNMATCH_INTERPRET_TIMEOUT_S", "60"
 # 70B interpretation took ~47-52 s on the gateway on 2026-10-18 (vs ~5 s earlier): measure in T16.
 REQUEST_ID_RE = re.compile(r"^req_[A-Za-z0-9]{1,64}$")
 
-ASSESS_TIMEOUT_S = float(os.environ.get("BERNMATCH_ASSESS_TIMEOUT_S", "45"))
+ASSESS_TIMEOUT_S = float(os.environ.get("BERNMATCH_ASSESS_TIMEOUT_S", "30"))  # B2: was 45; B1 p95 is ~16 s
+INTERPRET_DEADLINE_S = float(os.environ.get("BERNMATCH_INTERPRET_DEADLINE_S", "12"))  # then fall back to 8B
 
 Interpreter = Callable[[SearchRequest], Interpretation]
 CandidateProvider = Callable[[SearchRequest], list[Result]]
@@ -131,7 +132,15 @@ def _default_assessor(query, needs, candidates, on_result):
     return assess(query, needs, candidates, on_result=on_result)
 
 
+def _default_fallback_interpreter(req: SearchRequest) -> Interpretation:
+    """B2 (#127): the fast model, used only when the primary model misses its deadline or fails.
+    Not cached, so a later request can still get the primary model's (better) interpretation."""
+    from ..ai.client import get_client
+    return interpret(req.query, req.company_context, req.needs, model=get_client().config.model)
+
+
 _interpreter: Interpreter = _default_interpreter
+_fallback_interpreter = _default_fallback_interpreter
 _candidates: CandidateProvider = _default_candidates
 _assessor: Assessor = _default_assessor
 _reranker = _default_reranker
@@ -139,10 +148,15 @@ RERANK_TIMEOUT_S = float(os.environ.get("BERNMATCH_RERANK_TIMEOUT_S", "10"))
 _pool = ThreadPoolExecutor(max_workers=8, thread_name_prefix="enrich")
 
 
-def set_interpreter(fn: Interpreter | None) -> None:
-    """Tests and integration may replace the interpreter."""
-    global _interpreter
+def set_interpreter(fn: Interpreter | None, fallback=...) -> None:
+    """Tests and integration may replace the interpreter. Replacing it disables the 8B fallback
+    unless `fallback` is given, so a fake interpreter is never silently backed by a real model."""
+    global _interpreter, _fallback_interpreter
     _interpreter = fn or _default_interpreter
+    if fallback is not ...:
+        _fallback_interpreter = fallback
+    else:
+        _fallback_interpreter = None if fn else _default_fallback_interpreter
 
 
 def set_candidate_provider(fn: CandidateProvider | None) -> None:
@@ -253,27 +267,45 @@ def _stream(request_id: str, req: SearchRequest) -> Iterator[str]:
     def stale() -> bool:
         return registry.latest_revision(request_id) != rev
 
-    # Stage 1: interpretation.
+    # Stage 1: interpretation. B2 (#127): wait up to INTERPRET_DEADLINE_S for the primary (70B)
+    # model; if it is slower or fails, fall back to the fast (8B) model within the overall budget.
     yield event("progress", {"stage": "interpretation", "state": "started"})
     t0 = time.monotonic()
-    interp = None
+    interp, used_model = None, "primary"
+    budget = min(INTERPRET_TIMEOUT_S, JOB_LIFETIME_S)
     future = _pool.submit(_interpreter, req)
+    failure = None
     try:
-        interp = future.result(timeout=min(INTERPRET_TIMEOUT_S, JOB_LIFETIME_S))
+        interp = future.result(timeout=min(INTERPRET_DEADLINE_S, budget))
     except FutureTimeout:
-        future.cancel()
-        yield event("error", _error_payload("ENRICHMENT_TIMEOUT", "Interpretation took too long; initial results are unaffected.", True) | {"stage": "interpretation"})
+        failure = ("ENRICHMENT_TIMEOUT", "Interpretation took too long; initial results are unaffected.", True)
     except InferenceError as e:
-        yield event("error", _error_payload("ENRICHMENT_UNAVAILABLE", "Interpretation is unavailable; initial results are unaffected.", e.retryable) | {"stage": "interpretation"})
+        failure = ("ENRICHMENT_UNAVAILABLE", "Interpretation is unavailable; initial results are unaffected.", e.retryable)
     except Exception:  # never leak details (they may contain company text)
-        yield event("error", _error_payload("ENRICHMENT_FAILED", "Interpretation failed; initial results are unaffected.", False) | {"stage": "interpretation"})
+        failure = ("ENRICHMENT_FAILED", "Interpretation failed; initial results are unaffected.", False)
+    if failure is not None:
+        future.cancel()  # a running primary call is not interrupted, but its result is ignored
+        remaining = budget - (time.monotonic() - t0)
+        if _fallback_interpreter is not None and remaining > 1:
+            yield event("progress", {"stage": "interpretation", "state": "fallback", "reason": failure[0]})
+            fb = _pool.submit(_fallback_interpreter, req)
+            try:
+                interp, used_model, failure = fb.result(timeout=remaining), "fallback", None
+            except FutureTimeout:
+                fb.cancel()
+            except Exception:
+                pass
+        if failure is not None:
+            yield event("error", _error_payload(*failure) | {"stage": "interpretation"})
     timings["interpretation_ms"] = int((time.monotonic() - t0) * 1000)
+    timings["interpretation_model"] = used_model if interp is not None else None
     if stale():
         yield event("error", _error_payload("STALE_REVISION", "A newer revision replaced this search.", False))
         return
     if interp is not None:
         payload = interp.payload()
         payload["decoding_mode"] = interp.decoding_mode
+        payload["model"] = used_model  # D14 (additive): "primary" (70B) or "fallback" (8B)
         yield event("interpretation", payload)
 
     # Stage 1b (T30): enriched second retrieval pass over the validated expansions. The first

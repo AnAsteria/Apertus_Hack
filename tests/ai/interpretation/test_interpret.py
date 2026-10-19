@@ -238,3 +238,42 @@ def test_default_interpreter_caches_per_normalised_request(monkeypatch):
     assert len(calls) == 1
     enrichment._default_interpreter(enrichment.SearchRequest(**(BODY | {"query": "something else"})))
     assert len(calls) == 2
+
+
+# --- B2 (#127): timeout fallback to the fast model -------------------------------------
+def _quick(req):
+    return interpret(req.query, req.company_context, req.needs, client=fake_client())
+
+
+def test_slow_primary_falls_back_to_fast_model(api, monkeypatch):
+    monkeypatch.setattr(enrichment, "INTERPRET_DEADLINE_S", 0.05)
+    enrichment.set_interpreter(lambda req: (time.sleep(0.5), _quick(req))[1], fallback=_quick)
+    api.post("/api/v1/search/req_f/enrichment", json=BODY)
+    ev = events(api.get("/api/v1/search/req_f/events?revision=1"))
+    types = [e.event_type for e in ev]
+    assert {"stage": "interpretation", "state": "fallback", "reason": "ENRICHMENT_TIMEOUT"} in [e.payload for e in ev]
+    interp = next(e for e in ev if e.event_type == "interpretation")
+    assert interp.payload["model"] == "fallback" and "error" not in types and types[-1] == "complete"
+
+
+def test_failing_primary_falls_back_and_failing_fallback_reports_error(api):
+    def down(req):
+        raise InferenceError("UNAVAILABLE", "x", True)
+
+    enrichment.set_interpreter(down, fallback=_quick)
+    api.post("/api/v1/search/req_g/enrichment", json=BODY)
+    ev = events(api.get("/api/v1/search/req_g/events?revision=1"))
+    assert next(e for e in ev if e.event_type == "interpretation").payload["model"] == "fallback"
+
+    enrichment.set_interpreter(down, fallback=down)
+    api.post("/api/v1/search/req_h/enrichment", json=BODY)
+    ev = events(api.get("/api/v1/search/req_h/events?revision=1"))
+    assert next(e for e in ev if e.event_type == "error").payload["code"] == "ENRICHMENT_UNAVAILABLE"
+    assert ev[-1].event_type == "complete"
+
+
+def test_primary_in_time_reports_primary_model(api):
+    enrichment.set_interpreter(_quick, fallback=_quick)
+    api.post("/api/v1/search/req_p/enrichment", json=BODY)
+    ev = events(api.get("/api/v1/search/req_p/events?revision=1"))
+    assert next(e for e in ev if e.event_type == "interpretation").payload["model"] == "primary"
