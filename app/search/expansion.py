@@ -18,9 +18,14 @@ def rrf_fuse(result_lists: list[list], k: int = RRF_K, limit: int = TOP_K, label
     """Entity-level RRF across result lists (one per query variant). The first-seen Result object
     is kept and ranks are renumbered. With `labels`, each kept card records in
     `retrieval.query_variants` which variants found it (traceability, T36)."""
-    scores, first, found = {}, {}, {}
+    from .ranking import duplicate_key
+    scores, first, found, keys = {}, {}, {}, {}
     for i, results in enumerate(result_lists):
         for rank, r in enumerate(results, start=1):
+            # Same name and type as a card already met in another list: count it for that card.
+            key = duplicate_key(r.display_name, r.entity_type)
+            if keys.setdefault(key, r.entity_id) != r.entity_id:
+                r = first.get(keys[key], r)
             scores[r.entity_id] = scores.get(r.entity_id, 0.0) + 1.0 / (k + rank)
             first.setdefault(r.entity_id, r)
             if labels:
@@ -40,8 +45,12 @@ def rrf_fuse(result_lists: list[list], k: int = RRF_K, limit: int = TOP_K, label
 
 # Outcomes of the ORIGINAL query that expansion must never override: a refusal stays a refusal
 # (expanded terms pull in near-miss pages, which broke abstention on I10/I19 in Ruihan's
-# baseline cross-check, #16), and a too-broad request needs narrowing, not more matches.
-GUARDED_OUTCOMES = ('no_evidence', 'too_broad')
+# baseline cross-check, #16).
+# "too_broad" is no longer guarded (jury, 19 Oct): it fires on any one-topic-word request, so precise
+# terms such as "CGM" or "Herzklappe" lost exactly the wordings that fix them. Measured on the real
+# index with Apertus' recorded expansions: "CGM" shared 4 of 5 cards with "continuous glucose
+# monitoring" before, 9 of 10 after (runs/jury/search/, local).
+GUARDED_OUTCOMES = ('no_evidence',)
 
 
 def expansion_allowed(outcome) -> bool:

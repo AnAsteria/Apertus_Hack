@@ -58,12 +58,13 @@ class GuardedBackend(Backend):
         return r.model_copy(update={'outcome': self.outcome if req.query == REQ.query else 'confident'})
 
 
-def test_expansion_never_overrides_a_refusal_or_too_broad_outcome():
+def test_expansion_never_overrides_a_refusal():
     # Regression for #16: expanded terms pulled near-miss pages into absent queries (I10, I19).
-    for outcome in ('no_evidence', 'too_broad'):
-        backend = GuardedBackend({'Therapieresistenz Krebs': [], 'near miss': ['wrong']}, outcome)
-        assert expanded_search(backend, REQ, ['near miss']) == ([], [])
-        assert [r.query for r in backend.seen] == [REQ.query]  # expansions were not even searched
-    backend = GuardedBackend({'Therapieresistenz Krebs': ['a'], 'b': ['b']}, 'low_confidence')
-    fused, used = expanded_search(backend, REQ, ['b'])
-    assert used == ['b'] and {r.entity_id for r in fused} == {'a', 'b'}
+    backend = GuardedBackend({'Therapieresistenz Krebs': [], 'near miss': ['wrong']}, 'no_evidence')
+    assert expanded_search(backend, REQ, ['near miss']) == ([], [])
+    assert [r.query for r in backend.seen] == [REQ.query]  # expansions were not even searched
+    for outcome in ('low_confidence', 'too_broad'):
+        # A one-word request ("CGM") is often labelled too broad; its expansions are what fix it.
+        backend = GuardedBackend({'Therapieresistenz Krebs': ['a'], 'b': ['b']}, outcome)
+        fused, used = expanded_search(backend, REQ, ['b'])
+        assert used == ['b'] and {r.entity_id for r in fused} == {'a', 'b'}

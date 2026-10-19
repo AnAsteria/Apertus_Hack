@@ -1,6 +1,7 @@
 """Stored-corpus hybrid fast path. Local CPU embeddings, never an LLM endpoint."""
 import json
 import os
+import re
 import time
 import uuid
 from datetime import datetime,timezone
@@ -9,7 +10,7 @@ from app.contracts import MAX_RESULTS, Result, SearchResponse
 from app.storage.indexes import IndexStore
 from .analysis import analyze,language_of,match_expression,query_terms,words
 from .encoder import OnnxEncoder,digest
-from .ranking import entity_max,reciprocal_rank_fusion,diversify,non_entity_page,DEMOTION
+from .ranking import entity_max,reciprocal_rank_fusion,diversify,non_entity_page,duplicate_key,DEMOTION
 from .outcome import classify,thresholds
 from .explain import channel_ranks,matched_words,reason as explain_reason
 
@@ -67,6 +68,19 @@ class HybridBackend:
             except Exception:
                 self.encoder_error = True
         self.min_dense,self.mode = min_dense,mode
+        # Passages with almost no text ("." or a bare name) are similar to nearly any query in E5 space:
+        # "Dienstleistungen" (one sentence ".") reached 25 of 66 jury result lists, card 1 in 7.
+        # They are left out of the meaning channel only; keyword search still finds them by name.
+        self.thin_letters = int(os.environ.get('BERNMATCH_THIN_LETTERS','25'))
+        self.thin = self._thin_rows() if self.thin_letters > 0 else None
+
+    def _thin_rows(self):
+        letters = {}
+        with self.store.connect() as db:
+            for sid,body in db.execute('SELECT id,body FROM sentences'):
+                letters[sid] = len(re.findall(r'[^\W\d_]', json.loads(body).get('text') or ''))
+        per_entry = np.array([sum(letters.get(sid,0) for sid in entry['sentence_ids']) for entry in self.entries])
+        return per_entry[np.asarray(self.vector_entries)] < self.thin_letters
 
     def search(self, req):
         start = time.perf_counter()
@@ -103,6 +117,8 @@ class HybridBackend:
                 if query.shape != (self.vectors.shape[1],):
                     raise ValueError('query_dimension_mismatch')
                 scores = self.vectors @ query
+                if self.thin is not None:
+                    scores = np.where(self.thin,-1.,scores)
                 for index in np.flatnonzero(scores>=self.min_dense):
                     entry_id = int(self.vector_entries[index])
                     old = vector_winners.get(entry_id)
@@ -132,12 +148,20 @@ class HybridBackend:
             else:
                 vector_id = int(np.flatnonzero(self.vector_entries==entry_id)[0])
             representatives[eid] = self.vectors[vector_id]
-        selected = diversify(fused,representatives,limit=MAX_RESULTS)
+        # A few spare candidates, so a dropped duplicate is replaced by the next card.
+        selected = diversify(fused,representatives,limit=MAX_RESULTS+5)
         timing['rank'] = (time.perf_counter()-t)*1000
         keyword_ranks,dense_ranks = channel_ranks(keyword),channel_ranks(dense)
-        results = []
+        results = []; seen_names = set()
         for eid in selected:
+            if len(results) >= MAX_RESULTS:
+                break
             item = self.entities[eid]; entity = item['entity']
+            # The same person or page twice (two entity ids, same name) takes two of ten places.
+            key = duplicate_key(entity['name'],entity['entity_type'])
+            if key in seen_names:
+                continue
+            seen_names.add(key)
             # Prefer the strongest semantic passage when available; the lexical
             # ablation resolves its own best passage. Profiles cite stored text.
             entry_id = (dense.get(eid) or keyword[eid])[1]
@@ -151,6 +175,8 @@ class HybridBackend:
             evidence = list({e['sentence_id']:e for e in evidence}.values())
             if not evidence:
                 continue
+            # Real sentences first, headings like "Methods" or "." after them (all are kept).
+            evidence.sort(key=lambda e: len(re.findall(r'[^\W\d_]{2,}', e['text'] or '')) < 3)
             evidence_language = entry.get('language')
             matched = matched_words(req.query,[e['text'] for e in evidence],evidence_language) if eid in keyword else []
             reason = explain_reason(keyword_rank=keyword_ranks.get(eid),dense_rank=dense_ranks.get(eid),matched=matched,
