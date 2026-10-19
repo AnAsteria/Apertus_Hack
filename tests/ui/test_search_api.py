@@ -153,3 +153,19 @@ def test_hero_image_is_served_as_webp():
     from fastapi.testclient import TestClient
     from app.main import app
     assert TestClient(app).get("/hero.webp").headers["content-type"] == "image/webp"
+
+
+def test_enter_submits_logo_goes_home_and_transition_respects_reduced_motion():
+    js, html = _static("app.js"), _static("index.html")
+    # Enter submits through the form (requestSubmit), Shift+Enter keeps a new line
+    key = js[js.index('getElementById("query").addEventListener("keydown"'):]
+    key = key[:key.index("});")]
+    assert '"Enter"' in key and "!ev.shiftKey" in key and "requestSubmit" in key
+    # the logo is a real link that resets to the welcome view and invalidates the running search
+    assert 'id="home"' in html and 'addEventListener("click", goHome)' in js
+    home = js[js.index("function goHome"):js.index("initHero();", js.index("function goHome"))]
+    for step in ("revision += 1", "closeEvents()", 'value = ""', 'classList.remove("searched"'):
+        assert step in home
+    # the welcome -> results glide is skipped for reduced motion
+    enter = js[js.index("function enterResults"):js.index("function goHome")]
+    assert "prefers-reduced-motion: reduce" in enter

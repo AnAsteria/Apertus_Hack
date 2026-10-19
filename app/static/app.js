@@ -506,8 +506,10 @@ var QUOTES_SHOWN = 2;
 function renderCard(r, index) {
   var src = sourceOf(r.evidence[0].url);
   var card = el("article", "card appear src-" + src.key);
-  // Reveal: the first cards come in 55 ms apart; the stagger stops after card 5 (at most 275 ms).
-  card.style.animationDelay = Math.min(index || 0, 5) * 55 + "ms";
+  // Reveal: cards come in 70 ms apart (stagger stops after card 7), starting as the search box
+  // lands at the top after the welcome-to-results transition (no extra wait on later searches).
+  var landing = Math.max(0, transitionEndsAt - performance.now() - 250);
+  card.style.animationDelay = Math.round(landing + Math.min(index || 0, 7) * 70) + "ms";
   card.dataset.entity = r.entity_id;
   // Same host form as the server's "Only <host>" suggestion (lower case, no "www.").
   try { card.dataset.host = new URL(r.evidence[0].url).hostname.toLowerCase().replace(/^www\./, ""); } catch (e) { card.dataset.host = ""; }
@@ -1297,7 +1299,7 @@ function runSearch(needs) {
   shownResults = null; assessShown = {}; noNeed = false; assessFailed = false; noClearMatch = 0; rerankSkipped = false; bestFits = []; hiddenVerdicts = {}; checking = 0; lastSummary = null; lastNotes = null; lastNeedsPayload = null; lastNeedNote = null;
   var started = performance.now();
   searchStarted = started;
-  document.body.classList.add("searched");
+  enterResults();
   queryTerms = termsOf(query);
   lastQuery = query;
   document.getElementById("summary").hidden = true;
@@ -1357,7 +1359,59 @@ function runSearch(needs) {
   });
 }
 
+// Welcome -> results: the welcome copy and photo fade out, then the search box glides from the
+// middle of the photo to the top (position and width). The request is already running meanwhile.
+var transitionEndsAt = 0;
+var FADE_MS = 260, GLIDE_MS = 640;
+function enterResults() {
+  var body = document.body;
+  if (body.classList.contains("searched") || body.classList.contains("leaving")) return;
+  var form = document.getElementById("form");
+  var still = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (still || !form.animate) { body.classList.add("searched"); return; }
+  body.classList.add("leaving");
+  transitionEndsAt = performance.now() + FADE_MS + GLIDE_MS;
+  setTimeout(function () {
+    if (!body.classList.contains("leaving")) return; // the analyst went back home meanwhile
+    var before = form.getBoundingClientRect();
+    body.classList.remove("leaving");
+    body.classList.add("searched");
+    window.scrollTo(0, 0);
+    var after = form.getBoundingClientRect();
+    form.animate([
+      { transform: "translate(" + (before.left - after.left) + "px, " + (before.top - after.top) + "px)", width: before.width + "px" },
+      { transform: "none", width: after.width + "px" }
+    ], { duration: GLIDE_MS, easing: "cubic-bezier(.2, .7, .2, 1)" });
+  }, FADE_MS);
+}
+
+// The logo returns to the start page: no query, no results, the welcome view again.
+function goHome(ev) {
+  if (ev) ev.preventDefault();
+  revision += 1; // late answers of the previous search are ignored (they check the revision)
+  closeEvents();
+  clearTimeout(fallbackTimer);
+  transitionEndsAt = 0;
+  document.getElementById("query").value = "";
+  clearResults();
+  clearNode(document.getElementById("limitations"));
+  ["summary", "outcome", "needs", "limits-box"].forEach(function (id) { document.getElementById(id).hidden = true; });
+  setStatus("", "");
+  document.body.classList.remove("searched", "leaving");
+  window.scrollTo(0, 0);
+  document.getElementById("query").focus();
+}
+
 initHero();
+document.getElementById("home").addEventListener("click", goHome);
+// Enter searches; Shift+Enter keeps a new line for pasted company descriptions.
+document.getElementById("query").addEventListener("keydown", function (ev) {
+  if (ev.key === "Enter" && !ev.shiftKey && !ev.isComposing) {
+    ev.preventDefault();
+    var form = document.getElementById("form");
+    if (form.requestSubmit) form.requestSubmit(); else form.dispatchEvent(new Event("submit", { cancelable: true }));
+  }
+});
 document.getElementById("form").addEventListener("submit", function (ev) {
   ev.preventDefault();
   userNeeds = []; suggestedNeeds = []; refineOpen = false;   // a fresh question starts fresh needs

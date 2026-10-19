@@ -10,7 +10,7 @@ from app.contracts import MAX_RESULTS, Result, SearchResponse
 from app.storage.indexes import IndexStore
 from .analysis import analyze,language_of,match_expression,query_terms,words
 from .encoder import OnnxEncoder,digest
-from .ranking import entity_max,reciprocal_rank_fusion,diversify,non_entity_page,duplicate_key,DEMOTION
+from .ranking import entity_max,reciprocal_rank_fusion,diversify,non_entity_page,not_an_actor,duplicate_key,DEMOTION
 from .outcome import classify,thresholds
 from .explain import channel_ranks,matched_words,contact_bearing,reason as explain_reason
 from . import rerank as rerank_mod
@@ -148,6 +148,10 @@ class HybridBackend:
                    self.entities[eid]['entity']['canonical_profiles'])}
         for eid in demoted:
             fused[eid] *= DEMOTION
+        if os.environ.get('BERNMATCH_ACTORS_ONLY','1') == '1':
+            # News, fact sheets and navigation pages are not contacts: never shown as cards.
+            fused = {eid:s for eid,s in fused.items() if not not_an_actor(self.entities[eid]['entity']['name'],
+                     self.entities[eid]['entity']['entity_type'],self.entities[eid]['entity']['canonical_profiles'])}
         title_boost = float(os.environ.get('BERNMATCH_TITLE_BOOST','0'))
         if title_boost > 0:
             # EXTRA A5: entities whose own name contains query words get a relevance bonus.
