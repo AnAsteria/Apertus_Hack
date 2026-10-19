@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import logging
 import threading
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 import os
 import re
 import time
@@ -44,6 +44,8 @@ MAX_EVIDENCE_PER_CANDIDATE = 4
 # B1 (#126): smaller batches run concurrently. One batch of 4 took ~12 s on real cards and
 # batches ran one after another (first assessment ~18 s, complete ~33 s median).
 BATCH_SIZE = int(os.environ.get("BERNMATCH_ASSESS_BATCH", "2"))   # candidates per model call
+STRAGGLER_MIN_S = float(os.environ.get("BERNMATCH_ASSESS_STRAGGLER_MIN_S", "6"))
+STRAGGLER_FACTOR = float(os.environ.get("BERNMATCH_ASSESS_STRAGGLER_FACTOR", "3"))
 QUERY_NEED_ID = "need_query"
 
 SYSTEM_PROMPT = """You assess research-partner candidates for a business-development analyst.
@@ -237,6 +239,7 @@ def assess(query: str, needs: list[Need], candidates: list[Result], *, client: A
     stats = BatchStats(candidates=len(candidates))
     out: list[AssessmentPayload] = []
     lock = threading.Lock()
+    closed = threading.Event()
     batches = [candidates[i:i + BATCH_SIZE] for i in range(0, len(candidates), BATCH_SIZE)]
 
     def run_batch(batch: list[Result]) -> None:
@@ -262,6 +265,8 @@ def assess(query: str, needs: list[Need], candidates: list[Result], *, client: A
                 continue
             done.add(i)
             with lock:
+                if closed.is_set():
+                    return  # a straggler past its deadline: results are dropped
                 payload = _validate(v, batch[i], maps[i], need_ids, stats)
                 out.append(payload)
             if on_result:
@@ -272,15 +277,37 @@ def assess(query: str, needs: list[Need], candidates: list[Result], *, client: A
 
     # Batches are independent: run them concurrently (the client enforces its own cap). A failed
     # batch keeps the other batches' results; only if every batch fails does the error propagate.
+    # Straggler deadline (B1 follow-up, live Space 2026-10-19): one slow batch held `complete` ~12 s
+    # after all other assessments had arrived (4 of 10 requests). After the first batch finishes,
+    # the rest get max(STRAGGLER_MIN_S, STRAGGLER_FACTOR x first-batch latency); late batches are
+    # dropped (counted as `batch_timeout`) and can no longer publish results.
     errors: list[InferenceError] = []
-    with ThreadPoolExecutor(max_workers=max(1, min(len(batches), client.config.max_concurrency))) as pool:
-        for fut in [pool.submit(run_batch, b) for b in batches]:
+    pool = ThreadPoolExecutor(max_workers=max(1, min(len(batches), client.config.max_concurrency)))
+    futures = [pool.submit(run_batch, b) for b in batches]
+    try:
+        t_start = time.perf_counter()
+        first, pending = wait(futures, return_when=FIRST_COMPLETED)
+        first_latency = time.perf_counter() - t_start
+        if pending:
+            grace = max(STRAGGLER_MIN_S, STRAGGLER_FACTOR * first_latency)
+            _, pending = wait(pending, timeout=max(0.0, grace - first_latency))
+        for fut in futures:
+            if fut in pending:
+                continue
             try:
                 fut.result()
             except InferenceError as e:
                 errors.append(e)
                 with lock:
                     stats.fix("batch_failed")
+        if pending:
+            with lock:
+                closed.set()
+                for _ in pending:
+                    stats.fix("batch_timeout")
+            errors.extend(InferenceError("TIMEOUT", "Assessment batch too slow.", True) for _ in pending)
+    finally:
+        pool.shutdown(wait=False, cancel_futures=True)
     if errors and len(errors) == len(batches):
         raise errors[0]
     order = {c.entity_id: i for i, c in enumerate(candidates)}
