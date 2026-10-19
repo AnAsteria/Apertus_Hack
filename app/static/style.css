@@ -179,6 +179,13 @@ button.small[aria-pressed="true"] { background: var(--text); color: var(--bg); b
 .outcome h2 { font-family: var(--serif); font-weight: 400; font-size: 1.3rem; margin: 0 0 .25rem; }
 .outcome .chips { justify-content: flex-start; }
 
+/* Contacts first: institutions and general pages fold into one section below the people and teams */
+.other-pages { margin: 1.5rem 0 1rem; padding-top: 1rem; border-top: 1px solid var(--line-strong); }
+.other-pages > summary { cursor: pointer; width: fit-content; font-weight: 600; color: var(--text); }
+.other-pages > .meta { margin: .3rem 0 .4rem; }
+.other-pages .card { box-shadow: none; }
+.card h3 .rank { display: none; } /* ranks are out of order once contacts come first */
+
 /* People to contact: a short row of person cards above the results */
 .people { margin: 1rem auto .25rem; }
 .people h2 { font-family: var(--serif); font-weight: 400; font-size: 1.45rem; margin: 0; }

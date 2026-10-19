@@ -199,3 +199,27 @@ def test_people_strip_is_a_parallel_people_only_search_with_a_strict_rule():
     script = fn + "\nconsole.log(JSON.stringify(%s.map(function (s) { return !!strongPerson({ retrieval: s }); })));" % json.dumps(cases)
     out = subprocess.run([node, "-e", script], capture_output=True, text=True, check=True).stdout
     assert json.loads(out) == [True, False, False, True]
+
+
+def test_contacts_first_keeps_people_and_teams_and_folds_pages():
+    import json, subprocess, shutil
+    js = _static("app.js")
+    assert "foldOthers();" in js[js.index("function renderCards"):js.index("function isContact")]
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node not installed")
+    rules = js[js.index("var TEAM_URL"):js.index("var othersOpen")]
+    assert "\b" not in rules  # no stray control characters in the regexes
+    def card(name, url, kind="unit"):
+        return {"display_name": name, "entity_type": kind, "evidence": [{"url": url}]}
+    cases = [card("Stephan Gerber", "https://www.artorg.unibe.ch/x", "person"),
+             card("Wehrli Lab", "https://www.dbmr.unibe.ch/research/research_programs/wehrli_lab/index_eng.html"),
+             card("Sensor Based Monitoring", "https://www.artorg.unibe.ch/research/ger/research/sensor_based_monitoring/index_eng.html"),
+             card("Neuro Robotics Group", "https://www.artorg.unibe.ch/research/nrg/index_eng.html"),
+             card("Forschung - Diabetes Center Berne", "https://www.dcberne.com/en/projects/"),
+             card("Universitätsklinik für Kardiologie", "https://www.medizin.unibe.ch/profil_seiten/x"),
+             card("Job Vacancies", "https://www.artorg.unibe.ch/research/hrl/job_vacancies/index_eng.html"),
+             card("Collaboration platform", "https://www.unibe.ch/x")]
+    script = rules + "\nconsole.log(JSON.stringify(%s.map(isContact)));" % json.dumps(cases)
+    out = subprocess.run([node, "-e", script], capture_output=True, text=True, check=True).stdout
+    assert json.loads(out) == [True, True, True, True, False, False, False, False]

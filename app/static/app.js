@@ -511,6 +511,7 @@ function renderCard(r, index) {
   var landing = Math.max(0, transitionEndsAt - performance.now() - 250);
   card.style.animationDelay = Math.round(landing + Math.min(index || 0, 7) * 70) + "ms";
   card.dataset.entity = r.entity_id;
+  card.dataset.contact = isContact(r) ? "1" : "0";
   // Same host form as the server's "Only <host>" suggestion (lower case, no "www.").
   try { card.dataset.host = new URL(r.evidence[0].url).hostname.toLowerCase().replace(/^www\./, ""); } catch (e) { card.dataset.host = ""; }
   var head = el("div", "card-head");
@@ -585,11 +586,44 @@ function rerankCards(results) {
     if (was && card.animate) card.animate([{ transform: "translateY(" + (before[r.entity_id] - top) + "px)" }, { transform: "none" }], { duration: 450, easing: "ease-out" });
     else if (card.animate) card.animate([{ opacity: 0, transform: "translateY(8px)" }, { opacity: 1, transform: "none" }], { duration: 400, delay: i * 40, easing: "ease-out", fill: "backwards" });
   });
+  foldOthers();
 }
 
 function renderCards(results) {
   var out = clearResults();
   results.forEach(function (r, i) { out.appendChild(renderCard(r, i)); });
+  foldOthers();
+}
+
+// Contacts first (the administration needs someone to call, not a whole clinic or a site page):
+// people and small teams stay as the main cards in ranked order; institutions and general pages fold
+// into one closed section below. Nothing is removed, and with no contact at all nothing folds.
+// Teams are recognised by their page address and name only (research-group, lab and ARTORG group pages).
+var TEAM_URL = /\/(research_groups|forschungsgruppen|research_programs|research_activities)\/[^/]+|artorg\.unibe\.ch\/research\/[a-z]+\/(index_|research\/[^/]+\/)|___/i;
+var NOT_TEAM_URL = /job_vacanc|master_s_thesis|bachelor|partners|study_program|studies|news|spin_offs|about_us|ueber_uns|awards|phd_projects/i;
+var TEAM_NAME = /\b(group|gruppe|lab|labor|laboratory|laboratorium)\b|^(prof\.|dr\.)/i;
+var SITE_PAGE = / - (Diabetes Center Berne|ARTORG.*)$|^(Research|Forschung) - /i;
+function isContact(r) {
+  if (r.entity_type === "person") return true;
+  var name = r.display_name || "", url = (r.evidence && r.evidence[0] && r.evidence[0].url) || "";
+  if (SITE_PAGE.test(name) || NOT_TEAM_URL.test(url)) return false;
+  return TEAM_URL.test(url) || TEAM_NAME.test(name);
+}
+var othersOpen = false;
+function foldOthers() {
+  var out = document.getElementById("results");
+  var cards = Array.prototype.slice.call(out.querySelectorAll(".card"));
+  var old = out.querySelector(".other-pages");
+  if (old) { othersOpen = old.open; out.removeChild(old); }
+  var others = cards.filter(function (c) { return c.dataset.contact !== "1"; });
+  if (!others.length || others.length === cards.length) { cards.forEach(function (c) { out.appendChild(c); }); return; }
+  cards.forEach(function (c) { if (c.dataset.contact === "1") out.appendChild(c); });
+  var box = el("details", "other-pages");
+  box.open = othersOpen;
+  box.appendChild(el("summary", null, t("other.summary", "Other pages and institutions ({n})", { n: others.length })));
+  box.appendChild(el("p", "meta", t("other.note", "Larger institutions and general pages that match your request. Usually not the person to contact first.")));
+  others.forEach(function (c) { box.appendChild(c); });
+  out.appendChild(box);
 }
 
 function setStatus(text, kind) {
@@ -1258,6 +1292,7 @@ function showApertusResults(results) {
     if (note) { card.classList.add("moved"); card.querySelector(".tags").appendChild(el("span", "badge moved-badge", note)); }
     out.appendChild(card);
   });
+  foldOthers();
   flushAssessments();
 }
 
