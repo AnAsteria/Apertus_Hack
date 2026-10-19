@@ -664,7 +664,89 @@ function nameMissing(q, results) {
   return !results.some(function (r) { var n = plain(r.display_name); return words.every(function (w) { return n.indexOf(w) >= 0; }); });
 }
 
+// People first (the administration connects companies with researchers): a parallel People-only
+// search; up to 3 strong person matches sit above the results. The main ranking is unchanged.
+// Strong = top 3 by meaning with some keyword evidence, or the query's own words with a top-5 keyword
+// rank (retrieval signals only). Tuned on 12 company requests on the live A6 index: 7 show people, the
+// rest show none rather than weak matches (a top-3-by-meaning rule alone let in unrelated people).
+var PEOPLE_SHOWN = 3;
+function strongPerson(r) {
+  var s = r.retrieval || {};
+  return (s.dense_rank && s.dense_rank <= 3 && s.keyword_rank != null) ||
+         ((s.matched_terms || []).length > 0 && s.keyword_rank && s.keyword_rank <= 5);
+}
+function loadPeople(query, myRevision) {
+  var box = document.getElementById("people");
+  clearNode(box); box.hidden = true;
+  if (selectedType) return; // the analyst already chose a type
+  fetch("/api/v1/search", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ schema_version: "1", query: query, revision: myRevision, entity_type: "person",
+                           company_context: null, needs: [], enrichment_requested: false }) })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (b) {
+      if (!b || myRevision !== revision || outOfScope) return;
+      var people = b.results.filter(strongPerson).slice(0, PEOPLE_SHOWN);
+      if (people.length) renderPeople(people);
+    }).catch(function () { /* the strip is optional; the results are unaffected */ });
+}
+function renderPeople(list) {
+  var box = document.getElementById("people");
+  clearNode(box);
+  box.appendChild(el("h2", null, t("people.title", "People to contact")));
+  box.appendChild(el("p", "meta", t("people.sub", "The strongest person matches for your request, from their public profile pages.")));
+  var row = el("div", "people-row");
+  list.forEach(function (r, i) {
+    var c = el("article", "person-card appear");
+    c.style.animationDelay = Math.round(Math.max(0, transitionEndsAt - performance.now() - 250) + i * 70) + "ms";
+    c.appendChild(el("p", "kicker", typeName("person")));
+    c.appendChild(el("h3", null, r.display_name));
+    var f = r.fields || {};
+    var line = [].concat((f.role || []).slice(0, 1), (f.affiliation || []).slice(0, 1))
+      .map(function (v) { return v && v.value; }).filter(Boolean).join(" · ");
+    var src = sourceOf(r.evidence[0].url);
+    c.appendChild(el("p", "person-line", line || src.full || src.label));
+    var acts = el("div", "person-actions");
+    var a = el("a", "src", t("people.profile", "Profile page") + " ↗");
+    a.href = r.evidence[0].url; a.target = "_blank"; a.rel = "noopener noreferrer";
+    acts.appendChild(a);
+    var sel = button(t("card.select", "Select"), function () {
+      setShortlist(r, "select", null);
+      sel.setAttribute("aria-pressed", String(!!(shortlist[r.entity_id] && shortlist[r.entity_id].state === "select")));
+    });
+    sel.classList.add("act-select");
+    sel.setAttribute("aria-pressed", String(!!(shortlist[r.entity_id] && shortlist[r.entity_id].state === "select")));
+    acts.appendChild(sel);
+    c.appendChild(acts);
+    row.appendChild(c);
+  });
+  box.appendChild(row);
+  box.hidden = false;
+}
+
+// T39 (#100): Apertus (70B) judged the request outside the corpus. The cards fold away behind one
+// button; nothing is deleted and the box says who decided.
+var outOfScope = false;
+function renderRefusal() {
+  var box = document.getElementById("outcome"), res = document.getElementById("results");
+  clearNode(box);
+  box.hidden = false;
+  var h = el("h2");
+  h.appendChild(el("span", "ai-tag", "Apertus"));
+  h.appendChild(document.createTextNode(" " + t("out.scope", "Outside the indexed corpus")));
+  box.appendChild(h);
+  box.appendChild(el("p", null, t("out.scope.text", "This request is outside what the indexed corpus covers.")));
+  box.appendChild(el("p", "meta", t("out.scope.who", "Judged by Apertus. Bern Match searches public research pages of the University of Bern (including ARTORG) and Diabetes Center Berne.")));
+  var n = res.querySelectorAll(".card").length;
+  if (n) {
+    var chips = el("div", "chips");
+    chips.appendChild(button(res.hidden ? t("out.scope.show", "Show the {n} direct results anyway", { n: n }) : t("out.scope.hide", "Hide the results"),
+      function () { res.hidden = !res.hidden; renderRefusal(); }, "chip"));
+    box.appendChild(chips);
+  }
+}
+
 function renderOutcome(b, byApertus) {
+  if (outOfScope) { renderRefusal(); return; }
   var box = document.getElementById("outcome");
   clearNode(box);
   var info = OUTCOME_TEXT[b.outcome] && [t("out." + b.outcome, OUTCOME_TEXT[b.outcome][0]), t("out." + b.outcome + ".text", OUTCOME_TEXT[b.outcome][1])];
@@ -1226,6 +1308,17 @@ function startEnrichment(body, requestId, myRevision) {
     es.addEventListener("interpretation", function (e) {
       var d = parse(e);
       if (!d) return;
+      if (d.payload.outcome_update === "out_of_scope") {
+        outOfScope = true; noNeed = true; refining = false;
+        if (showDirect) showDirect("");
+        document.getElementById("results").hidden = true;
+        document.getElementById("summary").hidden = true;
+        document.getElementById("needs").hidden = true;
+        document.getElementById("people").hidden = true;
+        setStatus("", "");
+        renderRefusal();
+        return;
+      }
       var q = document.getElementById("query").value.trim();
       // Keep edits the analyst already made; the first interpretation seeds the lists.
       if (!userNeeds.length) {
@@ -1251,6 +1344,7 @@ function startEnrichment(body, requestId, myRevision) {
     });
     es.addEventListener("progress", function (e) {
       var d = parse(e);
+      if (outOfScope) return; // the refusal box stays; skipped stages need no message
       if (d && d.payload.stage === "assessment" && d.payload.state === "started" && d.payload.candidates) {
         checking = d.payload.candidates; if (lastNeedsPayload) renderNeeds(lastNeedsPayload);
       }
@@ -1296,6 +1390,7 @@ function runSearch(needs) {
   closeEvents();
   clearTimeout(fallbackTimer);
   resultsShown = true; showDirect = null; pendingAssess = []; refining = false; pendingRerank = null;
+  outOfScope = false; document.getElementById("results").hidden = false;
   shownResults = null; assessShown = {}; noNeed = false; assessFailed = false; noClearMatch = 0; rerankSkipped = false; bestFits = []; hiddenVerdicts = {}; checking = 0; lastSummary = null; lastNotes = null; lastNeedsPayload = null; lastNeedNote = null;
   var started = performance.now();
   searchStarted = started;
@@ -1308,6 +1403,7 @@ function runSearch(needs) {
   showSkeletons();
   clearNode(document.getElementById("limitations")); // never show the previous search's notes next to a new error
   document.getElementById("limits-box").hidden = true;
+  loadPeople(query, myRevision);
   var body = { schema_version: "1", query: query, revision: myRevision,
                entity_type: type || null, company_context: null, needs: needs || [],
                enrichment_requested: interpret };
@@ -1392,10 +1488,11 @@ function goHome(ev) {
   closeEvents();
   clearTimeout(fallbackTimer);
   transitionEndsAt = 0;
+  outOfScope = false; document.getElementById("results").hidden = false;
   document.getElementById("query").value = "";
   clearResults();
   clearNode(document.getElementById("limitations"));
-  ["summary", "outcome", "needs", "limits-box"].forEach(function (id) { document.getElementById(id).hidden = true; });
+  ["summary", "outcome", "needs", "limits-box", "people"].forEach(function (id) { document.getElementById(id).hidden = true; });
   setStatus("", "");
   document.body.classList.remove("searched", "leaving");
   window.scrollTo(0, 0);
