@@ -43,9 +43,9 @@ MAX_CANDIDATES = 8          # bounded batch (T19)
 MAX_EVIDENCE_PER_CANDIDATE = 4
 # B1 (#126): smaller batches run concurrently. One batch of 4 took ~12 s on real cards and
 # batches ran one after another (first assessment ~18 s, complete ~33 s median).
-BATCH_SIZE = int(os.environ.get("BERNMATCH_ASSESS_BATCH", "2"))
+BATCH_SIZE = int(os.environ.get("BERNMATCH_ASSESS_BATCH", "2"))   # candidates per model call
 STRAGGLER_MIN_S = float(os.environ.get("BERNMATCH_ASSESS_STRAGGLER_MIN_S", "6"))
-STRAGGLER_FACTOR = float(os.environ.get("BERNMATCH_ASSESS_STRAGGLER_FACTOR", "3"))   # candidates per model call
+STRAGGLER_FACTOR = float(os.environ.get("BERNMATCH_ASSESS_STRAGGLER_FACTOR", "3"))
 QUERY_NEED_ID = "need_query"
 
 SYSTEM_PROMPT = """You assess research-partner candidates for a business-development analyst.
