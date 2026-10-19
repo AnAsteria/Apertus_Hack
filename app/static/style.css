@@ -272,3 +272,10 @@ mark { background: var(--mark); color: inherit; border-radius: 3px; padding: 0 .
 .langs button:hover { color: var(--text); }
 .langs button[aria-pressed="true"] { background: var(--text); color: var(--bg); }
 @media print { .langs { display: none; } }
+
+/* T23/T24/T28: brief and e-mail draft in the shortlist */
+.sl-ai-out { margin-top: .75rem; }
+.br-entry { border-top: 1px solid var(--line, #3334); padding: .5rem 0; }
+.ai-text .badge.ai, .badge.ai { font-size: .7rem; padding: 0 .35rem; border-radius: .3rem; background: #b9151522; color: #e45656; }
+.mt { font-style: italic; opacity: .85; }
+.analyst { border-left: 3px solid #888; padding-left: .5rem; }

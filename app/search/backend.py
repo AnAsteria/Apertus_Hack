@@ -239,6 +239,24 @@ class HybridBackend:
                 'model':self.manifest['model']['repo'],'generation':self.manifest['generation']}))
         return self._response(req,results,limitations,enrichment,start,timing,dense_ok=dense_ok,best_dense=best_dense,abstain=self.abstain_dense)
 
+    def card(self, entity_id, max_sentences=4):
+        """T23: one entity's stored card (supported fields + exact evidence), without a query."""
+        item = self.entities.get(entity_id)
+        if item is None or item['entity']['status'] == 'retired':
+            return None
+        sids = list(item.get('claim_sentence_ids') or [])
+        for entry in self.entries:
+            if entity_id in entry['entity_ids']:
+                sids += [s for s in entry['sentence_ids'] if s not in sids]
+                break
+        evidence = self.store.evidence(sids[:max_sentences]) if sids else []
+        if not evidence:
+            return None
+        entity = item['entity']
+        return Result(entity_id=entity_id, entity_type=entity['entity_type'], rank=1, display_name=entity['name'],
+                      fields=item['fields'], reason='Selected by the analyst.', evidence=evidence,
+                      freshness=freshness(evidence), retrieval={'entity_status': entity['status']})
+
     @staticmethod
     def _response(req,results,limitations,enrichment,start,timing,*,dense_ok=False,best_dense=0.,abstain=0.):
         if not results:
