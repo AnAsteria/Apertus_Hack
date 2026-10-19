@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Bern Match — Technical report</title>
+<style>
+  @page { size: A4; margin: 14mm 15mm 14mm 15mm; }
+  :root { --red: #e30613; --ink: #1d1d1d; --grey: #5f5f5f; --line: #d9d9d9; --soft: #f4f4f4; }
+  * { box-sizing: border-box; }
+  body { font-family: "Helvetica Neue", Arial, sans-serif; color: var(--ink); font-size: 10pt; line-height: 1.4; margin: 0; }
+  h1 { font-size: 20pt; margin: 0 0 2pt; letter-spacing: -0.2pt; }
+  h2 { font-size: 12.2pt; margin: 11pt 0 4pt; padding-top: 3pt; border-top: 2px solid var(--red); }
+  h3 { font-size: 10pt; margin: 7pt 0 2pt; }
+  p { margin: 0 0 5pt; }
+  ul { margin: 0 0 5pt; padding-left: 14pt; }
+  li { margin: 0 0 1.5pt; }
+  .sub { color: var(--grey); font-size: 10pt; margin-bottom: 6pt; }
+  .meta { font-size: 8.3pt; color: var(--grey); margin-bottom: 8pt; }
+  table { border-collapse: collapse; width: 100%; margin: 3pt 0 7pt; font-size: 8.9pt; }
+  th, td { border-bottom: 1px solid var(--line); padding: 2.6pt 4pt; text-align: left; vertical-align: top; }
+  th { background: var(--ink); color: #fff; font-weight: 600; }
+  tr:nth-child(even) td { background: var(--soft); }
+  .num { text-align: right; white-space: nowrap; }
+  .key { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6pt; margin: 6pt 0 8pt; }
+  .key div { background: var(--soft); border-left: 3px solid var(--red); padding: 5pt 6pt; }
+  .key b { display: block; font-size: 14pt; }
+  .key span { font-size: 8pt; color: var(--grey); }
+  .note { font-size: 8.3pt; color: var(--grey); }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12pt; }
+  .tag { font-weight: 600; }
+  .ok { color: #1b7f3b; font-weight: 600; } .part { color: #b06a00; font-weight: 600; }
+  svg text { font-family: "Helvetica Neue", Arial, sans-serif; }
+  .pb { break-before: page; }
+  code { font-size: 8.4pt; background: var(--soft); padding: 0 2pt; }
+</style>
+</head>
+<body>
+
+<h1>Bern Match</h1>
+<div class="sub">From a company's need to a verified shortlist of who to contact in Bern. Powered by Apertus.</div>
+<div class="meta">Technical report · Apertus Hackathon, challenge of the Bern Economic Development Agency · 19 October 2026 · Dimitry, Maxim, Ruihan ·
+Live: kaktamsdengami-bern-match.hf.space · Code: github.com/AnAsteria/Apertus_Hack · All numbers are measured; sources are the repository's <code>docs/MEASUREMENTS.md</code>, <code>docs/report/</code> and the linked issues.</div>
+
+<div class="key">
+  <div><b>0.82</b><span>Recall@10 on the frozen evaluation set after Apertus refinement (0.77 instant, n = 17)</span></div>
+  <div><b>100%</b><span>of cards link to their source page; quotes byte-identical to the stored sentence</span></div>
+  <div><b>&lt; 1 s</b><span>first results, no LLM on the fast path (server p95 ≈ 0.5 s)</span></div>
+  <div><b>0 tokens</b><span>per plain search; ≈ 2.9k Apertus tokens per refined request</span></div>
+</div>
+
+<h2>1. Problem and product</h2>
+<p>The Bern Economic Development Agency connects companies with research partners. An analyst today reads dozens of institute websites in German, English and French to find the right group, and has little to show as proof. <b>Bern Match turns the company's need, written in plain language (EN/DE/FR/IT), into a shortlist of contacts</b>: research groups, labs, platforms, projects and people at the University of Bern, ARTORG and the Diabetes Center Berne. Every card quotes the exact sentence from the source page with its link. The analyst collects entries across several searches into a <b>shortlist</b>, adds notes and exports a PDF for the team. Optional Apertus drafts (one-page brief, e-mail) are labelled as AI and are never sent by the system.</p>
+
+<h2>2. Architecture</h2>
+<svg viewBox="0 0 760 232" width="100%" role="img" aria-label="Architecture diagram">
+  <defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#777"/></marker></defs>
+  <text x="0" y="12" font-size="10" fill="#e30613" font-weight="700">PREPARED IN ADVANCE (never per query)</text>
+  <g font-size="9.5">
+    <rect x="0" y="20" width="170" height="54" rx="6" fill="#f4f4f4"/><text x="8" y="38" font-weight="700">41 public sources</text><text x="8" y="52">UniBE · ARTORG · DCB</text><text x="8" y="65">supplied domain list</text>
+    <rect x="196" y="20" width="170" height="54" rx="6" fill="#f4f4f4"/><text x="204" y="38" font-weight="700">Polite crawl</text><text x="204" y="52">2,811 pages, 148,404</text><text x="204" y="65">sentences, dated + hashed</text>
+    <rect x="392" y="20" width="170" height="54" rx="6" fill="#f4f4f4"/><text x="400" y="38" font-weight="700">Apertus 70B extraction</text><text x="400" y="52">facts must cite a stored</text><text x="400" y="65">sentence; 70B judge checks</text>
+    <rect x="588" y="20" width="170" height="54" rx="6" fill="#f4f4f4"/><text x="596" y="38" font-weight="700">Search index (CPU)</text><text x="596" y="52">SQLite FTS5 BM25 +</text><text x="596" y="65">e5-small ONNX, 22k vectors</text>
+    <line x1="170" y1="47" x2="194" y2="47" stroke="#777" stroke-width="1.6" marker-end="url(#a)"/>
+    <line x1="366" y1="47" x2="390" y2="47" stroke="#777" stroke-width="1.6" marker-end="url(#a)"/>
+    <line x1="562" y1="47" x2="586" y2="47" stroke="#777" stroke-width="1.6" marker-end="url(#a)"/>
+  </g>
+  <text x="0" y="104" font-size="10" fill="#e30613" font-weight="700">WHEN THE ANALYST SEARCHES</text>
+  <g font-size="9.5">
+    <rect x="0" y="112" width="170" height="50" rx="6" fill="#f4f4f4"/><text x="8" y="132" font-weight="700">Request</text><text x="8" y="146">plain language, 4 languages</text>
+    <rect x="196" y="112" width="170" height="50" rx="6" fill="#f4f4f4"/><text x="204" y="132" font-weight="700">Fast search, no LLM</text><text x="204" y="146">fused BM25 + dense, &lt; 1 s</text>
+    <rect x="392" y="112" width="170" height="50" rx="6" fill="#f4f4f4"/><text x="400" y="132" font-weight="700">Cards</text><text x="400" y="146">quote + link + confidence</text>
+    <rect x="588" y="112" width="170" height="50" rx="6" fill="#e30613"/><text x="596" y="132" font-weight="700" fill="#fff">Shortlist</text><text x="596" y="146" fill="#fff">notes · PDF · brief · e-mail draft</text>
+    <line x1="170" y1="137" x2="194" y2="137" stroke="#777" stroke-width="1.6" marker-end="url(#a)"/>
+    <line x1="366" y1="137" x2="390" y2="137" stroke="#777" stroke-width="1.6" marker-end="url(#a)"/>
+    <line x1="562" y1="137" x2="586" y2="137" stroke="#777" stroke-width="1.6" marker-end="url(#a)"/>
+    <line x1="672" y1="74" x2="300" y2="110" stroke="#777" stroke-width="1.4" marker-end="url(#a)"/>
+    <rect x="196" y="180" width="366" height="46" rx="6" fill="#fff" stroke="#e30613" stroke-width="1.4"/>
+    <text x="204" y="198" font-weight="700">Apertus in the background (SSE, ~15 s)</text><text x="204" y="213">70B reads the request → research terms → refined ranking; 8B labelled assessment</text>
+    <line x1="85" y1="162" x2="194" y2="196" stroke="#777" stroke-width="1.4" marker-end="url(#a)"/>
+    <line x1="520" y1="180" x2="476" y2="164" stroke="#777" stroke-width="1.4" marker-end="url(#a)"/>
+    <text x="588" y="198" font-size="9" fill="#5f5f5f">Same container: HF Space</text><text x="588" y="211" font-size="9" fill="#5f5f5f">today, docker compose up</text><text x="588" y="224" font-size="9" fill="#5f5f5f">on own infrastructure</text>
+  </g>
+</svg>
+<p><b>Offline.</b> A bounded crawl stores page versions and sentence-level text. Apertus 70B reads each page as numbered sentences and returns people, units, projects, infrastructure, roles and relations, each citing sentence numbers. Code maps the numbers to stored sentence IDs. Names must appear in the cited sentence and roles must be verbatim. Contacts are read by regex, never from model text. A group's expertise is never transferred to its members, and instruction-like page text is withheld (prompt-injection guard). A rule check plus a 70B judge then decides whether the cited sentences really state each claim: <b>4,314 of 5,130 extracted claims passed, 816 were rejected</b> (469 by rules, 347 by the judge). Same-name person entities are merged through T08 aliases (A6), which removed 56 duplicate cards. The index is one SQLite file plus vectors, about 138 MB, and it restores in ≈ 7 s.</p>
+<p><b>At query time.</b> BM25 and multilingual-e5-small run in parallel, are max-aggregated per entity <i>before</i> weighted reciprocal-rank fusion (BM25 weight 0.25), and are diversified with MMR. News, fact-sheet and navigation pages are not shown as contacts. A deterministic policy labels each answer <i>confident</i>, <i>low confidence</i>, <i>too broad</i> or <i>no evidence</i>. In the background, Apertus 70B interprets the request into editable needs, research terms in English and German, and a scope verdict. A second retrieval over those terms produces a refined ranking that never overrides a refusal or a <i>too broad</i> outcome. 8B writes per-candidate assessments, which are validated against the candidate's own evidence. If Apertus is slow, 8B takes over interpretation after 12 s; if it is down, the fast results stand.</p>
+
+<h2>3. Purposeful AI: which model does what, and why</h2>
+<table>
+  <tr><th>Step</th><th>Model</th><th>Measured</th><th>Decision</th></tr>
+  <tr><td>Fact extraction (offline, cached)</td><td>Apertus 70B</td><td>≈ 97% claim precision and 24 persons vs ≈ 48% and 0 for 8B (11 pages, hand-checked); ≈ 30 min for the corpus</td><td>70B: quality matters, runs once</td></tr>
+  <tr><td>Request interpretation and expansion</td><td>Apertus 70B</td><td>Recall@10 0.65 → <b>0.82</b> (frozen evaluation set, in-process); median 4.9 s, background</td><td>70B</td></tr>
+  <tr><td>Same with 8B</td><td>Apertus 8B</td><td>0.65 → 0.65 (no gain), 1.3 s</td><td>Fallback only (12 s deadline)</td></tr>
+  <tr><td>Candidate assessment</td><td>Apertus 8B</td><td>≈ 6 s vs 18 s for 70B, similar on clear cases; 86% of expected answers labelled direct/related</td><td>8B: speed</td></tr>
+  <tr><td>Scope check (refuse nonsense)</td><td>Apertus 70B</td><td>Development: 0/29 real requests refused, 9/10 nonsense probes refused; evaluation check: 0/19 refused</td><td>On; 8B verdicts never refuse</td></tr>
+  <tr><td>Fast-path embeddings</td><td>multilingual-e5-small (ONNX int8)</td><td>server p95 ≈ 0.5 s, CPU only</td><td>Kept; Swiss embeddings on roadmap</td></tr>
+</table>
+<p>All structured output uses the gateway's JSON-schema constrained decoding and is re-validated with Pydantic. Running on the shared Keera gateway taught us concrete rules: flat schemas and short string labels avoid the decoder failures we saw with nested lists.</p>
+
+<h2>4. Technical rigour: evaluation</h2>
+<p><b>Protocol.</b> The gold set has 36 real partner-search questions grouped by intent: professional, lay, synonym, misleading, partial and absent, in EN/DE/FR/IT/RU. Expected entities are keyed by source URL. Intent groups are split 17 development / 19 evaluation. The set was frozen (gold 0.3, hash <code>340c4b0a…</code>) before any evaluation-split run. <b>Every threshold and weight was chosen on development; each evaluation configuration was scored once.</b> One evaluation intent viewed before a re-score is disclosed and was not used for tuning.</p>
+<div class="two">
+<div>
+<table>
+  <tr><th>Frozen evaluation split, Recall@10 (n = 17 scored)</th><th class="num">Value</th></tr>
+  <tr><td>BM25 only (in-process)</td><td class="num">0.29</td></tr>
+  <tr><td>Dense only (in-process)</td><td class="num">0.59</td></tr>
+  <tr><td>Hybrid (in-process, arm64)</td><td class="num">0.65</td></tr>
+  <tr><td>First live version (18 Oct)</td><td class="num">0.47</td></tr>
+  <tr><td><b>Live today, instant (19 Oct)</b></td><td class="num"><b>0.77</b></td></tr>
+  <tr><td><b>Live today, after Apertus refinement</b></td><td class="num"><b>0.82</b></td></tr>
+  <tr><td>Development split, live, both modes</td><td class="num">0.82</td></tr>
+</table>
+</div>
+<div>
+<table>
+  <tr><th>Quality and grounding</th><th class="num">Value</th></tr>
+  <tr><td>Cards with a source link</td><td class="num">100%</td></tr>
+  <tr><td>Quote mismatches vs stored sentence (350 cards, 2,754 quotes)</td><td class="num">0</td></tr>
+  <tr><td>Red-team rule violations (18 adversarial queries)</td><td class="num">0</td></tr>
+  <tr><td>Correct abstention on 2 "no answer" questions</td><td class="num">0 / 2</td></tr>
+  <tr><td>Sources represented in served cards</td><td class="num">34 / 41</td></tr>
+  <tr><td>Share of cards from top 3 hosts</td><td class="num">40%</td></tr>
+</table>
+</div>
+</div>
+<p class="note">The live instant number (x86, 0.77) and the in-process hybrid number (arm64, 0.65) are the same configuration. The difference is two edge-of-list queries (I11-ru, I18-fr) whose int8 embedding scores differ between CPU types (#147). The expansion gain (+0.17) was measured within one setup. The end-to-end mode scores the Apertus-refined list when the server sends one: 14 of 19 evaluation queries; the rest kept the instant list through the guard. n = 17 is small, so we read all numbers as indicative.</p>
+<p><b>Support of evidence (semantic).</b> Quotes are verbatim by construction, but a verbatim quote can still be off-topic. Three samples of 40 cards each were rated <i>supported / partly / unsupported</i>:</p>
+<ul>
+  <li>The baseline cards, AI pre-rated and every rating reviewed by Ruihan: 5% / 12.5% / 82.5%. In 28 of 33 unsupported cases the shown sentence was a heading or fragment.</li>
+  <li>The current cards rated by two independent model judges: 15% / 28% / 57% and 7.5% / 50% / 42.5%, agreeing on 31 of 40.</li>
+</ul>
+<p>Strong matches sit at ranks 1–3, and ranks 4–10 are mostly weak. This is our main quality gap (section 8). An assessment sample (10 live, stratified) had the category right in 6 of 10, with no invented contacts or numbers.</p>
+<p><b>Tried, measured, not shipped.</b></p>
+<table>
+  <tr><th>Idea</th><th>Result</th><th>Decision</th></tr>
+  <tr><td>Open cross-encoder rerank of the top 30</td><td>arm64: dev 0.82 → 0.88, eval 0.65 → 0.71. <b>Deployed x86: dev 0.82 → 0.82, +1.2 s per search</b></td><td>Not shipped</td></tr>
+  <tr><td>Cut cards far below the best one</td><td>dev unchanged with 4.4 instead of 9.8 cards; <b>eval 0.77 → 0.65</b></td><td>Flag only (<code>weaker_match</code>)</td></tr>
+  <tr><td>Larger crawl E1 (+1,529 pages, +54%) with a stricter extraction prompt</td><td>dev recall unchanged; cards with fields 26% → 20%; supported claims 4,289 → 3,710</td><td>Not shipped</td></tr>
+  <tr><td>Type hint, corpus acronyms, title boost, listing classes</td><td>dev unchanged</td><td>Off</td></tr>
+  <tr><td>Relevance-based evidence for assessment</td><td>direct/related on expected answers 0.82 → 0.71</td><td>Opt-in only</td></tr>
+</table>
+
+<h2>5. Value, cost and scalability</h2>
+<ul>
+  <li><b>Latency.</b>
+    <ul>
+      <li>First results: server median ≈ 0.26 s, p95 ≈ 0.5 s.</li>
+      <li>10 concurrent users: p95 ≈ 3 s (load test, 18 Oct).</li>
+      <li>Apertus refinement and assessments: median ≈ 14 s, p95 ≈ 17 s after the B1 latency fixes (parallel batches, interpretation cache, straggler deadline). Before them: 33.5 s / 50.5 s.</li>
+      <li>The analyst never waits for the model: results are shown first, and the refined ranking is offered when it arrives.</li>
+    </ul>
+  </li>
+  <li><b>Tokens.</b>
+    <ul>
+      <li>0 per plain search.</li>
+      <li>≈ 1.7k input + 1.2k output per refined request.</li>
+      <li>Processing the whole corpus: ≈ 1.05M input + 0.39M output tokens, run once and cached. Re-runs touch only changed pages.</li>
+    </ul>
+  </li>
+  <li><b>Hosting dominates cost.</b> The demo Space (CPU Upgrade) costs ≈ USD 22 per month. Keera token prices are not public to us, so we report tokens and formulas (<code>docs/costs.md</code>).</li>
+  <li><b>Scaling.</b>
+    <ul>
+      <li>The fast path is CPU-only and stateless per request. Scaling means replicas over one read-only index.</li>
+      <li>The index rebuild is incremental: unchanged text reuses its vectors. The person merge re-encoded 31 entries in 41 s.</li>
+      <li>Apertus calls are bounded per request: at most 8 candidates, concurrency 4.</li>
+    </ul>
+  </li>
+</ul>
+
+<h2>6. Sovereign deployability</h2>
+<ul>
+  <li><b>Swiss model on Swiss compute.</b> Apertus (Swiss AI Initiative) is served through the organisers' Keera gateway on CSCS. No non-Swiss LLM is used anywhere.</li>
+  <li><b>Open, replaceable components.</b> FastAPI, SQLite FTS5, ONNX Runtime, multilingual-e5-small (MIT) and Apertus (Apache-2.0 per its model card). The LLM endpoint is a single OpenAI-compatible base URL, so a local llama.cpp server can replace the gateway.</li>
+  <li><b>One command.</b> <code>docker compose up</code> runs the same image as the live Space, restores the index bundle, binds to localhost only and never crawls. A profile adds a local Apertus 8B (community Q4_K_M GGUF, about 7 tokens/s on a laptop CPU).</li>
+  <li><b>Shown so far:</b>
+    <ul>
+      <li>the fast path on the real index with every outbound socket refused: 0 connection attempts, 255 ms for an unseen German query;</li>
+      <li>an in-container check script that proves egress is blocked.</li>
+    </ul>
+  </li>
+  <li><b>Not shown:</b> a recorded air-gapped run with the network switched off at OS level, and local Apertus on the query path. This is a declared gap (decision D13).</li>
+</ul>
+
+<h2>7. Responsible by design: crawling, data, AI text</h2>
+<div class="two">
+<div>
+<h3>Polite crawling</h3>
+<ul>
+  <li>robots.txt obeyed; if unreadable, the site is not crawled (fail closed); no redirects outside the allowed domains.</li>
+  <li>At most <b>0.5 requests per second per host</b>, identifying User-Agent, back-off on 408/429/5xx with <code>Retry-After</code> honoured.</li>
+  <li>Fixed budgets per source (pages, depth, sitemaps, discovered URLs, 10 MB per response); cached pages reused.</li>
+  <li><b>No fetch at query time:</b> searches read only the stored corpus.</li>
+</ul>
+</div>
+<div>
+<h3>Data minimisation, removal, retention</h3>
+<ul>
+  <li>Only public professional pages from the supplied sources. Contacts are shown only through an official-contact field, never quoted from text.</li>
+  <li>Company descriptions are not stored and kept out of logs; logs are kept 30 days.</li>
+  <li>Removal on request: suppressed records are skipped by the crawler, filtered at serving time and answered with <code>410</code>. Stored copies are purged within 30 days (proposed retention). The contact address is still to be published.</li>
+  <li>Evidence older than 365 days is marked stale. Former staff are never shown as current; 20 persons were marked from their own pages.</li>
+  <li>AI text is always labelled; e-mail drafts are never sent.</li>
+</ul>
+</div>
+</div>
+<p class="note">These are design commitments, not a claim of legal compliance.</p>
+
+<h2>8. Implementation feasibility, readiness and limits</h2>
+<p><b>Operation.</b>
+One-command deploy with smoke test and commit check; rollback by restoring the previous bundle. Feedback and admin state survive restarts; rate limiting; protected admin with per-source coverage. CI runs 360+ deterministic tests with no network and no paid inference. A new source is a YAML file validated by the loader (example: BFH engineering research).</p>
+<p><b>Needed for production:</b>
+Swiss or on-premises hosting; scheduled refresh crawls; monitoring and alerting; single sign-on; a staffed removal contact; a recorded air-gapped acceptance run; partner review of the gold set (it was written by the team).</p>
+<p><b>Limitations.</b></p>
+<ul>
+  <li>Small samples: 17 scored evaluation queries, one location for latency.</li>
+  <li>Structured fields cover 26% of cards; every card has quote and link.</li>
+  <li>Ranks 4–10 are often weak matches.</li>
+  <li>The 2 "no answer" questions still return low-confidence cards.</li>
+  <li>The same project can appear twice through its DE and EN pages.</li>
+  <li>French and Italian source content is sparse.</li>
+  <li>The local Apertus model is an unofficial conversion.</li>
+</ul>
+<p><b>Next.</b></p>
+<ul>
+  <li>Swiss / Apertus embeddings, measured on the same gold set.</li>
+  <li>Ship the larger crawl with an extraction prompt that keeps field completeness.</li>
+  <li>Show the best-matching sentence first.</li>
+  <li>Merge language versions.</li>
+  <li>Team shortlists with contact status and CRM export.</li>
+</ul>
+
+<h2>9. Dependencies, licences and provenance</h2>
+<p class="note">
+<b>Model and runtime:</b> Apertus v1.5 8B / 70B, Swiss AI Initiative (Apache-2.0 per model card; via Keera/CSCS) · multilingual-e5-small, revision 614241f6 (MIT) · ONNX Runtime (MIT) · llama.cpp b11719 (MIT, local probe only).<br>
+<b>Application:</b> FastAPI, Pydantic (MIT) · Uvicorn, httpx (BSD-3-Clause) · SQLite (public domain).<br>
+<b>Not shipped:</b> cross-encoder mmarco-mMiniLMv2-L12 (Apache-2.0, evaluated only).<br>
+<b>Data:</b> public pages of the 41 supplied UniBE, ARTORG and DCB domains, crawled 18–19 Oct 2026. The corpus and index are not published in the repository because they contain names from public pages. The full inventory is in <code>docs/attribution.md</code>.
+</p>
+
+</body>
+</html>
