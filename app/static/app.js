@@ -664,7 +664,30 @@ function nameMissing(q, results) {
   return !results.some(function (r) { var n = plain(r.display_name); return words.every(function (w) { return n.indexOf(w) >= 0; }); });
 }
 
+// T39 (#100): Apertus (70B) judged the request outside the corpus. The cards fold away behind one
+// button; nothing is deleted and the box says who decided.
+var outOfScope = false;
+function renderRefusal() {
+  var box = document.getElementById("outcome"), res = document.getElementById("results");
+  clearNode(box);
+  box.hidden = false;
+  var h = el("h2");
+  h.appendChild(el("span", "ai-tag", "Apertus"));
+  h.appendChild(document.createTextNode(" " + t("out.scope", "Outside the indexed corpus")));
+  box.appendChild(h);
+  box.appendChild(el("p", null, t("out.scope.text", "This request is outside what the indexed corpus covers.")));
+  box.appendChild(el("p", "meta", t("out.scope.who", "Judged by Apertus. Bern Match searches public research pages of the University of Bern (including ARTORG) and Diabetes Center Berne.")));
+  var n = res.querySelectorAll(".card").length;
+  if (n) {
+    var chips = el("div", "chips");
+    chips.appendChild(button(res.hidden ? t("out.scope.show", "Show the {n} direct results anyway", { n: n }) : t("out.scope.hide", "Hide the results"),
+      function () { res.hidden = !res.hidden; renderRefusal(); }, "chip"));
+    box.appendChild(chips);
+  }
+}
+
 function renderOutcome(b, byApertus) {
+  if (outOfScope) { renderRefusal(); return; }
   var box = document.getElementById("outcome");
   clearNode(box);
   var info = OUTCOME_TEXT[b.outcome] && [t("out." + b.outcome, OUTCOME_TEXT[b.outcome][0]), t("out." + b.outcome + ".text", OUTCOME_TEXT[b.outcome][1])];
@@ -1226,6 +1249,16 @@ function startEnrichment(body, requestId, myRevision) {
     es.addEventListener("interpretation", function (e) {
       var d = parse(e);
       if (!d) return;
+      if (d.payload.outcome_update === "out_of_scope") {
+        outOfScope = true; noNeed = true; refining = false;
+        if (showDirect) showDirect("");
+        document.getElementById("results").hidden = true;
+        document.getElementById("summary").hidden = true;
+        document.getElementById("needs").hidden = true;
+        setStatus("", "");
+        renderRefusal();
+        return;
+      }
       var q = document.getElementById("query").value.trim();
       // Keep edits the analyst already made; the first interpretation seeds the lists.
       if (!userNeeds.length) {
@@ -1251,6 +1284,7 @@ function startEnrichment(body, requestId, myRevision) {
     });
     es.addEventListener("progress", function (e) {
       var d = parse(e);
+      if (outOfScope) return; // the refusal box stays; skipped stages need no message
       if (d && d.payload.stage === "assessment" && d.payload.state === "started" && d.payload.candidates) {
         checking = d.payload.candidates; if (lastNeedsPayload) renderNeeds(lastNeedsPayload);
       }
@@ -1296,6 +1330,7 @@ function runSearch(needs) {
   closeEvents();
   clearTimeout(fallbackTimer);
   resultsShown = true; showDirect = null; pendingAssess = []; refining = false; pendingRerank = null;
+  outOfScope = false; document.getElementById("results").hidden = false;
   shownResults = null; assessShown = {}; noNeed = false; assessFailed = false; noClearMatch = 0; rerankSkipped = false; bestFits = []; hiddenVerdicts = {}; checking = 0; lastSummary = null; lastNotes = null; lastNeedsPayload = null; lastNeedNote = null;
   var started = performance.now();
   searchStarted = started;
@@ -1392,6 +1427,7 @@ function goHome(ev) {
   closeEvents();
   clearTimeout(fallbackTimer);
   transitionEndsAt = 0;
+  outOfScope = false; document.getElementById("results").hidden = false;
   document.getElementById("query").value = "";
   clearResults();
   clearNode(document.getElementById("limitations"));

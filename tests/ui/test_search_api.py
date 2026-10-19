@@ -169,3 +169,13 @@ def test_enter_submits_logo_goes_home_and_transition_respects_reduced_motion():
     # the welcome -> results glide is skipped for reduced motion
     enter = js[js.index("function enterResults"):js.index("function goHome")]
     assert "prefers-reduced-motion: reduce" in enter
+
+
+def test_out_of_scope_refusal_folds_the_cards_and_hidden_always_wins():
+    js, css = _static("app.js"), _static("style.css")
+    handler = js[js.index('es.addEventListener("interpretation"'):js.index('es.addEventListener("reranked"')]
+    assert 'outcome_update === "out_of_scope"' in handler and "renderRefusal()" in handler
+    refusal = js[js.index("function renderRefusal"):js.index("function renderOutcome")]
+    assert "This request is outside what the indexed corpus covers." in refusal
+    assert "Show the {n} direct results anyway" in refusal  # folded, never deleted
+    assert "[hidden] { display: none !important; }" in css

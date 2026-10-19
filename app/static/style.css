@@ -29,6 +29,8 @@
   }
 }
 * { box-sizing: border-box; }
+/* hidden always wins: .summary { display: flex } used to keep the summary pill visible when hidden */
+[hidden] { display: none !important; }
 body { font-family: var(--sans); margin: 0; background: var(--bg); color: var(--text); line-height: 1.55;
   -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
