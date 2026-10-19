@@ -221,3 +221,20 @@ def test_unstated_constraints_are_dropped_but_stated_ones_kept():
                                  {"text": "endurance athletes as users", "kind": "constraint"}]}
     r = interpret("glucose sensor partners", COMPANY, client=fake_client(out))
     assert [n.text for n in r.needs] == ["endurance athletes as users"] and r.dropped["constraint_not_stated"] == 1
+
+
+def test_default_interpreter_caches_per_normalised_request(monkeypatch):
+    calls = []
+
+    def fake_interpret(query, ctx, needs):
+        calls.append(query)
+        return Interpretation(needs=[], expanded_queries=[], clarification=None, partner_type=None)
+
+    monkeypatch.setattr(enrichment, "interpret", fake_interpret)
+    enrichment._interp_cache.clear()
+    req = enrichment.SearchRequest(**BODY)
+    enrichment._default_interpreter(req)
+    enrichment._default_interpreter(enrichment.SearchRequest(**(BODY | {"query": "  Glucose SENSOR partners ", "revision": 2})))
+    assert len(calls) == 1
+    enrichment._default_interpreter(enrichment.SearchRequest(**(BODY | {"query": "something else"})))
+    assert len(calls) == 2

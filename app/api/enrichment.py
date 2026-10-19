@@ -19,6 +19,8 @@ in app/main.py, and the UI calls step 1 then opens step 2 with fetch/EventSource
 """
 from __future__ import annotations
 
+import hashlib
+import json
 import os
 import re
 import queue
@@ -53,8 +55,54 @@ CandidateProvider = Callable[[SearchRequest], list[Result]]
 Assessor = Callable  # (query, needs, candidates, on_result) -> (payloads, stats)
 
 
+INTERPRET_CACHE_TTL_S = float(os.environ.get("BERNMATCH_INTERPRET_CACHE_TTL_S", "3600"))
+INTERPRET_CACHE_MAX = 256
+_interp_cache: dict[str, tuple[float, Interpretation]] = {}
+_interp_cache_lock = threading.Lock()
+
+
+def _interp_key(req: SearchRequest) -> str:
+    """Normalised query + company context + the analyst's own needs. In memory only, with the
+    same 60-minute lifetime as the session context (DECISIONS); never written to disk or logs."""
+    norm = lambda t: re.sub(r"\s+", " ", (t or "").casefold()).strip()
+    needs = sorted((n.kind, norm(n.text)) for n in req.needs if n.origin == "user")
+    raw = json.dumps([norm(req.query), norm(req.company_context), needs], ensure_ascii=False)
+    return hashlib.sha256(raw.encode()).hexdigest()
+
+
 def _default_interpreter(req: SearchRequest) -> Interpretation:
-    return interpret(req.query, req.company_context, req.needs)
+    """B1 (#126): cache interpretations per normalised request, so a re-run or an edit that keeps
+    the same text skips the 70B call (~5 s)."""
+    key, now = _interp_key(req), time.monotonic()
+    with _interp_cache_lock:
+        hit = _interp_cache.get(key)
+        if hit and now - hit[0] < INTERPRET_CACHE_TTL_S:
+            return hit[1]
+    result = interpret(req.query, req.company_context, req.needs)
+    with _interp_cache_lock:
+        if len(_interp_cache) >= INTERPRET_CACHE_MAX:
+            for k in sorted(_interp_cache, key=lambda k: _interp_cache[k][0])[:INTERPRET_CACHE_MAX // 4]:
+                del _interp_cache[k]
+        _interp_cache[key] = (now, result)
+    return result
+
+
+def warm_up() -> None:
+    """B1 (#126): one tiny call per model at startup, so the first analyst request doesn't pay a
+    cold start (49 s observed once on 70B). Opt-in via BERNMATCH_WARMUP=1; failures are ignored."""
+    from ..ai.client import get_client
+    try:
+        client = get_client()
+        if not client.config.enabled:
+            return
+        for model in {client.config.quality_model, client.config.model}:
+            client.chat([{"role": "user", "content": "Reply with OK."}], model=model, max_tokens=3)
+    except Exception:
+        pass
+
+
+if os.environ.get("BERNMATCH_WARMUP") == "1":
+    threading.Thread(target=warm_up, name="apertus-warmup", daemon=True).start()
 
 
 def _default_candidates(req: SearchRequest) -> list[Result]:
