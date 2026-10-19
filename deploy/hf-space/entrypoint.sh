@@ -131,4 +131,15 @@ if [ "$store_ok" = 1 ]; then
   ) &
 fi
 
+# EXTRA A1 on the cloud: BERNMATCH_RERANK_FETCH=1 (Space variable) downloads the pinned open
+# cross-encoder once at start; any failure leaves search without it. Off by default.
+if [ "${BERNMATCH_RERANK_FETCH:-0}" = "1" ] && [ -z "${BERNMATCH_RERANK_DIR:-}" ]; then
+  if ( cd "$HOME/app" && python -m app.search.fetch_reranker --dest "$WORK/rerank" \
+         --variant "${BERNMATCH_RERANK_VARIANT:-quint8_avx2}" ); then
+    export BERNMATCH_RERANK_DIR="$WORK/rerank"; log "cross-encoder enabled ($(cat "$WORK/rerank/REVISION"))"
+  else
+    log "WARNING: cross-encoder fetch failed; search runs without it"
+  fi
+fi
+
 exec uvicorn app.main:app --host 0.0.0.0 --port 7860
