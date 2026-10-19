@@ -8,6 +8,8 @@ Refs #15. Status 2026-10-18. Architecture section 5 asks for a **local, network-
 2. **Sovereign hosting of the language model.** The deployed app (Hugging Face Space, CPU Upgrade, D9) calls Apertus only through the organiser's **CSCS/Keera gateway** (models report `location: "ch"`, `docs/access-readiness.md`). Search works when that gateway is unavailable; only enrichment stops.
 3. **A local Apertus runtime exists as a fallback.** On Dimitry's laptop (Windows 11, 15.2 GB RAM, CPU only), llama.cpp `b11719` ran a community Q4_K_M GGUF of Apertus v1.5 8B at about 7 tokens/s (`docs/local-runtime-t15.md`). The app's adapter accepts a local OpenAI-compatible endpoint (`APERTUS_BASE_URL`). This path has **not** been run end to end with the app.
 
+**Runbook for the air-gapped Docker run:** `docker-compose.yml` + `docs/offline-docker.md` + `scripts/airgap_check.py` (added 2026-10-19, not yet run).
+
 ## What is not demonstrated (open Core gap)
 
 - **No air-gapped run.** The process-level socket refusal is not an operating-system network block; no machine had its network physically or administratively blocked; and no recording of such a run exists.
