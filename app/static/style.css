@@ -6,8 +6,7 @@
   --ok: #dcf3e3; --warn: #fdecc8; --neutral: #eef1f6;
   --shadow: 0 1px 2px rgba(17,24,39,.05), 0 8px 24px rgba(17,24,39,.06);
   --shadow-hover: 0 2px 4px rgba(17,24,39,.06), 0 14px 36px rgba(17,24,39,.10);
-  --glow: radial-gradient(60rem 22rem at 50% -6rem, rgba(47,91,234,.14), transparent 70%),
-          radial-gradient(30rem 16rem at 85% 0, rgba(124,58,237,.10), transparent 70%);
+  --glow: radial-gradient(60rem 22rem at 50% -6rem, rgba(47,91,234,.14), transparent 70%);
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -16,8 +15,7 @@
     --mark: #5c4d10; --ai-bg: #2a1716; --ai-line: #8a3b36; --ai: #ff8a80;
     --ok: #1d3d28; --warn: #4a3512; --neutral: #1f2938; --shadow: 0 1px 2px rgba(0,0,0,.4); --shadow-hover: 0 8px 24px rgba(0,0,0,.45);
     --unibe: #ff6b81; --artorg: #4fd1c5; --dcb: #f6ad55; --other: #9aa6b8; --tag-text: #08111f;
-    --glow: radial-gradient(60rem 22rem at 50% -6rem, rgba(122,162,255,.16), transparent 70%),
-            radial-gradient(30rem 16rem at 85% 0, rgba(180,140,255,.12), transparent 70%);
+    --glow: radial-gradient(60rem 22rem at 50% -6rem, rgba(122,162,255,.16), transparent 70%);
   }
 }
 * { box-sizing: border-box; }
@@ -168,6 +166,8 @@ mark { background: var(--mark); color: inherit; border-radius: 3px; padding: 0 .
 .synthetic { background: var(--warn); padding: .3rem .6rem; border-radius: 6px; font-size: .8rem; }
 .assessment { margin-top: .75rem; padding: .5rem .8rem; border-left: 3px solid var(--ai-line); background: var(--ai-bg); border-radius: 0 8px 8px 0; }
 .badge.cat-direct_match { background: var(--ok); } .badge.cat-related_capability { background: var(--warn); }
+.badge.cat-insufficient_evidence { background: var(--neutral); color: var(--muted); }
+.privacy { color: var(--muted); font-size: .8rem; margin: .5rem 0 0; }
 
 .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(22rem, 100%); background: var(--panel); border-left: 1px solid var(--line); box-shadow: -8px 0 24px rgba(0,0,0,.15); padding: 1rem; overflow-y: auto; z-index: 5; }
 .drawer[hidden] { display: none; }

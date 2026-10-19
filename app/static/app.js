@@ -581,6 +581,9 @@ function renderOutcome(b, byApertus) {
   // The outcome was measured on the direct search. Over Apertus' ranking, say exactly that.
   if (byApertus && b.outcome === "low_confidence")
     info = [t("out.weakWording", "Weak match on your exact wording"), t("out.weakWording.text", "The direct search found only weak matches, so Apertus widened it with other wordings. Check the quotes before relying on a result.")];
+  // Apertus checked the cards and found none that clearly matches: that comes first.
+  if (noClearMatch)
+    info = [t("out.noClear", "No clear match"), t("out.noClear.text", "Apertus rated none of these cards a clear match. They are the closest pages found. Check the quotes before using any of them.")];
   if (!info) { box.hidden = true; return; }
   box.hidden = false;
   box.appendChild(el("h2", null, info[0]));
@@ -664,6 +667,10 @@ function setType(value) {
 
 // What is on screen now, so a language switch can redraw it without searching again.
 var shownResults = null, shownMode = "direct", assessShown = {};
+// What Apertus said about the request as a whole (jury round 1).
+var noNeed = false;       // Apertus found no research need: its card verdicts are not shown
+var assessFailed = false; // only the assessment stage failed; interpretation and ranking still stand
+var noClearMatch = false; // every card Apertus checked came back "insufficient evidence"
 var lastSummary = null, lastNotes = null, lastNeedsPayload = null, lastNeedNote = null, lastStatus = null;
 
 // The static page: every element tagged data-i18n* in index.html (English kept as the default).
@@ -825,7 +832,10 @@ function renderNeeds(payload) {
     });
     box.appendChild(also);
   }
-  if (payload.clarification) box.appendChild(renderClarification(payload.clarification));
+  var clar = String(payload.clarification || "").trim();
+  if (clar && !/^(null|none|n\/a)$/i.test(clar)) box.appendChild(renderClarification(clar)); // the model sometimes writes "null"
+  if (noNeed) box.appendChild(el("p", "meta", t("ai.noNeed", "Apertus found no research need in this request, so its verdicts on the cards are not shown.")));
+  if (assessFailed) box.appendChild(el("p", "meta", t("ai.assessFail", "Apertus could not finish its card assessments this time.")));
   var refine = el("details", "refine");
   refine.open = refineOpen;
   refine.addEventListener("toggle", function () { refineOpen = refine.open; });
@@ -882,6 +892,7 @@ var CATEGORY_LABELS = { direct_match: "Direct match", related_capability: "Relat
 var SUPPORT_LABELS = { supported: "supported", partial: "partly supported", none: "not supported" };
 
 function renderAssessment(a) {
+  if (noNeed) return; // a verdict without a recognised need can be badly wrong (jury round 1, q09)
   if (!resultsShown) { pendingAssess.push(a); return; } // shown with the cards once they appear
   var card = document.querySelector('.card[data-entity="' + String(a.entity_id).replace(/"/g, "") + '"]');
   if (!card) return; // assessment for a card that is not on screen: ignore
@@ -975,6 +986,13 @@ function showApertusResults(results) {
   flushAssessments();
 }
 
+// After the last assessment: if every card Apertus checked is "insufficient evidence", say so above the cards.
+function checkClearMatch() {
+  var ids = Object.keys(assessShown);
+  noClearMatch = !noNeed && ids.length > 0 && ids.every(function (id) { return assessShown[id].category === "insufficient_evidence"; });
+  if (noClearMatch && lastNotes) renderOutcome.apply(null, lastNotes);
+}
+
 function startEnrichment(body, requestId, myRevision) {
   closeEvents();
   needNote("Interpreting your request…");
@@ -1001,7 +1019,11 @@ function startEnrichment(body, requestId, myRevision) {
       }
       suggestedNeeds = d.payload.needs.filter(function (n) { return n.origin === "suggested"; });
       d.payload.needs.forEach(function (n) { needText[n.need_id] = n.text; });
+      noNeed = !d.payload.needs.length;
       renderNeeds(d.payload);
+      // No other wordings means no Apertus ranking will come: show the direct results now, not after ~30 s.
+      if (!(d.payload.expanded_queries || []).length)
+        fallback(t("st.noWordings", "Apertus found no other wordings for this request. These are the direct results."));
     });
     es.addEventListener("reranked", function (e) {
       // T30: validated ranking over the original query plus Apertus expansions replaces the cards.
@@ -1010,7 +1032,7 @@ function startEnrichment(body, requestId, myRevision) {
       if (resultsShown) rerankCards(d.payload.results); // direct results already on screen (fallback)
       else { showApertusResults(d.payload.results); if (currentResponse) renderNotes(currentResponse, true); }
       renderSummary({ results: d.payload.results }, lastQuery, performance.now() - searchStarted, true);
-      setStatus(t("st.ranked", "Ranked by Apertus, using the other wordings listed above."), "by-apertus");
+      setStatus(t("st.ranked", "Ranked by Apertus, also using the other wordings it found."), "by-apertus");
     });
     es.addEventListener("progress", function (e) {
       var d = parse(e);
@@ -1021,11 +1043,17 @@ function startEnrichment(body, requestId, myRevision) {
       var d = parse(e);
       if (d) renderAssessment(d.payload);
     });
-    es.addEventListener("complete", function () { fallback(""); closeEvents(); });
+    es.addEventListener("complete", function () { fallback(""); checkClearMatch(); closeEvents(); });
     es.addEventListener("error", function (e) {
       if (e.data) {
         var d = parse(e);
         if (d && d.payload.stage === "reranked") { fallback(t("st.rerankFail", "Apertus could not re-rank this time. These are the direct results.")); return; } // the stream goes on with assessments
+        if (d && d.payload.stage === "assessment") {
+          // Only the card assessments failed: keep Apertus' reading of the request and its ranking on screen.
+          assessFailed = true;
+          if (lastNeedsPayload) renderNeeds(lastNeedsPayload); else needNote(t("ai.assessFail", "Apertus could not finish its card assessments this time."));
+          fallback(""); checkClearMatch(); closeEvents(); return;
+        }
         if (d && d.payload.code !== "STALE_REVISION") needNote(t("st.aiDown", "AI interpretation is unavailable. The direct results below are unaffected."));
       }
       fallback("");
@@ -1046,7 +1074,7 @@ function runSearch(needs) {
   closeEvents();
   clearTimeout(fallbackTimer);
   resultsShown = true; showDirect = null; pendingAssess = [];
-  shownResults = null; assessShown = {}; lastSummary = null; lastNotes = null; lastNeedsPayload = null; lastNeedNote = null;
+  shownResults = null; assessShown = {}; noNeed = false; assessFailed = false; noClearMatch = false; lastSummary = null; lastNotes = null; lastNeedsPayload = null; lastNeedNote = null;
   var started = performance.now();
   searchStarted = started;
   document.body.classList.add("searched");
