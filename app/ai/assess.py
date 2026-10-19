@@ -34,6 +34,7 @@ from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 from ..contracts import AssessmentPayload, Need, Result
 from .client import ApertusClient, InferenceError, Usage, get_client
+from .extract import looks_like_injection
 
 log = logging.getLogger("bernmatch.assess")
 
@@ -120,7 +121,9 @@ def needs_for(needs: list[Need], query: str) -> list[Need]:
 
 
 def _candidate_block(n: int, r: Result, offset: int) -> tuple[str, list[tuple[str, str]], str]:
-    ev = r.evidence[:MAX_EVIDENCE_PER_CANDIDATE]
+    # C2 (#131): source text is untrusted. Sentences that look like instructions to an AI are not
+    # shown to the model and cannot be cited (same detector as extraction).
+    ev = [e for e in r.evidence if not looks_like_injection(e.text)][:MAX_EVIDENCE_PER_CANDIDATE]
     fields = "; ".join(f"{k}: {', '.join(v.value for v in vs)}" for k, vs in r.fields.items() if vs)
     lines = [f"[C{n}] {r.display_name} ({r.entity_type})" + (f" | facts: {fields}" if fields else "")]
     for i, e in enumerate(ev, start=offset + 1):
