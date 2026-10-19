@@ -63,6 +63,8 @@ def readyz():
 
 app.include_router(search_router)
 app.include_router(feedback_router)
+from .api.brief import router as brief_router  # T23/T24/T28 (Stretch)
+app.include_router(brief_router)
 app.include_router(enrichment_router)
 app.include_router(evidence_router)
 

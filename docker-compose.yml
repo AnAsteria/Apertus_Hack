@@ -1,0 +1,36 @@
+# T15 local / air-gapped run. Same image as the Hugging Face Space (built in CI).
+# Prepare WHILE ONLINE:  docker compose build  (and, for local Apertus: docker compose --profile llm pull)
+# Then go offline and run: docker compose up            (search only)
+#                       or docker compose --profile llm up   (search + local Apertus 8B via llama.cpp)
+# Full instructions: docs/offline-docker.md
+services:
+  app:
+    build:
+      context: .
+      dockerfile: deploy/hf-space/Dockerfile
+    image: bernmatch-hf:local
+    ports:
+      - "127.0.0.1:7860:7860"          # reachable from this machine only
+    volumes:
+      - ./offline-data:/data           # holds bundle.tar.gz (index + embedding model); restored at start
+    environment:
+      HF_HUB_OFFLINE: "1"
+      TRANSFORMERS_OFFLINE: "1"
+      BERNMATCH_AUTO_PIPELINE: "0"     # never crawl or build here
+      BERNMATCH_ORT_THREADS: "${BERNMATCH_ORT_THREADS:-4}"
+      # Empty key = Apertus features off; search still works. For local Apertus set
+      # APERTUS_API_KEY=local in .env and start with --profile llm.
+      APERTUS_BASE_URL: "${APERTUS_BASE_URL:-http://apertus:8080/v1}"
+      APERTUS_API_KEY: "${APERTUS_API_KEY:-}"
+      APERTUS_MODEL: "${APERTUS_MODEL:-apertus-v1-5-8b}"
+      APERTUS_QUALITY_MODEL: "${APERTUS_QUALITY_MODEL:-apertus-v1-5-8b}"   # no 70B offline
+      APERTUS_TIMEOUT_S: "${APERTUS_TIMEOUT_S:-120}"
+
+  apertus:
+    profiles: ["llm"]
+    # llama.cpp OpenAI-compatible server. Pin the build Dimitry measured (b11719); record the digest.
+    image: "${LLAMA_IMAGE:-ghcr.io/ggml-org/llama.cpp:server-b11719}"
+    volumes:
+      - ./models:/models:ro
+    command: ["-m", "/models/${APERTUS_GGUF:-apertus-v1.5-8b-text-q4_k_m.gguf}",
+              "--host", "0.0.0.0", "--port", "8080", "-c", "8192", "--alias", "apertus-v1-5-8b"]

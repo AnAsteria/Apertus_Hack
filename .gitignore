@@ -18,3 +18,4 @@ runs/
 
 # T26: built submission ZIP and manifest
 dist/
+offline-data/

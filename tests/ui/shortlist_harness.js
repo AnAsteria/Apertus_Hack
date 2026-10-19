@@ -46,7 +46,7 @@ const sandbox = { document, window: { print() { printed += 1; }, matchMedia: () 
                   fetch: () => Promise.resolve({ ok: false, json: () => ({}) }), URL, setTimeout, console, performance: { now: () => 0 },
                   Blob: function () {} };
 const src = fs.readFileSync(path.join(__dirname, "..", "..", "app", "static", "app.js"), "utf8");
-new Function(...Object.keys(sandbox), src + "\n;globalThis.__app = { setShortlist, exportData, buildPrintView, exportPdf, renderShortlist, shortlist: () => shortlist, setQuery: q => { lastQuery = q; } };")(...Object.values(sandbox));
+new Function(...Object.keys(sandbox), src + "\n;globalThis.__app = { setShortlist, exportData, buildPrintView, exportPdf, renderShortlist, shortlist: () => shortlist, setQuery: q => { lastQuery = q; }, renderAssessment };")(...Object.values(sandbox));
 const app = globalThis.__app;
 
 // Input comes from a UTF-8 file: Windows command-line arguments mangle non-ASCII text.
@@ -57,6 +57,20 @@ app.setQuery("CONFIDENTIAL company text: GlucoWear AG needs a needle-free sensor
 app.setShortlist(result, "select", null);
 app.shortlist()[result.entity_id].note = note;
 document.getElementById("sl-include-request").checked = process.argv[3] === "with-request";
+// Jury round 3: Apertus' verdict travels with the entry and is exported only on opt-in.
+app.shortlist()[result.entity_id].assessment = { entity_id: result.entity_id, category: "related_capability",
+  explanation: "AI_TEXT_MARKER the project works on needle-free glucose sensing." };
+// "older": the verdict was written for another request than the one being exported.
+app.shortlist()[result.entity_id].assessedFor = process.argv[3] === "older" || process.argv[3] === "newer" ? "an earlier request"
+  : "CONFIDENTIAL company text: GlucoWear AG needs a needle-free sensor";
+// Round 5: a verdict that arrives for the current request replaces the older one (it used to be refused).
+// It cites s3 twice and an id that is not on the card; its text is the server's standard sentence.
+if (process.argv[3] === "newer")
+  app.renderAssessment({ entity_id: result.entity_id, category: "related_capability",
+    explanation: "The cited evidence describes related work; fit needs confirmation.",
+    need_coverage: [{ need_id: "need_query", support: "partial",
+      evidence: [{ version_id: "v1", sentence_id: "s3" }, { version_id: "v9", sentence_id: "not-on-card" }, { version_id: "v1", sentence_id: "s3" }] }] });
+document.getElementById("sl-include-ai").checked = ["with-ai", "older", "newer"].includes(process.argv[3]);
 const data = app.exportData();
 app.exportPdf();
 

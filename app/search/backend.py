@@ -1,6 +1,7 @@
 """Stored-corpus hybrid fast path. Local CPU embeddings, never an LLM endpoint."""
 import json
 import os
+import re
 import time
 import uuid
 from datetime import datetime,timezone
@@ -9,9 +10,12 @@ from app.contracts import MAX_RESULTS, Result, SearchResponse
 from app.storage.indexes import IndexStore
 from .analysis import analyze,language_of,match_expression,query_terms,words
 from .encoder import OnnxEncoder,digest
-from .ranking import entity_max,reciprocal_rank_fusion,diversify,non_entity_page,DEMOTION
+from .ranking import entity_max,reciprocal_rank_fusion,diversify,non_entity_page,duplicate_key,DEMOTION
 from .outcome import classify,thresholds
-from .explain import channel_ranks,matched_words,reason as explain_reason
+from .explain import channel_ranks,matched_words,contact_bearing,reason as explain_reason
+from . import rerank as rerank_mod
+from .typehint import preferred_type,BOOST as TYPE_BOOST
+from .acronyms import AcronymTable
 
 
 def freshness(evidence, now=None):
@@ -32,7 +36,7 @@ def freshness(evidence, now=None):
 
 
 class HybridBackend:
-    def __init__(self, directory, *, encoder=None, min_dense=None, abstain_dense=None, keyword_weight=None, mode=None):
+    def __init__(self, directory, *, encoder=None, min_dense=None, abstain_dense=None, keyword_weight=None, mode=None, reranker=None):
         mode = mode or os.environ.get('BERNMATCH_SEARCH_MODE','hybrid')
         min_dense = float(os.environ.get('BERNMATCH_MIN_DENSE','.80')) if min_dense is None else min_dense
         # Query-level abstention: E5 similarities are compressed (~.80-.91), so a
@@ -67,6 +71,23 @@ class HybridBackend:
             except Exception:
                 self.encoder_error = True
         self.min_dense,self.mode = min_dense,mode
+        self.reranker = rerank_mod.load_from_env() if reranker is None else (reranker or None)
+        # EXTRA A4: acronym table mined in the background from stored sentences (cached).
+        self.acronyms = AcronymTable(self.store,os.environ.get('BERNMATCH_DATA_DIR',str(self.store.root.parent.parent))) \
+            if os.environ.get('BERNMATCH_ACRONYMS','0')=='1' else None
+        # Passages with almost no text ("." or a bare name) are similar to nearly any query in E5 space:
+        # "Dienstleistungen" (one sentence ".") reached 25 of 66 jury result lists, card 1 in 7.
+        # They are left out of the meaning channel only; keyword search still finds them by name.
+        self.thin_letters = int(os.environ.get('BERNMATCH_THIN_LETTERS','25'))
+        self.thin = self._thin_rows() if self.thin_letters > 0 else None
+
+    def _thin_rows(self):
+        letters = {}
+        with self.store.connect() as db:
+            for sid,body in db.execute('SELECT id,body FROM sentences'):
+                letters[sid] = len(re.findall(r'[^\W\d_]', json.loads(body).get('text') or ''))
+        per_entry = np.array([sum(letters.get(sid,0) for sid in entry['sentence_ids']) for entry in self.entries])
+        return per_entry[np.asarray(self.vector_entries)] < self.thin_letters
 
     def search(self, req):
         start = time.perf_counter()
@@ -93,7 +114,9 @@ class HybridBackend:
             return self._response(req,[],limitations,enrichment,start,timing)
         query_language = language_of(req.query)
         t = time.perf_counter()
-        keyword = entity_max(self.store.keyword(match_expression(query_terms(req.query))),self.entries,allowed) if self.mode!='dense' else {}
+        extra_forms = self.acronyms.variants(req.query) if self.acronyms is not None else []
+        keyword_text = ' '.join([req.query]+extra_forms)
+        keyword = entity_max(self.store.keyword(match_expression(query_terms(keyword_text))),self.entries,allowed) if self.mode!='dense' else {}
         timing['keyword'] = (time.perf_counter()-t)*1000
         t = time.perf_counter()
         dense = {}; vector_winners = {}; dense_ok = False
@@ -103,6 +126,8 @@ class HybridBackend:
                 if query.shape != (self.vectors.shape[1],):
                     raise ValueError('query_dimension_mismatch')
                 scores = self.vectors @ query
+                if self.thin is not None:
+                    scores = np.where(self.thin,-1.,scores)
                 for index in np.flatnonzero(scores>=self.min_dense):
                     entry_id = int(self.vector_entries[index])
                     old = vector_winners.get(entry_id)
@@ -123,6 +148,37 @@ class HybridBackend:
                    self.entities[eid]['entity']['canonical_profiles'])}
         for eid in demoted:
             fused[eid] *= DEMOTION
+        title_boost = float(os.environ.get('BERNMATCH_TITLE_BOOST','0'))
+        if title_boost > 0:
+            # EXTRA A5: entities whose own name contains query words get a relevance bonus.
+            for eid in fused:
+                hits = matched_words(req.query,[self.entities[eid]['entity']['name']],'en')
+                if hits:
+                    fused[eid] *= 1+title_boost*min(len(hits),3)
+        type_hint = preferred_type(req.query) if req.entity_type is None and os.environ.get('BERNMATCH_TYPE_HINT','0')=='1' else None
+        if type_hint:
+            # EXTRA A3: soft preference only; nothing is filtered out.
+            for eid in fused:
+                if self.entities[eid]['entity']['entity_type']==type_hint:
+                    fused[eid] *= TYPE_BOOST
+        reranked = False
+        if self.reranker is not None and fused:
+            # EXTRA A1: cross-encoder over the best fused candidates; text = name + best passage.
+            t_r = time.perf_counter()
+            try:
+                top = sorted(fused,key=lambda e:(-fused[e],e))[:rerank_mod.TOP_N]
+                texts = {}
+                for eid in top:
+                    entry_id = (dense.get(eid) or keyword[eid])[1]
+                    sids = self.entries[entry_id]['sentence_ids']
+                    texts[eid] = self.entities[eid]['entity']['name']+'. '+' '.join(e['text'] for e in self.store.evidence(sids))
+                fused = rerank_mod.rerank(fused,texts,req.query,self.reranker)
+                for eid in demoted & set(fused):
+                    fused[eid] *= DEMOTION
+                reranked = True
+            except Exception:
+                limitations.append('Reranking failed; fused retrieval order is used.')
+            timing['rerank'] = (time.perf_counter()-t_r)*1000
         representatives = {}
         # Use one representative vector per entity, independent of page count.
         for eid in fused:
@@ -132,12 +188,20 @@ class HybridBackend:
             else:
                 vector_id = int(np.flatnonzero(self.vector_entries==entry_id)[0])
             representatives[eid] = self.vectors[vector_id]
-        selected = diversify(fused,representatives,limit=MAX_RESULTS)
+        # A few spare candidates, so a dropped duplicate is replaced by the next card.
+        selected = diversify(fused,representatives,limit=MAX_RESULTS+5)
         timing['rank'] = (time.perf_counter()-t)*1000
         keyword_ranks,dense_ranks = channel_ranks(keyword),channel_ranks(dense)
-        results = []
+        results = []; seen_names = set()
         for eid in selected:
+            if len(results) >= MAX_RESULTS:
+                break
             item = self.entities[eid]; entity = item['entity']
+            # The same person or page twice (two entity ids, same name) takes two of ten places.
+            key = duplicate_key(entity['name'],entity['entity_type'])
+            if key in seen_names:
+                continue
+            seen_names.add(key)
             # Prefer the strongest semantic passage when available; the lexical
             # ablation resolves its own best passage. Profiles cite stored text.
             entry_id = (dense.get(eid) or keyword[eid])[1]
@@ -151,6 +215,13 @@ class HybridBackend:
             evidence = list({e['sentence_id']:e for e in evidence}.values())
             if not evidence:
                 continue
+            # EXTRA F5: contacts are shown only through a supported, current official-contact
+            # field; do not surface them through quotes when other evidence exists.
+            if not (item['fields'] or {}).get('official_contact'):
+                kept = [e for e in evidence if not contact_bearing(e['text'])]
+                evidence = kept or evidence
+            # Real sentences first, headings like "Methods" or "." after them (all are kept).
+            evidence.sort(key=lambda e: len(re.findall(r'[^\W\d_]{2,}', e['text'] or '')) < 3)
             evidence_language = entry.get('language')
             matched = matched_words(req.query,[e['text'] for e in evidence],evidence_language) if eid in keyword else []
             reason = explain_reason(keyword_rank=keyword_ranks.get(eid),dense_rank=dense_ranks.get(eid),matched=matched,
@@ -163,10 +234,28 @@ class HybridBackend:
                 'entry_kind':entry['kind'],'demoted_listing_page':eid in demoted,'query_language':query_language,'mode':self.mode,
                 'keyword_rank':keyword_ranks.get(eid),'dense_rank':dense_ranks.get(eid),'matched_terms':matched,
                 'evidence_language':evidence_language,'channels':[c for c,ranks in (('keyword',keyword_ranks),('dense',dense_ranks)) if eid in ranks],
-                'query_variant':'original',
+                'query_variant':'original','reranked':reranked,'type_hint':type_hint,'acronym_forms':extra_forms,
                 'resolution_state':entity['resolution_state'],'entity_status':entity['status'],
                 'model':self.manifest['model']['repo'],'generation':self.manifest['generation']}))
         return self._response(req,results,limitations,enrichment,start,timing,dense_ok=dense_ok,best_dense=best_dense,abstain=self.abstain_dense)
+
+    def card(self, entity_id, max_sentences=4):
+        """T23: one entity's stored card (supported fields + exact evidence), without a query."""
+        item = self.entities.get(entity_id)
+        if item is None or item['entity']['status'] == 'retired':
+            return None
+        sids = list(item.get('claim_sentence_ids') or [])
+        for entry in self.entries:
+            if entity_id in entry['entity_ids']:
+                sids += [s for s in entry['sentence_ids'] if s not in sids]
+                break
+        evidence = self.store.evidence(sids[:max_sentences]) if sids else []
+        if not evidence:
+            return None
+        entity = item['entity']
+        return Result(entity_id=entity_id, entity_type=entity['entity_type'], rank=1, display_name=entity['name'],
+                      fields=item['fields'], reason='Selected by the analyst.', evidence=evidence,
+                      freshness=freshness(evidence), retrieval={'entity_status': entity['status']})
 
     @staticmethod
     def _response(req,results,limitations,enrichment,start,timing,*,dense_ok=False,best_dense=0.,abstain=0.):
