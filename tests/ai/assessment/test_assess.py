@@ -302,3 +302,28 @@ def test_injection_patterns_cover_assessment_instructions():
         assert looks_like_injection(t), t
     for t in ["The lab matches patients to clinical trials.", "Direct measurement of glucose in sweat."]:
         assert not looks_like_injection(t), t
+
+
+# --- B4 follow-up: relevance-based evidence selection --------------------------------
+def test_evidence_selection_prefers_relevant_sentences_over_page_headers():
+    from app.ai.assess import select_evidence
+    c = card(4, "SPN-005 – Pilot study on painless glucose monitoring", "by Carlotta Bilger | Oct 9, 2025",
+             "Back to Projects", "Project description: finger pricks are common practice.",
+             "This project evaluates a non-invasive technology that measures glucose through the skin with light.",
+             "Glucose values were compared with continuous glucose monitoring systems in parallel.")
+    picked = [e.text for e in select_evidence(c.evidence, "needle-free glucose monitoring clinical validation against continuous glucose monitors", 4)]
+    assert "by Carlotta Bilger | Oct 9, 2025" not in picked and "Back to Projects" not in picked
+    assert any("through the skin" in t for t in picked) and any("continuous glucose" in t for t in picked)
+    assert picked == [e.text for e in c.evidence if e.text in picked]  # page order kept
+
+
+def test_evidence_selection_is_opt_in(monkeypatch):
+    c = fake([verdict(1, "insufficient_evidence", [])])
+    many = card(5, "Header line", "by Someone | Oct 9, 2025", "Nav", "Intro sentence about the project and its context.",
+                "The project measures glucose through the skin without needles using light.")
+    assess("needle-free glucose", NEEDS, [many], client=c)
+    assert "through the skin" not in c.calls[0]["messages"][1]["content"]   # default: first 4
+    monkeypatch.setenv("BERNMATCH_ASSESS_EVIDENCE", "relevant")
+    c2 = fake([verdict(1, "insufficient_evidence", [])])
+    assess("needle-free glucose", NEEDS, [many], client=c2)
+    assert "through the skin" in c2.calls[0]["messages"][1]["content"]
