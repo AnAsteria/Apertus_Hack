@@ -39,7 +39,14 @@ function el(tag, cls, text) {
 }
 
 function dateLine(label, value) {
-  return label + ": " + (value ? value : t("unknown", "unknown"));
+  return label + ": " + (value ? (shortDate(value) || value) : t("unknown", "unknown"));
+}
+
+// Same quotes, but ones like "." or "Q" after the real sentences (stable: the rest keeps its order).
+function quoteOrder(list) {
+  var words = function (e) { return ((e.text || "").match(/\p{L}/gu) || []).length >= 2 ? 0 : 1; };
+  return list.map(function (e, i) { return [e, i]; })
+    .sort(function (x, y) { return words(x[0]) - words(y[0]) || x[1] - y[1]; }).map(function (x) { return x[0]; });
 }
 
 var queryTerms = [];       // words of the current query, for highlighting evidence
@@ -212,7 +219,8 @@ function setShortlist(r, state, card) {
   else {
     shortlist[r.entity_id] = { name: r.display_name, state: state, result: r,
                                note: cur ? cur.note : "", hidden: cur ? cur.hidden : {},
-                               assessment: (!noNeed && assessShown[r.entity_id]) || (cur && cur.assessment) || null };
+                               assessment: (!noNeed && assessShown[r.entity_id]) || (cur && cur.assessment) || null,
+                               assessedFor: (!noNeed && assessShown[r.entity_id]) ? lastQuery : (cur ? cur.assessedFor : null) };
     sendFeedback(r, state);
   }
   slOrder = slOrder.filter(function (id) { return shortlist[id] && shortlist[id].state === "select" && id !== r.entity_id; });
@@ -324,18 +332,21 @@ function exportData() {
     var item = shortlist[id], r = item.result;
     var fields = {};
     supportedFields(r).forEach(function (k) { if (!item.hidden[k]) fields[k] = r.fields[k].map(function (v) { return v.value; }); });
-    var quotes = r.evidence.slice(0, 2).map(function (e) {
+    var quotes = quoteOrder(r.evidence).slice(0, 2).map(function (e) {
       if (e.fetched_at) fetched.push(e.fetched_at);
       return { text: e.text, url: e.url, content_date: e.content_date, last_modified: e.last_modified, fetched_at: e.fetched_at };
     });
-    var a = withAi && item.assessment;
-    var hasContact = !!(fields.official_contact || fields.contact);
+    var a = withAi && item.assessment && item.assessedFor === lastQuery ? item.assessment : null;
+    var older = withAi && item.assessment && item.assessedFor !== lastQuery;
+    // From the card itself, not from what the analyst chose to show in the export.
+    var hasContact = ["official_contact", "contact"].some(function (k) { return r.fields && r.fields[k] && r.fields[k].length; });
     return { entity_id: r.entity_id, name: r.display_name, type: r.entity_type, source: sourceOf(r.evidence[0].url).label,
              fields: fields, evidence: quotes, analyst_note: item.note.trim() || null,
              // No contact data in the index: the next step is the source page itself.
              start_from: hasContact ? null : r.evidence[0].url,
              apertus_assessment: a ? { category: a.category, explanation: a.explanation, generated_by: "Apertus v1.5 8B",
-                                       ai_generated: true, is_source_fact: false } : null };
+                                       ai_generated: true, is_source_fact: false } : null,
+             apertus_assessment_from_earlier_search: !!older };
   });
   fetched.sort();
   return { title: t("pv.title", "Bern Match shortlist"), exported_at: new Date().toISOString(), request: withRequest ? lastQuery : null,
@@ -378,6 +389,8 @@ function buildPrintView(data) {
       s.appendChild(b);
     });
     if (e.start_from) s.appendChild(el("p", "meta", t("pv.startFrom", "No contact data in Bern Match. Start from the source page: {url}", { url: e.start_from })));
+    if (e.apertus_assessment_from_earlier_search)
+      s.appendChild(el("p", "meta", t("pv.aiOlder", "Apertus' assessment is from an earlier search and is not included.")));
     if (e.apertus_assessment) {
       var ai = el("div", "pv-ai");
       ai.appendChild(el("h3", null, t("as.head", "AI-generated assessment (Apertus), not source text")));
@@ -498,12 +511,13 @@ function renderCard(r, index) {
   var why = renderWhy(r);
   renderFields(r.fields, card);
   // The best quotes first; the rest fold away so one card never fills the screen.
-  r.evidence.slice(0, QUOTES_SHOWN).forEach(function (ev) { card.appendChild(renderEvidence(ev)); });
+  var quotes = quoteOrder(r.evidence);
+  quotes.slice(0, QUOTES_SHOWN).forEach(function (ev) { card.appendChild(renderEvidence(ev)); });
   if (r.evidence.length > QUOTES_SHOWN) {
     var more = el("details", "more-quotes");
     var n = r.evidence.length - QUOTES_SHOWN;
     more.appendChild(el("summary", null, t(n === 1 ? "card.moreQuote" : "card.moreQuotes", n === 1 ? "Show {n} more quote" : "Show {n} more quotes", { n: n })));
-    r.evidence.slice(QUOTES_SHOWN).forEach(function (ev) { more.appendChild(renderEvidence(ev)); });
+    quotes.slice(QUOTES_SHOWN).forEach(function (ev) { more.appendChild(renderEvidence(ev)); });
     card.appendChild(more);
   }
   if (why) card.appendChild(why);
@@ -610,8 +624,10 @@ function renderOutcome(b, byApertus) {
   box.appendChild(el("p", null, info[1]));
   var chips = el("div", "chips");
   var notes = [];
+  var reqLang = guessLanguage(lastQuery || "");
   (b.suggestions || []).forEach(function (s) {
     if (s.kind === "coverage") { notes.push(serverText(s.label)); return; } // information, not an action
+    if (/^Try the request in English or German/.test(s.label) && (reqLang === "EN" || reqLang === "DE")) return; // already is
     chips.appendChild(button(suggestionLabel(s), function () { applySuggestion(s, box); }, "chip"));
   });
   if (chips.firstChild) box.appendChild(chips);
@@ -886,18 +902,18 @@ function renderNeeds(payload) {
     input.type = "text"; input.value = n.text; input.maxLength = 300;
     input.addEventListener("input", function () { n.text = input.value; });
     li.appendChild(input);
-    li.appendChild(el("span", "badge", t("kind." + n.kind, n.kind)));
+    li.appendChild(el("span", "badge", kindLabel(n.kind)));
     li.appendChild(button(t("remove", "Remove"), function () { userNeeds.splice(i, 1); renderNeeds(payload); }));
     list.appendChild(li);
   });
   box.appendChild(list);
   if (suggestedNeeds.length) {
-    box.appendChild(el("h3", null, t("ai.suggested", "Suggested by the model (not used until you accept)")));
+    box.appendChild(el("h3", null, t("ai.suggested", "Suggested by Apertus. The card verdicts already use them.")));
     var sl = el("ul", "needlist suggested");
     suggestedNeeds.forEach(function (n, i) {
       var li = el("li");
       li.appendChild(el("span", null, n.text));
-      li.appendChild(el("span", "badge", t("kind." + n.kind, n.kind)));
+      li.appendChild(el("span", "badge", kindLabel(n.kind)));
       li.appendChild(button(t("ai.accept", "Accept"), function () {
         suggestedNeeds.splice(i, 1);
         needCounter += 1;
@@ -927,7 +943,12 @@ function addNeed(text, payload) {
 function showCited(link, li) {
   var box = li.querySelector('.cited[data-href="' + link.getAttribute("href").replace(/"/g, "") + '"]');
   if (box) { box.parentNode.removeChild(box); return; }
-  fetch(link.getAttribute("href")).then(function (r) { return r.ok ? r.json() : { gone: r.status === 410 }; }, function () { return {}; }).then(function (d) {
+  if (link.dataset.busy) return; // a double click must not add the sentence twice
+  link.dataset.busy = "1";
+  fetch(link.getAttribute("href")).then(function (r) { return r.ok ? r.json() : { gone: r.status === 410 }; })
+    .catch(function () { return {}; }).then(function (d) {
+    delete link.dataset.busy;
+    d = d || {};
     var q = el("blockquote", "cited");
     q.dataset.href = link.getAttribute("href");
     if (!d.text) {
@@ -942,6 +963,9 @@ function showCited(link, li) {
     li.appendChild(q);
   });
 }
+
+var KIND_LABELS = { product: "product", problem: "problem", competency: "competency", entity_type: "type", constraint: "constraint" };
+function kindLabel(k) { return t("kind." + k, KIND_LABELS[k] || k); }
 
 var CATEGORY_LABELS = { direct_match: "Direct match", related_capability: "Related capability",
                         insufficient_evidence: "Insufficient evidence" };
@@ -991,7 +1015,9 @@ function renderAssessment(a) {
   var tags = card.querySelector(".tags");
   if (tags && tags.nextSibling) card.insertBefore(box, tags.nextSibling); else card.appendChild(box);
   assessShown[a.entity_id] = a;
-  if (shortlist[a.entity_id]) shortlist[a.entity_id].assessment = a; // selected before Apertus finished
+  // Selected before Apertus finished: keep the verdict, but never replace one written for another request.
+  var sl = shortlist[a.entity_id];
+  if (sl && (!sl.assessment || sl.assessedFor === lastQuery)) { sl.assessment = a; sl.assessedFor = lastQuery; }
   card.classList.remove("flash");
   void card.offsetWidth; // restart the highlight animation
   card.classList.add("flash");
@@ -1054,11 +1080,10 @@ function checkClearMatch() {
   noClearMatch = none ? ids.length : 0;
   if (noClearMatch && lastNotes) renderOutcome.apply(null, lastNotes);
   // A match that is not card 1 is easy to miss: name up to 3 of them in Apertus' panel.
-  var isFit = function (id) { var a = assessShown[id]; return a && (a.category === "direct_match" || a.category === "related_capability"); };
-  var order = (shownResults || []).filter(function (r) { return isFit(r.entity_id); });
-  order.sort(function (x, y) { return (assessShown[x.entity_id].category === "direct_match" ? 0 : 1) - (assessShown[y.entity_id].category === "direct_match" ? 0 : 1); });
-  bestFits = noNeed || !shownResults || !shownResults.length || isFit(shownResults[0].entity_id) ? []
-    : order.slice(0, 3).map(function (r) { return [r.entity_id, r.display_name]; });
+  // Only "Direct match" counts: a "related" card 1 used to hide a direct match at card 6 (round 3).
+  var isDirect = function (id) { var a = assessShown[id]; return a && a.category === "direct_match"; };
+  bestFits = noNeed || !shownResults || !shownResults.length || isDirect(shownResults[0].entity_id) ? []
+    : shownResults.filter(function (r) { return isDirect(r.entity_id); }).slice(0, 3).map(function (r) { return [r.entity_id, r.display_name]; });
   if (bestFits.length && lastNeedsPayload) renderNeeds(lastNeedsPayload);
 }
 

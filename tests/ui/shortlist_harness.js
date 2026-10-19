@@ -60,7 +60,10 @@ document.getElementById("sl-include-request").checked = process.argv[3] === "wit
 // Jury round 3: Apertus' verdict travels with the entry and is exported only on opt-in.
 app.shortlist()[result.entity_id].assessment = { entity_id: result.entity_id, category: "related_capability",
   explanation: "AI_TEXT_MARKER the project works on needle-free glucose sensing." };
-document.getElementById("sl-include-ai").checked = process.argv[3] === "with-ai";
+// "older": the verdict was written for another request than the one being exported.
+app.shortlist()[result.entity_id].assessedFor = process.argv[3] === "older" ? "an earlier request"
+  : "CONFIDENTIAL company text: GlucoWear AG needs a needle-free sensor";
+document.getElementById("sl-include-ai").checked = process.argv[3] === "with-ai" || process.argv[3] === "older";
 const data = app.exportData();
 app.exportPdf();
 

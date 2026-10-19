@@ -154,6 +154,7 @@ mark { background: var(--mark); color: inherit; border-radius: 3px; padding: 0 .
 .meta { font-size: .78rem; color: var(--muted); word-break: break-word; }
 .meta a { color: var(--accent); }
 .inline { font-size: .85rem; color: var(--muted); }
+.drawer > label.inline { display: flex; gap: .4rem; align-items: flex-start; margin: .35rem 0; } /* one option per line */
 
 .skeleton { height: 9rem; border-radius: 12px; margin: .9rem 0; background: linear-gradient(90deg, var(--neutral) 25%, var(--panel) 50%, var(--neutral) 75%); background-size: 200% 100%; animation: shimmer 1.3s linear infinite; border: 1px solid var(--line); }
 

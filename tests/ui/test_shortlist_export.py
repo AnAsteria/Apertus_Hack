@@ -82,3 +82,12 @@ def test_apertus_assessment_only_with_opt_in_and_labelled():
 def test_no_contact_field_points_to_the_source_page():
     e = run("no-request")["data"]["entries"][0]
     assert e["start_from"] == RESULT["evidence"][0]["url"]
+
+
+def test_verdict_from_an_earlier_search_is_not_exported():
+    out = run("older")
+    e = out["data"]["entries"][0]
+    assert e["apertus_assessment"] is None and e["apertus_assessment_from_earlier_search"] is True
+    assert "AI_TEXT_MARKER" not in json.dumps(out)
+    assert "from an earlier search" in out["printText"]
+    assert "No AI-generated text is included." in out["printText"]
