@@ -755,6 +755,7 @@ function foldOthers() {
 }
 
 function setStatus(text, kind) {
+  if (text && isRed()) text = "", kind = "";
   var s = document.getElementById("status");
   s.textContent = text;
   s.className = "status " + (kind || "");
@@ -786,6 +787,7 @@ function renderSummary(b, query, elapsedMs, byApertus) {
   lastSummary = [b, query, elapsedMs, byApertus];
   var box = document.getElementById("summary");
   clearNode(box);
+  if (isRed()) { box.hidden = true; return; }
   box.hidden = false;
   var total = b.timing_ms && typeof b.timing_ms.request_total === "number" ? b.timing_ms.request_total : elapsedMs;
   var count = t(b.results.length === 1 ? "sum.result" : "sum.results", b.results.length === 1 ? "{n} result" : "{n} results", { n: b.results.length });
@@ -853,7 +855,7 @@ function loadPeople(query, myRevision) {
                            company_context: null, needs: [], enrichment_requested: false }) })
     .then(function (r) { return r.ok ? r.json() : null; })
     .then(function (b) {
-      if (!b || myRevision !== revision || outOfScope || noMatch) return;
+      if (!b || myRevision !== revision || isRed()) return;
       var people = b.results.filter(strongPerson).slice(0, PEOPLE_SHOWN)
         .sort(function (x, y) { return confLevel(y) - confLevel(x) || x.rank - y.rank; });
       if (people.length) renderPeople(people);
@@ -909,10 +911,20 @@ function checkNoMatch(b) {
   document.getElementById("results").hidden = true;
   document.getElementById("people").hidden = true;
 }
+// Red means nothing found: no "Found 5 people" line, no counts, no status, no Apertus panel around
+// it. Only the red box, and the results only behind its button.
+function isRed() {
+  return outOfScope || noMatch || !!(currentResponse && currentResponse.outcome === "no_evidence");
+}
+function hideAroundRed() {
+  ["summary", "needs", "people", "limits-box"].forEach(function (id) { document.getElementById(id).hidden = true; });
+  setStatus("", "");
+}
 function renderRefusal() {
   var box = document.getElementById("outcome"), res = document.getElementById("results");
   clearNode(box);
   box.hidden = false;
+  hideAroundRed();
   if (outOfScope) {
     signalHead(box, "red", t("sig.red", "Nothing found") + " · " + t("out.scope", "Outside the indexed corpus"));
     box.appendChild(el("p", null, t("out.scope.text", "This request is outside what the indexed corpus covers.")));
@@ -968,6 +980,7 @@ function renderOutcome(b, byApertus) {
   if (b.outcome === "no_evidence") {
     box.hidden = false;
     signalHead(box, "red", t("sig.red", "Nothing found"));
+    hideAroundRed();
     box.appendChild(el("p", null, t("out.no_evidence.text", OUTCOME_TEXT.no_evidence[1])));
     (b.suggestions || []).forEach(function (s) { if (s.kind === "coverage") box.appendChild(el("p", "meta", serverText(s.label))); });
     return;
@@ -1182,6 +1195,7 @@ function aiHead(text) {
 
 function needNote(text) {
   lastNeedNote = text; lastNeedsPayload = null;
+  if (isRed()) { document.getElementById("needs").hidden = true; return; }
   var box = document.getElementById("needs");
   clearNode(box);
   box.hidden = false;
@@ -1223,6 +1237,7 @@ function button(label, onclick, cls) {
 
 function renderNeeds(payload) {
   lastNeedsPayload = payload; lastNeedNote = null;
+  if (isRed()) { document.getElementById("needs").hidden = true; return; }
   var outer = document.getElementById("needs");
   clearNode(outer);
   outer.hidden = false;
