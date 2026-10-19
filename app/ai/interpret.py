@@ -30,7 +30,7 @@ from .client import ApertusClient, InferenceError, Usage, get_client
 
 log = logging.getLogger("bernmatch.interpret")
 
-INTERPRET_PROMPT_VERSION = "i2"  # i2: scope check (T39 #100)
+INTERPRET_PROMPT_VERSION = "i3"  # i3: scope rules tuned on tools/scope_dev_set.json only (T39 #100)
 EXPANSION_LANGUAGES = ("en", "de", "fr", "it")
 MAX_SUGGESTED = 6
 MAX_EXPANSIONS = 12
@@ -50,7 +50,10 @@ Return:
   Give synonyms, technical terms and translations into English and German (French/Italian only if useful).
   Each expansion is ONE term (no lists) and names the exact term it expands (`source`, copied from the request or company text). It must not add a new requirement.
   Example: source "glucose sensors" -> "continuous glucose monitoring" (en), "CGM" (en), "Glukosesensoren" (de), "kontinuierliche Glukosemessung" (de).
-- scope: "in_scope" if the request asks for research expertise, research groups, projects, labs, platforms, facilities or research services of the kind a university, medtech or diabetes research centre has (in any language, even if vague or misspelled). "out_of_scope" if it is clearly not such a request: shopping, travel, food, entertainment, finance or crypto prices, personal or consumer advice, car or household repairs, or nonsense. "unclear" if you cannot tell. Do NOT judge whether Bern actually has such research; only whether the request is the kind of thing a research-partner search is for.
+- scope: "in_scope" if the request asks for research expertise, research groups, projects, labs, platforms, facilities or research services of the kind a university, medtech or diabetes research centre has (in any language, even if vague or misspelled).
+  Commercial framing does NOT make a request out of scope: a company that sells, launches, certifies or markets a medical, scientific or technical product and wants testing, validation, clinical studies, data or research partners is "in_scope".
+  "out_of_scope" if it is clearly not such a request: shopping, travel, food, entertainment, weather, finance or crypto prices, personal or consumer advice, car or household repairs, requests about animals or places without any research purpose, or nonsense (random letters, keyboard mashing, meaningless strings).
+  "unclear" only if it is genuinely ambiguous. Do NOT judge whether Bern actually has such research; only whether the request is the kind of thing a research-partner search is for.
 - scope_reason: "research" for in_scope; otherwise one of "not_research", "consumer_request", "outside_institutions", "nonsense".
 - is_broad: true only if the request is too vague to search well (e.g. "medtech partners").
 - clarification: if is_broad, one short business-language question that would focus the search; otherwise null."""
