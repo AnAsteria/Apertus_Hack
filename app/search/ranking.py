@@ -32,6 +32,52 @@ def non_entity_page(name, urls):
             or any(w.startswith(NON_ENTITY_PREFIXES) for w in words))
 
 
+# Cards must lead to someone to contact: a person, group, lab, unit, platform, service or
+# project. News posts, fact sheets, navigation pages ("About us", "Research - Faculty of ...")
+# and headline-like page titles are not actors; they are dropped from the cards (still indexed).
+NEWS_URL_WORDS = {'news','aktuell','aktuelles','factsheets','stories','story','blog','press','presse',
+                  'medien','media','mediarelations','events','veranstaltungen','newsletter','magazin',
+                  'studium','studies','lehre','teaching','weiterbildung'}
+GENERIC_TITLES = {'discover','about us','über uns','ueber uns','team','unser team','our team','research',
+                  'forschung','recherche','research groups','forschungsgruppen','projects','projekte',
+                  'home','startseite','overview','übersicht','services','dienstleistungen','contact','kontakt',
+                  'research activities','forschungsaktivitäten','all','alle','people','personen'}
+GENERIC_PREFIX = re.compile(r'^(research|forschung|recherche|projects?|projekte|studium|university)\b', re.I)
+ACTOR_WORDS = re.compile(r'\b(group|groupe|lab|labs|laboratory|laboratoire|center|centre|institute|clinic|platform|'
+                         r'facility|facilities|core|department|departement|division|abteilung|unit|programme|program|'
+                         r'network|netzwerk|service|project|projekt|study|studie|trial)\b'
+                         r'|(klinik|zentrum|institut|labor|gruppe|plattform|studie|projekt)', re.I)
+HEADLINE_WORDS = re.compile(r'\b(published|publiziert|winners?|gewinner|meet|joins|announces?|new hope|'
+                            r'bestätigt|confirmed|top \d+|stehen fest|award(ed)?)\b', re.I)
+FUNCTION_WORDS = {'of','for','the','to','and','in','on','with','auf','für','der','die','das','und','von','des',
+                  'mit','auch','de','la','le','et','pour','du','les'}
+
+
+def not_an_actor(name, entity_type, urls):
+    """True for news/navigation/article pages that do not lead to a contact. People are never
+    dropped; a title naming a group, lab, institute, clinic, platform, service or project is kept.
+    Judged from the title and URL path only (no model)."""
+    if entity_type == 'person':
+        return False
+    title = re.sub(r'\s+', ' ', name).strip()
+    low = title.casefold()
+    if low in GENERIC_TITLES or ' | ' in title or 'alphabetisch' in low or HEADLINE_WORDS.search(title):
+        return True
+    if ACTOR_WORDS.search(title):
+        return False
+    if GENERIC_PREFIX.match(title):
+        return True  # "Research - Faculty of Medicine", "Projects: Cancer Research"
+    paths = [u.split('//', 1)[-1].split('?')[0].casefold() for u in urls]
+    path_words = set(re.split(r'[^0-9a-zà-ÿ]+', ' '.join(p.split('/', 1)[-1] for p in paths)))
+    if path_words & NEWS_URL_WORDS:
+        return True
+    words = title.split()
+    if entity_type != 'project' and ':' in title and len(words) >= 6:
+        return True  # "Start-up-Förderung in Diabetestechnologie: Die DCB Open Innovation Challenge ..."
+    # A sentence-like title ("Targeting the niche of drug-tolerant tumor-repopulating cells ...").
+    return entity_type != 'project' and len(words) >= 5 and sum(w.casefold() in FUNCTION_WORDS for w in words) >= 2
+
+
 def entity_max(scores, entries, allowed):
     best = {}
     for index,score in scores:
