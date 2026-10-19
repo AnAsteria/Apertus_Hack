@@ -39,7 +39,7 @@ a { color: var(--red-text); }
 
 /* Header */
 .top { display: flex; align-items: center; gap: 1.25rem; max-width: 76rem; margin: 0 auto; padding: 1.4rem 1.5rem 0; }
-.brand { font-family: var(--serif); font-size: 1.55rem; letter-spacing: -.01em; display: inline-flex; align-items: center; gap: .5rem; white-space: nowrap; }
+.brand { color: var(--text); text-decoration: none; font-family: var(--serif); font-size: 1.55rem; letter-spacing: -.01em; display: inline-flex; align-items: center; gap: .5rem; white-space: nowrap; }
 /* The Swiss cross, drawn in CSS (no image file) */
 .logo { position: relative; display: inline-block; width: 1.05rem; height: 1.05rem; background: var(--red); border-radius: 2px; font-size: 0; flex-shrink: 0; }
 .logo::before, .logo::after { content: ""; position: absolute; background: #fff; left: 50%; top: 50%; transform: translate(-50%, -50%); }
@@ -51,6 +51,10 @@ main > :not(.hero) { max-width: 60rem; margin-left: auto; margin-right: auto; }
    The copy sits on the photo's bright, misty left side; a soft ivory fade keeps it readable. */
 /* The full-width hero uses 100vw, which includes the scrollbar: clip the few pixels it adds */
 html, body { overflow-x: clip; }
+/* Welcome -> results: copy and photo fade out before the search box glides to the top (app.js) */
+body.leaving .hero-copy > :not(#form) { opacity: 0; transform: translateY(-8px); transition: opacity .26s ease, transform .26s ease; }
+body.leaving .hero::before, body.leaving .hero::after { animation: fadeaway .26s ease forwards; }
+@keyframes fadeaway { to { opacity: 0; } }
 body:not(.searched) .top { position: absolute; left: 0; right: 0; z-index: 2; }
 /* Over the photo the language and shortlist controls sit on red glass: give them an ivory pill */
 body:not(.searched) .langs, body:not(.searched) #shortlist-toggle { background: rgba(255, 253, 250, .9); border: 1px solid var(--line);
