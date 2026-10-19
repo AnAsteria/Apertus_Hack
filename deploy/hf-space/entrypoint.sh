@@ -131,6 +131,10 @@ if [ "$store_ok" = 1 ]; then
   ) &
 fi
 
+# STAGING ONLY (not for main): CPU flags for the cross-encoder variant choice (VNNI or not).
+log "cpu flags: $(grep -o -w -E 'avx512_vnni|avx512f|avx2|avx_vnni' /proc/cpuinfo | sort -u | tr '
+' ' ')$(command -v lscpu >/dev/null && lscpu | grep -i -m1 'model name')"
+
 # EXTRA A1 on the cloud: BERNMATCH_RERANK_FETCH=1 (Space variable) downloads the pinned open
 # cross-encoder once at start; any failure leaves search without it. Off by default.
 if [ "${BERNMATCH_RERANK_FETCH:-0}" = "1" ] && [ -z "${BERNMATCH_RERANK_DIR:-}" ]; then
