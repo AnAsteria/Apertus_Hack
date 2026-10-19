@@ -718,7 +718,7 @@ function loadPeople(query, myRevision) {
                            company_context: null, needs: [], enrichment_requested: false }) })
     .then(function (r) { return r.ok ? r.json() : null; })
     .then(function (b) {
-      if (!b || myRevision !== revision || outOfScope) return;
+      if (!b || myRevision !== revision || outOfScope || noMatch) return;
       var people = b.results.filter(strongPerson).slice(0, PEOPLE_SHOWN);
       if (people.length) renderPeople(people);
     }).catch(function () { /* the strip is optional; the results are unaffected */ });
@@ -760,16 +760,35 @@ function renderPeople(list) {
 // T39 (#100): Apertus (70B) judged the request outside the corpus. The cards fold away behind one
 // button; nothing is deleted and the box says who decided.
 var outOfScope = false;
+// 19 Oct: the same fold when Apertus found no research need AND the direct search is weak
+// ("clkhrilhm", "cheap flights"). Search signals alone cannot tell junk from a real rare term:
+// "homeless bern people" scores .852, the real "Sturzerkennung" .843 (both without a word match).
+var noMatch = false;
+function checkNoMatch(b) {
+  if (outOfScope || noMatch || !noNeed || !b || b.outcome !== "low_confidence") return;
+  noMatch = true;
+  document.getElementById("results").hidden = true;
+  document.getElementById("people").hidden = true;
+}
 function renderRefusal() {
   var box = document.getElementById("outcome"), res = document.getElementById("results");
   clearNode(box);
   box.hidden = false;
   var h = el("h2");
-  h.appendChild(el("span", "ai-tag", "Apertus"));
-  h.appendChild(document.createTextNode(" " + t("out.scope", "Outside the indexed corpus")));
-  box.appendChild(h);
-  box.appendChild(el("p", null, t("out.scope.text", "This request is outside what the indexed corpus covers.")));
-  box.appendChild(el("p", "meta", t("out.scope.who", "Judged by Apertus. Bern Match searches public research pages of the University of Bern (including ARTORG) and Diabetes Center Berne.")));
+  if (outOfScope) {
+    h.appendChild(el("span", "ai-tag", "Apertus"));
+    h.appendChild(document.createTextNode(" " + t("out.scope", "Outside the indexed corpus")));
+    box.appendChild(h);
+    box.appendChild(el("p", null, t("out.scope.text", "This request is outside what the indexed corpus covers.")));
+    box.appendChild(el("p", "meta", t("out.scope.who", "Judged by Apertus. Bern Match searches public research pages of the University of Bern (including ARTORG) and Diabetes Center Berne.")));
+  } else {
+    h.appendChild(document.createTextNode(t("out.noMatch", "No match found")));
+    box.appendChild(h);
+    box.appendChild(el("p", null, t("out.noMatch.need", "Apertus found no research topic in this request, and the search found only weak matches.")));
+    var nm = nameMissing(lastQuery, shownResults);
+    if (nm) box.appendChild(el("p", "meta", t("out.noName.text", "No card here is named “{q}”. The person may not be on the indexed pages.", { q: lastQuery })));
+    box.appendChild(el("p", "meta", t("out.noMatch.who", "Bern Match searches public research pages of the University of Bern (including ARTORG) and Diabetes Center Berne. Try the method, disease or technology you need.")));
+  }
   var n = res.querySelectorAll(".card").length;
   if (n) {
     var chips = el("div", "chips");
@@ -780,7 +799,8 @@ function renderRefusal() {
 }
 
 function renderOutcome(b, byApertus) {
-  if (outOfScope) { renderRefusal(); return; }
+  checkNoMatch(b);
+  if (outOfScope || noMatch) { renderRefusal(); return; }
   var box = document.getElementById("outcome");
   clearNode(box);
   var info = OUTCOME_TEXT[b.outcome] && [t("out." + b.outcome, OUTCOME_TEXT[b.outcome][0]), t("out." + b.outcome + ".text", OUTCOME_TEXT[b.outcome][1])];
@@ -1364,6 +1384,7 @@ function startEnrichment(body, requestId, myRevision) {
       d.payload.needs.forEach(function (n) { needText[n.need_id] = n.text; });
       noNeed = !d.payload.needs.length && !(d.payload.expanded_queries || []).length;
       renderNeeds(d.payload);
+      if (noNeed && lastNotes) renderOutcome.apply(null, lastNotes); // results already on screen: re-check "no match"
       // No other wordings means no Apertus ranking will come: show the direct results now, not after ~30 s.
       if (!(d.payload.expanded_queries || []).length)
         fallback(t("st.noWordings", "Apertus found no other wordings for this request. These are the direct results."));
@@ -1425,7 +1446,7 @@ function runSearch(needs) {
   closeEvents();
   clearTimeout(fallbackTimer);
   resultsShown = true; showDirect = null; pendingAssess = []; refining = false; pendingRerank = null;
-  outOfScope = false; document.getElementById("results").hidden = false;
+  outOfScope = false; noMatch = false; document.getElementById("results").hidden = false;
   shownResults = null; assessShown = {}; noNeed = false; assessFailed = false; noClearMatch = 0; rerankSkipped = false; bestFits = []; hiddenVerdicts = {}; checking = 0; lastSummary = null; lastNotes = null; lastNeedsPayload = null; lastNeedNote = null;
   var started = performance.now();
   searchStarted = started;
@@ -1523,7 +1544,7 @@ function goHome(ev) {
   closeEvents();
   clearTimeout(fallbackTimer);
   transitionEndsAt = 0;
-  outOfScope = false; document.getElementById("results").hidden = false;
+  outOfScope = false; noMatch = false; document.getElementById("results").hidden = false;
   document.getElementById("query").value = "";
   clearResults();
   clearNode(document.getElementById("limitations"));

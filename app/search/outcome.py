@@ -21,6 +21,8 @@ leute personen gruppen gruppe institut institute projekte projekt partner univer
 tous toutes tout montre trouve cherche chercheurs chercheur scientifiques experts personnes groupes
 tutti tutte mostra trova cerca ricercatori ricercatore scienziati esperti persone gruppi
 '''.split())
+# 19 Oct: 0 switches topic_query off (search uses the full request, as before).
+GENERIC_FILTER = os.environ.get('BERNMATCH_GENERIC_FILTER', '1') == '1'
 TYPE_LABELS = {'person': 'People', 'unit': 'Groups and institutes', 'project': 'Projects',
                'infrastructure': 'Platforms and infrastructure', 'service': 'Services'}
 COVERAGE = ('The indexed corpus covers public pages of the University of Bern (including ARTORG) and '
@@ -32,6 +34,16 @@ def thresholds():
             'broad_max_terms': int(os.environ.get('BERNMATCH_BROAD_MAX_TERMS', '1')),
             'broad_max_gap': float(os.environ.get('BERNMATCH_BROAD_MAX_GAP', '1.0')),
             'broad_min_hosts': int(os.environ.get('BERNMATCH_BROAD_MIN_HOSTS', '4'))}
+
+
+def topic_query(query):
+    """The request without corpus-generic words ("bern", "people", "experts") when at least one real
+    topic word remains. Almost every page says "University of Bern", so "homeless bern people" used to
+    match on "bern" and "people" alone (19 Oct). Unchanged when the request has no topic word."""
+    if not GENERIC_FILTER or not topic_terms(query):
+        return query
+    kept = [w for w in re.findall(r'\S+', query) if not set(words(w)) or not set(words(w)) <= GENERIC]
+    return ' '.join(kept) or query
 
 
 def topic_terms(query):
