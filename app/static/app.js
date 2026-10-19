@@ -629,12 +629,18 @@ function renderCard(r, index) {
   card.appendChild(head);
   // The best quotes first: one line on the card, the rest under Details.
   var quotes = quoteOrder(r.evidence);
+  // The one line on the card: a real sentence (6+ words) with the request's words if there is one,
+  // not a heading like "Methods". Still an exact stored quote; the rest stays under Details.
+  var nWords = function (e) { return ((e.text || "").match(/\p{L}+/gu) || []).length; };
+  var hits = function (e) { var low = (e.text || "").toLowerCase(); return queryTerms.some(function (w) { return low.indexOf(w) >= 0; }); };
+  var lead = quotes.filter(function (e) { return nWords(e) >= 6 && hits(e); })[0] ||
+             quotes.filter(function (e) { return nWords(e) >= 6; })[0] || quotes[0];
   var first = el("p", "quote-line");
-  highlighted(first, "“" + quotes[0].text + "”", queryTerms);
+  highlighted(first, "“" + lead.text + "”", queryTerms);
   card.appendChild(first);
-  var link = el("a", "src", shortUrl(quotes[0].url) + " ↗");
-  if (/^https?:\/\//i.test(quotes[0].url)) { link.href = quotes[0].url; link.rel = "noopener noreferrer"; link.target = "_blank"; }
-  link.title = quotes[0].url;
+  var link = el("a", "src", shortUrl(lead.url) + " ↗");
+  if (/^https?:\/\//i.test(lead.url)) { link.href = lead.url; link.rel = "noopener noreferrer"; link.target = "_blank"; }
+  link.title = lead.url;
   var linkLine = el("p", "link-line"); linkLine.appendChild(link);
   card.appendChild(linkLine);
   var details = el("details", "card-details");
@@ -1180,12 +1186,13 @@ function needNote(text) {
   clearNode(box);
   box.hidden = false;
   var busy = /^Interpreting/.test(text);
-  box.appendChild(aiHead(busy ? t("ai.working", "Working on your request") : "Apertus"));
-  box.appendChild(el("p", "meta" + (busy ? " busy" : ""),
-    busy ? t("ai.reading", "Reading your request and searching the terms researchers use: synonyms, technical terms, other languages.") : text));
+  var line = aiHead(busy ? t("ai.working", "Working on your request") : "Apertus");
+  line.appendChild(el("span", "needs-hint" + (busy ? " busy" : ""), busy ? t("ai.readingShort", "reading your request…") : text));
+  box.appendChild(line);
 }
 
 var refineOpen = false; // keep "Refine" open while the analyst edits needs
+var needsOpen = false;  // "How we read your request" stays closed unless the analyst opens it
 
 // Apertus' clarifying question, answerable in one click: its "e.g." options become chips,
 // and a box takes any other answer. Either one is added to the request and the search runs again.
@@ -1216,10 +1223,25 @@ function button(label, onclick, cls) {
 
 function renderNeeds(payload) {
   lastNeedsPayload = payload; lastNeedNote = null;
-  var box = document.getElementById("needs");
-  clearNode(box);
-  box.hidden = false;
-  box.appendChild(aiHead(t("ai.readUs", "How we read your request")));
+  var outer = document.getElementById("needs");
+  clearNode(outer);
+  outer.hidden = false;
+  // Closed by default (19 Oct): the results come first; the analyst opens Apertus' reading on demand.
+  var box = el("details", "needs-fold");
+  box.open = needsOpen;
+  box.addEventListener("toggle", function () { needsOpen = box.open; });
+  var sum = el("summary");
+  sum.appendChild(aiHead(t("ai.readUs", "How we read your request")));
+  var bits = [];
+  if (payload.expanded_queries && payload.expanded_queries.length)
+    bits.push(t(payload.expanded_queries.length === 1 ? "ai.hint.word1" : "ai.hint.words", payload.expanded_queries.length === 1 ? "1 other wording" : "{n} other wordings", { n: payload.expanded_queries.length }));
+  if (bestFits.length) bits.push(t(bestFits.length === 1 ? "ai.hint.fit1" : "ai.hint.fits", bestFits.length === 1 ? "1 best fit" : "{n} best fits", { n: bestFits.length }));
+  var clarQ = String(payload.clarification || "").trim();
+  if (clarQ && !/^(null|none|n\/a)$/i.test(clarQ)) bits.push(t("ai.hint.q", "a question to focus the search"));
+  if (checking && !noNeed) bits.push(t("ai.hint.checking", "checking cards…"));
+  sum.appendChild(el("span", "needs-hint", bits.length ? bits.join(" · ") : t("ai.hint.open", "show")));
+  box.appendChild(sum);
+  outer.appendChild(box);
   if (payload.synthetic || payload.decoding_mode === "synthetic") box.appendChild(el("p", "synthetic", "SYNTHETIC fixture interpretation: not a real model output."));
   // The headline: the other wordings Apertus searched, so different terms still find the experts.
   if (payload.expanded_queries && payload.expanded_queries.length) {
@@ -1635,7 +1657,7 @@ function runSearch(needs) {
   clearTimeout(fallbackTimer);
   resultsShown = true; showDirect = null; pendingAssess = []; refining = false; pendingRerank = null;
   outOfScope = false; noMatch = false; document.getElementById("results").hidden = false;
-  topicConfident = false; apertusDirect = 0; currentResponse = null; resultById = {};
+  topicConfident = false; apertusDirect = 0; currentResponse = null; resultById = {}; needsOpen = false;
   shownResults = null; assessShown = {}; noNeed = false; assessFailed = false; noClearMatch = 0; rerankSkipped = false; bestFits = []; hiddenVerdicts = {}; checking = 0; lastSummary = null; lastNotes = null; lastNeedsPayload = null; lastNeedNote = null;
   var started = performance.now();
   searchStarted = started;

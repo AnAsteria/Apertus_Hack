@@ -472,3 +472,13 @@ body.sl-open .top { position: sticky; top: 0; z-index: 4; background: var(--bg);
 .conf-1 { background: rgba(227, 6, 19, .09); color: var(--red-text); } .conf-1::before { background: var(--red); }
 @media (prefers-color-scheme: dark) { .conf-3 { color: #7fd99a; } .conf-2 { color: #f0cc5c; } }
 .status.refining-strong { font-weight: 600; color: var(--ai); }
+/* "How we read your request": one closed line until the analyst opens it */
+.needs { padding: .55rem 1rem; }
+.needs-fold > summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+.needs-fold > summary::-webkit-details-marker { display: none; }
+.needs-fold > summary::after { content: "Show \25BE"; margin-left: auto; font-size: .78rem; font-weight: 600; color: var(--ai); }
+.needs-fold[open] > summary::after { content: "Hide \25B4"; }
+.needs-fold[open] > summary { margin-bottom: .4rem; }
+.needs .ai-head { margin: 0; }
+.needs-hint { font-size: .8rem; font-weight: 400; color: var(--muted); }
+.needs-hint.busy::before { content: "\25CF"; color: var(--ai-line); margin-right: .4rem; animation: pulse 1.2s ease-in-out infinite; }
