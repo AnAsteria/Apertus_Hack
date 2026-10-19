@@ -727,15 +727,17 @@ function isContact(r) {
   if (SITE_PAGE.test(name) || NOT_TEAM_URL.test(url)) return false;
   return TEAM_URL.test(url) || TEAM_NAME.test(name);
 }
-// One list, sorted by confidence (high first). Within the same level, contacts (people and small
-// teams) come before institutions and general pages (#169), then the search's own rank.
+// One list. People and small teams rated at least "possible" come first (Dimitry: the administration
+// needs someone to call, not an institution or a site page); then everything else by confidence.
+// Within each part: confidence (high first), then contacts, then the search's own rank.
 var moreOpen = false;
 function foldOthers() {
   var out = document.getElementById("results");
   var cards = Array.prototype.slice.call(out.querySelectorAll(".card"));
+  function first(c) { return c.dataset.contact === "1" && (+c.dataset.conf || 0) >= 2 ? 1 : 0; }
   cards.sort(function (x, y) {
-    return (+y.dataset.conf || 0) - (+x.dataset.conf || 0) || (+y.dataset.contact || 0) - (+x.dataset.contact || 0) ||
-           (+x.dataset.rank || 0) - (+y.dataset.rank || 0);
+    return first(y) - first(x) || (+y.dataset.conf || 0) - (+x.dataset.conf || 0) ||
+           (+y.dataset.contact || 0) - (+x.dataset.contact || 0) || (+x.dataset.rank || 0) - (+y.dataset.rank || 0);
   });
   var oldMore = out.querySelector(".more-results");
   if (oldMore) { moreOpen = oldMore.open; out.removeChild(oldMore); }

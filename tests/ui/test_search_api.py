@@ -236,3 +236,18 @@ def test_weak_results_wait_for_apertus_and_red_never_shows_people():
     assert "releaseHold();" in js[js.index("function fallback"):js.index("function fallback")+200]
     people = js[js.index("function renderPeople"):js.index("function renderPeople")+4000]
     assert "box.hidden = holding || isRed();" in people
+
+
+def test_contacts_rated_possible_or_better_come_before_institution_pages():
+    js = _static("app.js")
+    fold = js[js.index("function foldOthers"):js.index("function setStatus")]
+    assert 'c.dataset.contact === "1" && (+c.dataset.conf || 0) >= 2' in fold
+    assert fold.index("first(y) - first(x)") < fold.index("(+y.dataset.conf || 0) - (+x.dataset.conf || 0)")
+
+
+def test_no_docs_pages_and_phone_header_fits():
+    from fastapi.testclient import TestClient
+    from app.main import app
+    c = TestClient(app)
+    assert c.get("/docs").status_code == 404 and c.get("/redoc").status_code == 404
+    assert "@media (max-width: 26rem) { .howitworks { display: none; } }" in _static("style.css")

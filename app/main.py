@@ -42,7 +42,8 @@ def deployed_revision() -> str | None:
         return None
 
 
-app = FastAPI(title="Bern Match", version="0.0.1")
+# No /docs or /redoc pages: they load scripts from a CDN, and the UI makes no external requests.
+app = FastAPI(title="Bern Match", version="0.0.1", docs_url=None, redoc_url=None)
 app.middleware("http")(ratelimit.middleware)
 
 
