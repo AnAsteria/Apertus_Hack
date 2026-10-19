@@ -179,6 +179,21 @@ button.small[aria-pressed="true"] { background: var(--text); color: var(--bg); b
 .outcome h2 { font-family: var(--serif); font-weight: 400; font-size: 1.3rem; margin: 0 0 .25rem; }
 .outcome .chips { justify-content: flex-start; }
 
+/* People to contact: a short row of person cards above the results */
+.people { margin: 1rem auto .25rem; }
+.people h2 { font-family: var(--serif); font-weight: 400; font-size: 1.45rem; margin: 0; }
+.people > .meta { margin: .15rem 0 .7rem; }
+.people-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: .75rem; }
+.person-card { background: var(--panel); border: 1px solid var(--line); border-top: 2px solid var(--red); border-radius: 6px; padding: .9rem 1rem .8rem;
+  box-shadow: var(--shadow); display: flex; flex-direction: column; transition: box-shadow .2s var(--ease), transform .2s var(--ease); }
+.person-card:hover { box-shadow: var(--shadow-hover); transform: translateY(-2px); }
+.person-card.appear { animation: rise .34s var(--ease) both; }
+.person-card h3 { margin: 0; font-family: var(--serif); font-weight: 400; font-size: 1.25rem; line-height: 1.2; }
+.person-line { margin: .3rem 0 .7rem; font-size: .86rem; color: var(--muted); flex: 1; }
+.person-actions { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding-top: .6rem; border-top: 1px solid var(--line); }
+.person-actions .src { font-size: .82rem; font-weight: 600; color: var(--red-text); text-decoration: none; }
+.person-actions .src:hover { text-decoration: underline; }
+
 /* Result cards: type label, serif title, affiliation, fields, quotes, divider, actions */
 .card { position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 1.25rem 1.4rem 1.1rem; margin: 1rem 0; box-shadow: var(--shadow);
   transition: box-shadow .2s var(--ease), transform .2s var(--ease); }

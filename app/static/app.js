@@ -664,6 +664,65 @@ function nameMissing(q, results) {
   return !results.some(function (r) { var n = plain(r.display_name); return words.every(function (w) { return n.indexOf(w) >= 0; }); });
 }
 
+// People first (the administration connects companies with researchers): a parallel People-only
+// search; up to 3 strong person matches sit above the results. The main ranking is unchanged.
+// Strong = top 3 by meaning with some keyword evidence, or the query's own words with a top-5 keyword
+// rank (retrieval signals only). Tuned on 12 company requests on the live A6 index: 7 show people, the
+// rest show none rather than weak matches (a top-3-by-meaning rule alone let in unrelated people).
+var PEOPLE_SHOWN = 3;
+function strongPerson(r) {
+  var s = r.retrieval || {};
+  return (s.dense_rank && s.dense_rank <= 3 && s.keyword_rank != null) ||
+         ((s.matched_terms || []).length > 0 && s.keyword_rank && s.keyword_rank <= 5);
+}
+function loadPeople(query, myRevision) {
+  var box = document.getElementById("people");
+  clearNode(box); box.hidden = true;
+  if (selectedType) return; // the analyst already chose a type
+  fetch("/api/v1/search", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ schema_version: "1", query: query, revision: myRevision, entity_type: "person",
+                           company_context: null, needs: [], enrichment_requested: false }) })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (b) {
+      if (!b || myRevision !== revision || outOfScope) return;
+      var people = b.results.filter(strongPerson).slice(0, PEOPLE_SHOWN);
+      if (people.length) renderPeople(people);
+    }).catch(function () { /* the strip is optional; the results are unaffected */ });
+}
+function renderPeople(list) {
+  var box = document.getElementById("people");
+  clearNode(box);
+  box.appendChild(el("h2", null, t("people.title", "People to contact")));
+  box.appendChild(el("p", "meta", t("people.sub", "The strongest person matches for your request, from their public profile pages.")));
+  var row = el("div", "people-row");
+  list.forEach(function (r, i) {
+    var c = el("article", "person-card appear");
+    c.style.animationDelay = Math.round(Math.max(0, transitionEndsAt - performance.now() - 250) + i * 70) + "ms";
+    c.appendChild(el("p", "kicker", typeName("person")));
+    c.appendChild(el("h3", null, r.display_name));
+    var f = r.fields || {};
+    var line = [].concat((f.role || []).slice(0, 1), (f.affiliation || []).slice(0, 1))
+      .map(function (v) { return v && v.value; }).filter(Boolean).join(" · ");
+    var src = sourceOf(r.evidence[0].url);
+    c.appendChild(el("p", "person-line", line || src.full || src.label));
+    var acts = el("div", "person-actions");
+    var a = el("a", "src", t("people.profile", "Profile page") + " ↗");
+    a.href = r.evidence[0].url; a.target = "_blank"; a.rel = "noopener noreferrer";
+    acts.appendChild(a);
+    var sel = button(t("card.select", "Select"), function () {
+      setShortlist(r, "select", null);
+      sel.setAttribute("aria-pressed", String(!!(shortlist[r.entity_id] && shortlist[r.entity_id].state === "select")));
+    });
+    sel.classList.add("act-select");
+    sel.setAttribute("aria-pressed", String(!!(shortlist[r.entity_id] && shortlist[r.entity_id].state === "select")));
+    acts.appendChild(sel);
+    c.appendChild(acts);
+    row.appendChild(c);
+  });
+  box.appendChild(row);
+  box.hidden = false;
+}
+
 // T39 (#100): Apertus (70B) judged the request outside the corpus. The cards fold away behind one
 // button; nothing is deleted and the box says who decided.
 var outOfScope = false;
@@ -1255,6 +1314,7 @@ function startEnrichment(body, requestId, myRevision) {
         document.getElementById("results").hidden = true;
         document.getElementById("summary").hidden = true;
         document.getElementById("needs").hidden = true;
+        document.getElementById("people").hidden = true;
         setStatus("", "");
         renderRefusal();
         return;
@@ -1343,6 +1403,7 @@ function runSearch(needs) {
   showSkeletons();
   clearNode(document.getElementById("limitations")); // never show the previous search's notes next to a new error
   document.getElementById("limits-box").hidden = true;
+  loadPeople(query, myRevision);
   var body = { schema_version: "1", query: query, revision: myRevision,
                entity_type: type || null, company_context: null, needs: needs || [],
                enrichment_requested: interpret };
@@ -1431,7 +1492,7 @@ function goHome(ev) {
   document.getElementById("query").value = "";
   clearResults();
   clearNode(document.getElementById("limitations"));
-  ["summary", "outcome", "needs", "limits-box"].forEach(function (id) { document.getElementById(id).hidden = true; });
+  ["summary", "outcome", "needs", "limits-box", "people"].forEach(function (id) { document.getElementById(id).hidden = true; });
   setStatus("", "");
   document.body.classList.remove("searched", "leaving");
   window.scrollTo(0, 0);

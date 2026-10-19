@@ -179,3 +179,23 @@ def test_out_of_scope_refusal_folds_the_cards_and_hidden_always_wins():
     assert "This request is outside what the indexed corpus covers." in refusal
     assert "Show the {n} direct results anyway" in refusal  # folded, never deleted
     assert "[hidden] { display: none !important; }" in css
+
+
+def test_people_strip_is_a_parallel_people_only_search_with_a_strict_rule():
+    import json, subprocess, shutil
+    js, html = _static("app.js"), _static("index.html")
+    assert 'id="people"' in html
+    body = js[js.index("function loadPeople"):js.index("function renderPeople")]
+    assert 'entity_type: "person"' in body and "myRevision !== revision" in body
+    assert "loadPeople(query, myRevision)" in js  # started with every search, in parallel
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node not installed")
+    fn = js[js.index("function strongPerson"):js.index("function loadPeople")]
+    cases = [{"dense_rank": 2, "keyword_rank": 38, "matched_terms": []},     # Stephan Gerber, CGM: shown
+             {"dense_rank": 1, "keyword_rank": None, "matched_terms": []},   # meaning only: not shown
+             {"dense_rank": 11, "keyword_rank": 4, "matched_terms": []},     # Rebecca Buller, CGM: not shown
+             {"dense_rank": 9, "keyword_rank": 1, "matched_terms": ["insulin"]}]
+    script = fn + "\nconsole.log(JSON.stringify(%s.map(function (s) { return !!strongPerson({ retrieval: s }); })));" % json.dumps(cases)
+    out = subprocess.run([node, "-e", script], capture_output=True, text=True, check=True).stdout
+    assert json.loads(out) == [True, False, False, True]
