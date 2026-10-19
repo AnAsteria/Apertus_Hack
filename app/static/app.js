@@ -842,6 +842,8 @@ function initHero() {
   var ln = document.getElementById("sl-list-note");
   ln.addEventListener("input", function () { listNote = ln.value; });
   document.getElementById("sl-export").addEventListener("click", exportPdf);
+  document.getElementById("sl-brief").addEventListener("click", draftBrief);
+  document.getElementById("sl-email").addEventListener("click", draftEmail);
   document.getElementById("sl-json").addEventListener("click", exportJson);
   applyStatic();
   renderShortlist();
@@ -1357,3 +1359,88 @@ document.getElementById("form").addEventListener("submit", function (ev) {
   userNeeds = []; suggestedNeeds = []; refineOpen = false;   // a fresh question starts fresh needs
   runSearch([]);
 });
+
+
+// T23/T24/T28 (Stretch): a brief and an e-mail draft written by Apertus from the shortlist.
+// The server re-reads every card by id; quotes are stored source text; AI text is labelled;
+// nothing is sent anywhere. Language follows the interface (EN/DE/FR; IT via the API).
+var lastBrief = null;
+function aiLang() { return ["en", "de", "fr", "it"].indexOf(uiLang) >= 0 ? uiLang : "en"; }
+
+function postJson(url, body) {
+  return fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+    .then(function (r) { return r.json().then(function (b) { return { ok: r.ok, body: b }; }); });
+}
+
+function draftBrief() {
+  var out = document.getElementById("sl-ai-out");
+  clearNode(out);
+  if (!slOrder.length) return;
+  out.appendChild(el("p", "meta", t("br.working", "Apertus is writing the brief…")));
+  var note = document.getElementById("sl-list-note").value.trim() || null;
+  postJson("/api/v1/brief", { schema_version: "1", query: lastQuery || "", entity_ids: slOrder.slice(0, 8), language: aiLang(), analyst_note: note })
+    .then(function (res) {
+      clearNode(out);
+      if (!res.ok) { out.appendChild(el("p", "warn", (res.body.error && res.body.error.message) || t("br.failed", "The brief could not be written."))); return; }
+      lastBrief = res.body;
+      document.getElementById("sl-email").disabled = false;
+      renderBrief(out, res.body);
+    }).catch(function () { clearNode(out); out.appendChild(el("p", "warn", t("st.offline", "Could not reach the server."))); });
+}
+
+function renderBrief(out, b) {
+  out.appendChild(el("h3", null, t("br.title", "Brief")));
+  out.appendChild(el("p", "meta", t("br.legend", "AI = written by Apertus, check against the quotes. Quotes and fields come from the source pages.")));
+  if (b.summary_ai) { var s = el("p", "ai-text"); s.appendChild(el("span", "badge ai", "AI")); s.appendChild(document.createTextNode(" " + b.summary_ai)); out.appendChild(s); }
+  b.entries.forEach(function (e, i) {
+    var box = el("div", "br-entry");
+    box.appendChild(el("h4", null, (i + 1) + ". " + e.name));
+    Object.keys(e.fields || {}).forEach(function (k) { box.appendChild(el("p", "meta", fieldLabel(k).split(" (")[0] + ": " + e.fields[k].join("; "))); });
+    if (e.why_ai) { var w = el("p", "ai-text"); w.appendChild(el("span", "badge ai", "AI")); w.appendChild(document.createTextNode(" " + e.why_ai)); box.appendChild(w); }
+    e.evidence.forEach(function (q) {
+      var bq = el("blockquote", null, q.text);
+      var a = el("a", null, q.url); a.href = q.url; a.target = "_blank"; a.rel = "noopener";
+      var src = el("p", "meta"); src.appendChild(a);
+      box.appendChild(bq); box.appendChild(src);
+      if (aiLang() !== "en") {
+        var tr = button(t("br.translate", "Translate (machine, Apertus)"), function () { translateQuote(q, box, tr); });
+        box.appendChild(tr);
+      }
+    });
+    if (e.open_questions_ai && e.open_questions_ai.length) {
+      var ul = el("ul", "ai-text");
+      e.open_questions_ai.forEach(function (q) { ul.appendChild(el("li", null, "AI · " + q)); });
+      box.appendChild(ul);
+    }
+    out.appendChild(box);
+  });
+  if (b.analyst_note) out.appendChild(el("p", "analyst", t("br.analyst", "Analyst note (your text): ") + b.analyst_note));
+}
+
+function translateQuote(q, box, btn) {
+  btn.disabled = true;
+  postJson("/api/v1/translate", { schema_version: "1", version_id: q.version_id, sentence_ids: [q.sentence_id], language: aiLang() })
+    .then(function (res) {
+      var item = res.ok && res.body.items && res.body.items[0];
+      var p = el("p", "mt", item && item.translation ? t("br.mt", "Machine translation (not the source text): ") + item.translation
+                                                      : t("br.mtFail", "No reliable translation; the original above is the source."));
+      btn.replaceWith(p);
+    }).catch(function () { btn.disabled = false; });
+}
+
+function draftEmail() {
+  if (!lastBrief) return;
+  var out = document.getElementById("sl-ai-out");
+  var box = el("div", "br-email");
+  box.appendChild(el("p", "meta", t("br.emailWorking", "Apertus is drafting the e-mail…")));
+  out.appendChild(box);
+  postJson("/api/v1/brief/email", { schema_version: "1", brief: lastBrief, language: aiLang() }).then(function (res) {
+    clearNode(box);
+    if (!res.ok) { box.appendChild(el("p", "warn", (res.body.error && res.body.error.message) || t("br.failed", "The draft could not be written."))); return; }
+    box.appendChild(el("h3", null, t("br.emailTitle", "E-mail draft (AI, not sent)")));
+    box.appendChild(el("p", "meta", t("br.emailLabel", "Written by Apertus for you to edit and send yourself. Nothing is sent from Bern Match.")));
+    var area = el("textarea", "sl-note"); area.rows = 10; area.value = (res.body.subject ? "Subject: " + res.body.subject + "\n\n" : "") + res.body.body;
+    box.appendChild(area);
+    box.appendChild(button(t("br.copy", "Copy"), function () { try { navigator.clipboard.writeText(area.value); } catch (e) { area.select(); } }));
+  });
+}
