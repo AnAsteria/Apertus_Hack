@@ -21,6 +21,7 @@ def main(argv=None) -> int:
     r.add_argument("--config", default="default")
     r.add_argument("--corpus-snapshot", default=None)
     r.add_argument("--out", required=True)
+    r.add_argument("--enriched", action="store_true", help="score the Apertus-enriched ranking when the server sends one")
     rp = sub.add_parser("report")
     rp.add_argument("run")
     sm = sub.add_parser("sample")
@@ -39,7 +40,7 @@ def main(argv=None) -> int:
         print(json.dumps(gold.freeze(a.gold), indent=1))
     elif a.cmd == "run":
         run = runner.run_gold(a.gold, split=a.split, base_url=a.base_url, config_name=a.config,
-                              corpus_snapshot_id=a.corpus_snapshot)
+                              corpus_snapshot_id=a.corpus_snapshot, enriched=a.enriched)
         runner.save(run, a.out)
         print(f"wrote {a.out}: {len(run['rows'])} queries")
     elif a.cmd == "report":

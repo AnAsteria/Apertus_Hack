@@ -199,3 +199,20 @@ def test_fields_match_the_card_field_names_emitted_by_t08():
     from app.grounding.fields import FIELD_FOR, INVERSE_FIELD
     from evaluation.report import FIELDS
     assert set(FIELDS) == set(FIELD_FOR.values()) - {"related"} | set(INVERSE_FIELD.values())
+
+
+def test_enriched_run_scores_the_reranked_list_and_says_so(fixture_client, tmp_path):
+    from app.api import enrich, enrichment
+    enrichment.registry.clear()
+    enrichment.set_interpreter(enrich.fixture_interpreter)  # synthetic, no model call
+    try:
+        path = write_gold(tmp_path, [q("hit", "g1")])
+        fast = runner.run_gold(path, split="development", client=fixture_client)
+        full = runner.run_gold(path, split="development", client=fixture_client, enriched=True)
+    finally:
+        enrichment.set_interpreter(None)
+        enrichment.registry.clear()
+    assert fast["rows"][0]["scored"] == "fast" and fast["config"]["enriched"] is False
+    row = full["rows"][0]
+    assert full["config"]["enriched"] is True and row["scored"] == "reranked" and row["results"]
+    assert row["end_to_end_ms"] >= row["latency_ms"]
