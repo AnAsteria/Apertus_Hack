@@ -3,6 +3,7 @@
 Readiness stays false until corpus/index assets are loaded: a marker file
 `$BERNMATCH_DATA_DIR/READY` written by the index-build step.
 """
+import mimetypes
 import os
 
 from fastapi import FastAPI, Request
@@ -17,6 +18,9 @@ from .api.evidence import router as evidence_router
 from .api.feedback import router as feedback_router
 from .api.search import router as search_router
 from .contracts import error
+
+# The container's mime table lacks .webp: without this hero.webp is served as text/plain.
+mimetypes.add_type("image/webp", ".webp")
 
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 
