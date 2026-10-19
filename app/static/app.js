@@ -54,8 +54,28 @@ var FRESHNESS = { fresh: ["Recent source", "The source page was updated recently
                   stale: ["Older source", "The source page has not been updated for a while. Check that it is still current."] };
 var TYPES = [["", "Anything"], ["person", "People"], ["unit", "Groups"], ["project", "Projects"],
              ["infrastructure", "Infrastructure"], ["service", "Services"]];
+// Example queries in the page language. English keeps one per language, to show cross-language search.
+// Each was run on the live index (19 Oct 2026) and finds the right pages.
 var EXAMPLES = [["DE", "Messung des Blutzuckers ohne Nadel für eine Smartwatch"],
                 ["EN", "glucose sensors"], ["FR", "robotique pour la rééducation"]];
+var EXAMPLES_BY_LANG = {
+  en: EXAMPLES,
+  de: [["DE", "Messung des Blutzuckers ohne Nadel für eine Smartwatch"], ["DE", "Glukosesensoren für Diabetes"],
+       ["DE", "Robotik für die Rehabilitation"]],
+  fr: [["FR", "mesure du glucose sans aiguille pour une montre connectée"], ["FR", "mesure non invasive de la glycémie"],
+       ["FR", "robotique pour la rééducation"]]
+};
+
+function renderExamples() {
+  var ex = document.getElementById("examples");
+  clearNode(ex);
+  (EXAMPLES_BY_LANG[uiLang] || EXAMPLES).forEach(function (e) {
+    var b = button("", function () { document.getElementById("query").value = e[1]; userNeeds = []; suggestedNeeds = []; runSearch([]); }, "example");
+    b.appendChild(el("span", "lang", e[0]));
+    b.appendChild(document.createTextNode(e[1]));
+    ex.appendChild(b);
+  });
+}
 var FIELD_LABELS = { role: "Role", affiliation: "Affiliation", part_of: "Part of", led_by: "Led by", leads: "Leads",
                      members: "Members", includes: "Includes", expertise: "Expertise", projects: "Projects",
                      infrastructure: "Infrastructure", services: "Services",
@@ -667,6 +687,7 @@ function applyStatic() {
   Array.prototype.forEach.call(document.querySelectorAll(".langs [data-lang]"), function (b) {
     b.setAttribute("aria-pressed", String(b.dataset.lang === uiLang));
   });
+  renderExamples();
 }
 
 // Same text in the new language, if this page made it with t(); otherwise unchanged.
@@ -706,13 +727,6 @@ function initHero() {
     group.appendChild(c);
   });
   setType("");
-  var ex = document.getElementById("examples");
-  EXAMPLES.forEach(function (e) {
-    var b = button("", function () { document.getElementById("query").value = e[1]; userNeeds = []; suggestedNeeds = []; runSearch([]); }, "example");
-    b.appendChild(el("span", "lang", e[0]));
-    b.appendChild(document.createTextNode(e[1]));
-    ex.appendChild(b);
-  });
   var toggle = document.getElementById("shortlist-toggle"), drawer = document.getElementById("shortlist");
   toggle.addEventListener("click", function () {
     drawer.hidden = !drawer.hidden;
