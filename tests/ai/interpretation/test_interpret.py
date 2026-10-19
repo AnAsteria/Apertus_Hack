@@ -326,8 +326,8 @@ def test_fallback_model_never_refuses(api, monkeypatch):
     assert interp["model"] == "fallback" and interp["outcome_update"] is None
 
 
-def test_scope_refusal_is_off_by_default(api):
-    assert enrichment.SCOPE_REFUSAL is False
+def test_scope_refusal_can_be_turned_off(api, monkeypatch):
+    monkeypatch.setattr(enrichment, "SCOPE_REFUSAL", False)
     enrichment.set_interpreter(_scoped("out_of_scope"), fallback=_quick)
     enrichment.set_outcome_provider(lambda req: "no_evidence")
     try:

@@ -31,3 +31,11 @@ python tools/enrichment_check.py --base-url http://127.0.0.1:8765 --cases profil
 
 - Run the fast path on the extracted **needs** as well as the raw description, which needs a T30 change (Maxim's area).
 - Give assessment the profile's product sentence explicitly, and re-check SPN-005-type misses on a small labelled set before changing the prompt.
+
+## Follow-up: root causes (2026-10-19, Maxim's request)
+
+**SPN-005 labelled `insufficient_evidence`: evidence selection.** Assessment showed the model the card's first 4 sentences in page order. For the English SPN-005 card those were the title, a byline ("by … | Oct 9, 2025"), a navigation line and a generic intro. The decisive sentences (non-invasive light + AI measurement through the skin, compared with CGM) were never in the prompt. That card is also the English page's entity without fields; its German language twin carries the supported facts. The prompt is not the cause.
+
+*Tried:* selecting the 4 sentences most related to the request and needs (`select_evidence`, `BERNMATCH_ASSESS_EVIDENCE=relevant`). It fixes this case by construction, but on the development split it **lowered** the share of expected answers labelled direct/related from **0.82 to 0.71** (same cached interpretations, n = 17; Recall@10 unchanged 0.824). So it stays **opt-in, off by default**, per the "development numbers must not drop" rule.
+
+**AIHN missing from the top 10: retrieval and entity fragmentation.** The group exists as **5 separate entities** ("AIHN", "AI in Health and Nutrition", "Artificial Intelligence in Health and Nutrition (AIHN) research group", "Adaptive Diabetes Management", and an AIHN news item), so its retrieval signal is split. It ranks 8 for the extracted need "help with insulin-dosing algorithms" and 6/9 for "AI insulin dosing decision support", but it is not in the top 10 for the pasted description or for most expansions, where Diabetes Center Berne news pages win. Fixing it needs a T08 merge rule (abbreviation ↔ full name across pages; A6 #124) and a T08 re-run plus index rebuild, which is not cheap before the freeze. **Documented, not fixed.**

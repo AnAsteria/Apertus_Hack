@@ -120,10 +120,38 @@ def needs_for(needs: list[Need], query: str) -> list[Need]:
     return [Need(schema_version="1", need_id=QUERY_NEED_ID, text=query, origin="user", kind="competency")]
 
 
-def _candidate_block(n: int, r: Result, offset: int) -> tuple[str, list[tuple[str, str]], str]:
+_WORD = re.compile(r"[^\W\d_]{3,}", re.UNICODE)
+_STOP = frozenset("the and for with from that this our are was were has have into their which about der die das und mit von für den dem des une les des pour avec".split())
+
+
+def _terms(text: str) -> set[str]:
+    return {w.casefold()[:6] for w in _WORD.findall(text or "")} - _STOP
+
+
+def select_evidence(evidence: list, request_text: str, k: int = MAX_EVIDENCE_PER_CANDIDATE) -> list:
+    """B4 follow-up: pick the k evidence sentences most related to the request and needs instead of
+    the first k in page order (which were often a title, a byline and a navigation line). Headings
+    and very short lines rank last; ties keep page order; the chosen sentences stay in page order.
+    Stem-like overlap (first 6 letters) so 'glucose'/'Glukose' and 'monitoring'/'monitor' meet."""
+    want = _terms(request_text)
+    scored = []
+    for i, e in enumerate(evidence):
+        words = len(_WORD.findall(e.text or ""))          # real words only: bylines/dates count little
+        short = words < 5
+        overlap = len(_terms(e.text) & want)
+        scored.append((-(overlap * 0.25 if short else overlap), short, i, e))
+    chosen = sorted(sorted(scored, key=lambda t: t[:3])[:k], key=lambda t: t[2])
+    return [t[3] for t in chosen]
+
+
+def _candidate_block(n: int, r: Result, offset: int, request_text: str = "") -> tuple[str, list[tuple[str, str]], str]:
     # C2 (#131): source text is untrusted. Sentences that look like instructions to an AI are not
     # shown to the model and cannot be cited (same detector as extraction).
-    ev = [e for e in r.evidence if not looks_like_injection(e.text)][:MAX_EVIDENCE_PER_CANDIDATE]
+    clean = [e for e in r.evidence if not looks_like_injection(e.text)]
+    # Default "first": relevance selection fixed the B4 SPN-005 miss but lowered the development split
+    # (expected answers direct/related 0.82 -> 0.71, same interpretations, n = 17), so it is opt-in.
+    use_selection = request_text and os.environ.get("BERNMATCH_ASSESS_EVIDENCE", "first") == "relevant"
+    ev = select_evidence(clean, request_text) if use_selection else clean[:MAX_EVIDENCE_PER_CANDIDATE]
     fields = "; ".join(f"{k}: {', '.join(v.value for v in vs)}" for k, vs in r.fields.items() if vs)
     lines = [f"[C{n}] {r.display_name} ({r.entity_type})" + (f" | facts: {fields}" if fields else "")]
     for i, e in enumerate(ev, start=offset + 1):
@@ -135,9 +163,10 @@ def _candidate_block(n: int, r: Result, offset: int) -> tuple[str, list[tuple[st
 def build_messages(query: str, needs: list[Need], candidates: list[Result]) -> tuple[list[dict], list[dict]]:
     """Returns (messages, per-candidate maps {evidence number -> (version_id, sentence_id)}, text)."""
     need_lines = "\n".join(f"- {n.need_id}: {n.text}" for n in needs)
+    request_text = " ".join([query] + [n.text for n in needs])
     blocks, maps, offset = [], [], 0
     for n, r in enumerate(candidates, start=1):
-        block, pairs, text = _candidate_block(n, r, offset)
+        block, pairs, text = _candidate_block(n, r, offset, request_text)
         blocks.append(block)
         maps.append({"evidence": {offset + i + 1: p for i, p in enumerate(pairs)}, "text": text})
         offset += len(pairs)

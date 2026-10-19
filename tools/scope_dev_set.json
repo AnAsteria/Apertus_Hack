@@ -1,0 +1,29 @@
+{
+ "note": "T39 (#100) development set for the scope check. Fictional, written 2026-10-19 by Ruihan (via Claude) before any prompt change. Exact texts stored. Never used together with evaluation-split queries for tuning.",
+ "in_scope_commercial": [
+  "A needle-free glucose sensor we want to bring to market next year",
+  "Our insulin pump is ready for certification; we need clinical study partners",
+  "Startup selling a wearable ECG patch looking for university validation",
+  "We plan to commercialise an AI tool for reading brain MRI scans",
+  "Market-ready surgical robot needs pre-clinical testing in Bern",
+  "Investor-backed company launching a cancer blood test, seeking pathology experts",
+  "Wir verkaufen bald ein Hörgerät mit KI und suchen eine Forschungsgruppe",
+  "Produit prêt à être commercialisé : capteur de glucose sans aiguille, cherche partenaire clinique",
+  "Our medtech product launch requires biocompatibility testing facilities",
+  "Selling software for radiotherapy planning, need academic benchmark data",
+  "Company with a CE-marked device for diabetic foot ulcers wants a research collaboration",
+  "Scale-up of our sequencing kit: looking for a core facility to compare results"
+ ],
+ "out_of_scope": [
+  "asdfgh qwerty zxcv",
+  "best pizza delivery in Bern tonight",
+  "cheap flights to Barcelona in December",
+  "Bitcoin price prediction for next week",
+  "how do I fix the gearbox of my car",
+  "zeige mir alle Affen",
+  "buy a used iPhone 13 cheap",
+  "what is the weather tomorrow in Zurich",
+  "recommend a good Netflix series",
+  "Wo kann ich in Bern günstig Schuhe kaufen?"
+ ]
+}

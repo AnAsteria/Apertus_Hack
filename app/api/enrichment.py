@@ -50,9 +50,10 @@ REQUEST_ID_RE = re.compile(r"^req_[A-Za-z0-9]{1,64}$")
 
 ASSESS_TIMEOUT_S = float(os.environ.get("BERNMATCH_ASSESS_TIMEOUT_S", "30"))  # B2: was 45; B1 p95 is ~16 s
 INTERPRET_DEADLINE_S = float(os.environ.get("BERNMATCH_INTERPRET_DEADLINE_S", "12"))  # then fall back to 8B
-# T39 (#100): opt-in. On the frozen evaluation split 70B wrongly marked one in-scope query (I07-en,
-# "already ready for market launch") out of scope, so refusal stays off until re-validated.
-SCOPE_REFUSAL = os.environ.get("BERNMATCH_SCOPE_REFUSAL") == "1"
+# T39 (#100): on by default since prompt i3 (re-validated 2026-10-19: 0 in-scope refusals on the
+# stored development set + development split, n = 29, and on the frozen evaluation split, n = 19).
+# Set BERNMATCH_SCOPE_REFUSAL=0 to turn the refusal off.
+SCOPE_REFUSAL = os.environ.get("BERNMATCH_SCOPE_REFUSAL", "1") != "0"
 
 Interpreter = Callable[[SearchRequest], Interpretation]
 CandidateProvider = Callable[[SearchRequest], list[Result]]

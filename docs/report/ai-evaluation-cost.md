@@ -45,6 +45,10 @@ All structured output uses the gateway's JSON-schema constrained decoding, still
 
 **Grounding at corpus scale:** of 5,130 extracted claims, 4,314 passed the support checks and 816 were rejected (469 by code rules, 347 by the judge, including 3 reversed relations). Every surfaced fact links to an exact stored sentence and URL.
 
+**Human-checked samples** (AI pre-rated, every rating reviewed and confirmed by Ruihan; single rater):
+- *Evidence support* (40 cards, fixed-seed random sample of the official baseline, evaluation split): 5 % supported, 12.5 % partly, 82.5 % unsupported. The sheet rates each card's **first** evidence sentence, and in 28 of the 33 unsupported cases that sentence is a page heading or fragment ("Grants", "Profil", "PD Dr."). So the figure mainly reflects which sentence a card shows first and some off-topic cards (retrieval precision), not invented content: quotes are byte-identical stored sentences, and fields come from the judged claims. Showing the best-matching sentence first is the next fix.
+- *Assessment* (10 live assessments, stratified 3 direct / 3 related / 4 insufficient): category correct 6/10 (insufficient 4/4, direct 2/3, related 0/3 + 1 unsure); explanations 5 supported, 5 partly, 0 unsupported, with no invented contacts or numbers. Assessment labels are AI suggestions for the analyst and never change ranking or supported fields.
+
 ## Cost and scale
 
 - **One-off processing of the whole 41-domain corpus** (2,811 pages): ≈ 1.05M input + 0.39M output tokens, ≈ 30 min extraction plus 2.3 min support checking, at concurrency 4. Re-runs only touch changed pages.

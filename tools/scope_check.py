@@ -24,11 +24,16 @@ def main():
     p.add_argument("--out", required=True)
     p.add_argument("--split", default="development", choices=["development", "evaluation"])
     p.add_argument("--no-probes", action="store_true")
+    p.add_argument("--set", help="Labelled JSON set (in_scope_commercial / out_of_scope); replaces the probes")
     a = p.parse_args()
     gold = json.load(open(a.gold))
     # Absent gold queries (e.g. quantum satellites) are research requests: in scope, just not in Bern.
     items = [(q["query_id"], q["text"], "in_scope") for q in gold["queries"] if q["split"] == a.split]
-    if not a.no_probes:
+    if a.set:
+        extra = json.load(open(a.set))
+        items += [(f"com-{i}", t, "in_scope") for i, t in enumerate(extra["in_scope_commercial"], 1)]
+        items += [(f"oos-{i}", t, "out_of_scope") for i, t in enumerate(extra["out_of_scope"], 1)]
+    elif not a.no_probes:
         items += [(f"probe-{i}", t, "out_of_scope") for i, t in enumerate(NONSENSE, 1)]
     client = get_client()
 
