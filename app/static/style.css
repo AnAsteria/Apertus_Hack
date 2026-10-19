@@ -482,3 +482,7 @@ body.sl-open .top { position: sticky; top: 0; z-index: 4; background: var(--bg);
 .needs .ai-head { margin: 0; }
 .needs-hint { font-size: .8rem; font-weight: 400; color: var(--muted); }
 .needs-hint.busy::before { content: "\25CF"; color: var(--ai-line); margin-right: .4rem; animation: pulse 1.2s ease-in-out infinite; }
+
+/* Phones under ~416 px: the header (brand, How it works, EN/DE/FR, shortlist) did not fit and
+   scrolled sideways by 6 px at 390 px. "How it works" stays on wider screens and in the README. */
+@media (max-width: 26rem) { .howitworks { display: none; } }
