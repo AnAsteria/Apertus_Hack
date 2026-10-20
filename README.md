@@ -157,3 +157,7 @@ This is a design commitment, not a claim of legal compliance.
 ## Team
 
 Built for the Apertus hackathon (19 October 2026) by Dimitry ([@kaktamsdengami](https://github.com/kaktamsdengami)), Maxim ([@maxim451](https://github.com/maxim451)) and Ruihan ([@AnAsteria](https://github.com/AnAsteria)).
+
+## Licence
+
+[MIT](LICENSE) for the code and documentation in this repository. Source-page content belongs to the publishing institutions; see [Attribution and licences](docs/attribution.md).
