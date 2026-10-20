@@ -2,7 +2,9 @@
 
 Bern Match helps the Bern Economic Development Agency find **who to contact** at the University of Bern (UniBE), ARTORG and Diabetes Center Berne. An analyst describes a company's need in plain language (EN/DE/FR/IT) and builds a **shortlist** of research groups, labs, platforms, projects and people. Every entry quotes the exact source sentence and links to its page, and the shortlist exports to PDF for the team.
 
-**Live demo:** https://kaktamsdengami-bern-match.hf.space · Powered by [Apertus](https://www.swiss-ai.org/apertus), the Swiss open language model, served on Swiss infrastructure through the [Keera](https://keera.ch) gateway (CSCS). The first results never wait for the AI.
+**Demo video (1:42):** [watch on Google Drive](https://drive.google.com/file/d/1ncMDIrwjjgFb5TwF-v2jZufNjyDfvVSe/view?usp=sharing) · **Live demo:** https://kaktamsdengami-bern-match.hf.space
+
+Powered by [Apertus](https://www.swiss-ai.org/apertus), the Swiss open language model, served on Swiss infrastructure through the [Keera](https://keera.ch) gateway (CSCS). The first results never wait for the AI.
 
 ## How it works
 
