@@ -1,0 +1,19 @@
+# Render blueprint: the free demo host after the paid Hugging Face Space was paused.
+# Same image as the Space; the index bundle comes from a private Hugging Face dataset at start-up
+# (see "Hosting without a bucket" in docs/deployment.md). Free instances sleep after ~15 minutes
+# without traffic, so the first visit after a pause waits for the container to start.
+services:
+  - type: web
+    name: bern-match
+    runtime: docker
+    plan: free
+    dockerfilePath: ./deploy/hf-space/Dockerfile
+    dockerContext: .
+    healthCheckPath: /healthz
+    envVars:
+      - key: BERNMATCH_BUNDLE_REPO
+        value: Aster233/bern-match-index
+      - key: BERNMATCH_ORT_THREADS
+        value: "1"
+      - key: HF_TOKEN
+        sync: false # read-only Hugging Face token; Render asks for it when the blueprint is applied

@@ -57,6 +57,18 @@ Only needed when the corpus or knowledge files change, or for a build-time rule 
 
 Admin token rotation: create a new random value, replace `BERNMATCH_ADMIN_TOKEN` in the Space secrets (the Space restarts), and hand it only to operators.
 
+## Hosting without a bucket (free tiers)
+
+The same image runs on a host with no mounted bucket, such as a free Space or Render. Upload `bundle.tar.gz` to a **private** Hugging Face dataset, then set:
+
+| Name | Kind | Value |
+| --- | --- | --- |
+| `BERNMATCH_BUNDLE_REPO` | variable | e.g. `user/bern-match-index` |
+| `HF_TOKEN` | secret | a read-only token that can read that dataset |
+| `BERNMATCH_ORT_THREADS` | variable | the host's vCPU count (default 8) |
+
+On start, `entrypoint.sh` downloads the bundle, extracts it and serves on `$PORT` (default 7860). A free Docker Space is not an option: since October 2026 Hugging Face answers `402 Payment Required` without a PRO plan. [`render.yaml`](../render.yaml) sets up the same image on Render's free tier (512 MB; the app uses about 220 MB after a few searches); Render asks for `HF_TOKEN` when the blueprint is applied. Without a writable `/data`, feedback is not kept across restarts. Without Apertus variables, instant search works and the AI parts report themselves unavailable.
+
 ## Checks
 
 ```bash
