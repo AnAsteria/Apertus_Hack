@@ -36,6 +36,23 @@ restore_bundle() {
   tar -xzf "$STORE/bundle.tar.gz" -C "$SERVE" && log "restored index bundle from $STORE/bundle.tar.gz"
 }
 
+# Hosts without a mounted bucket (free Space, Render, ...): download the bundle from a Hugging Face
+# repo instead. BERNMATCH_BUNDLE_REPO is e.g. "user/bern-match-index" (a private dataset); HF_TOKEN
+# is a read-only token secret. The bundle holds names from public pages, so keep that repo private.
+fetch_bundle() {
+  log "downloading index bundle from $BERNMATCH_BUNDLE_REPO"
+  WORK="$WORK" python - <<'PY' || return 1
+import os
+from huggingface_hub import hf_hub_download
+hf_hub_download(os.environ["BERNMATCH_BUNDLE_REPO"], os.environ.get("BERNMATCH_BUNDLE_FILE", "bundle.tar.gz"),
+                repo_type=os.environ.get("BERNMATCH_BUNDLE_REPO_TYPE", "dataset"),
+                token=os.environ.get("HF_TOKEN") or None, local_dir=os.environ["WORK"])
+PY
+  tar -xzf "$WORK/${BERNMATCH_BUNDLE_FILE:-bundle.tar.gz}" -C "$SERVE" \
+    && rm -f "$WORK/${BERNMATCH_BUNDLE_FILE:-bundle.tar.gz}" \
+    && log "restored index bundle from $BERNMATCH_BUNDLE_REPO"
+}
+
 fail() { log "FAILED at stage: $1"; [ "$store_ok" = 1 ] && echo "$1" > "$STORE/pipeline.failed"; return 1; }
 
 # Print "build progress: N of M entries embedded (P%)" from the last progress line the builder wrote.
@@ -104,6 +121,8 @@ pipeline() {
 
 if [ "$store_ok" = 1 ] && [ -f "$STORE/bundle.tar.gz" ]; then
   restore_bundle || log "WARNING: bundle restore failed"
+elif [ -n "${BERNMATCH_BUNDLE_REPO:-}" ]; then
+  fetch_bundle || log "WARNING: bundle download failed; serving 'not ready'"
 elif [ "${BERNMATCH_AUTO_PIPELINE:-0}" = "1" ]; then
   if [ "$store_ok" = 1 ] && [ -f "$STORE/pipeline.failed" ]; then
     log "previous pipeline failed at stage $(cat "$STORE/pipeline.failed"); not retrying automatically (delete $STORE/pipeline.failed to retry)"
@@ -131,4 +150,5 @@ if [ "$store_ok" = 1 ]; then
   ) &
 fi
 
-exec uvicorn app.main:app --host 0.0.0.0 --port 7860
+# Hugging Face uses 7860; Render and similar hosts pass the port in $PORT.
+exec uvicorn app.main:app --host 0.0.0.0 --port "${PORT:-7860}"
