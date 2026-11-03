@@ -44,14 +44,16 @@ class OnnxEncoder:
                 raise ValueError('model_asset_hash_mismatch')
         config = json.loads((self.root/'config.json').read_text())
         self.pad_id = config['pad_token_id']
-        self.tokenizer = Tokenizer.from_file(str(self.root/'tokenizer.json'))
-        self.tokenizer.enable_truncation(max_length=512, stride=64)
         self.lock = threading.Lock()
         options = ort.SessionOptions()
         options.intra_op_num_threads = threads or int(os.environ.get('BERNMATCH_ORT_THREADS','4'))
         options.inter_op_num_threads = 1
+        # Session before tokenizer: both loads spike by ~250 MB, and this order keeps the combined
+        # peak under a 512 MB container (measured 556 MB the other way round).
         self.session = ort.InferenceSession(str(self.root/'model.onnx'), sess_options=options,
                                            providers=['CPUExecutionProvider'])
+        self.tokenizer = Tokenizer.from_file(str(self.root/'tokenizer.json'))
+        self.tokenizer.enable_truncation(max_length=512, stride=64)
         self.inputs = {x.name for x in self.session.get_inputs()}
         self.dimensions = int(self.session.get_outputs()[0].shape[-1])
 

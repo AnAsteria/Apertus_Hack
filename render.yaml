@@ -15,5 +15,13 @@ services:
         value: Aster233/bern-match-index
       - key: BERNMATCH_ORT_THREADS
         value: "1"
+      # glibc returns freed memory at once, so the tokenizer's parse buffers are gone before the
+      # first search; the 512 MB instance otherwise runs out of memory on the first search.
+      - key: MALLOC_ARENA_MAX
+        value: "2"
+      - key: MALLOC_MMAP_THRESHOLD_
+        value: "65536"
+      - key: MALLOC_TRIM_THRESHOLD_
+        value: "65536"
       - key: HF_TOKEN
         sync: false # read-only Hugging Face token; Render asks for it when the blueprint is applied
