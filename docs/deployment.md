@@ -1,6 +1,6 @@
 # Deployment (Hugging Face Docker Space)
 
-Refs #11, #84 (T33). Live app: https://kaktamsdengami-bern-match.hf.space (Space `kaktamsdengami/bern-match`, CPU Upgrade, $0.03/h from Dimitry's HF credit, decision D9). Apertus runs on the organisers' Keera gateway; nothing model-related is hosted here.
+Refs #11, #84 (T33). Live app since November 2026: https://aster233-bern-match.hf.space (Space `Aster233/bern-match`, free CPU Basic on Ruihan's PRO account, index from the private dataset `Aster233/bern-match-index`; see "Hosting without a bucket" below). During the hackathon it ran at https://kaktamsdengami-bern-match.hf.space (Space `kaktamsdengami/bern-match`, CPU Upgrade, $0.03/h from Dimitry's HF credit, decision D9), which is now paused; the sections below describe that setup. Apertus ran on the organisers' Keera gateway; nothing model-related is hosted here.
 
 ## What runs where
 
@@ -67,7 +67,7 @@ The same image runs on a host with no mounted bucket, such as a free Space or Re
 | `HF_TOKEN` | secret | a read-only token that can read that dataset |
 | `BERNMATCH_ORT_THREADS` | variable | the host's vCPU count (default 8) |
 
-On start, `entrypoint.sh` downloads the bundle, extracts it and serves on `$PORT` (default 7860). A free Docker Space is not an option: since October 2026 Hugging Face answers `402 Payment Required` without a PRO plan. [`render.yaml`](../render.yaml) sets up the same image on Render's free tier (512 MB; the app uses about 220 MB after a few searches); Render asks for `HF_TOKEN` when the blueprint is applied. Without a writable `/data`, feedback is not kept across restarts. Without Apertus variables, instant search works and the AI parts report themselves unavailable.
+On start, `entrypoint.sh` downloads the bundle, extracts it and serves on `$PORT` (default 7860). A free Docker Space needs a PRO plan (without one, Hugging Face answers `402 Payment Required` since October 2026). Deploy to such a Space with `BERNMATCH_SPACE=Aster233/bern-match BERNMATCH_SPACE_URL=https://aster233-bern-match.hf.space scripts/deploy_space.sh`. Render's free tier (512 MB) does not work: the first search loads the encoder and the instance is killed ("Ran out of memory (used over 512MB)", 2026-11-03, also after loading the ONNX session before the tokenizer). Without a writable `/data`, feedback is not kept across restarts. Without Apertus variables, instant search works and the AI parts report themselves unavailable.
 
 ## Checks
 
