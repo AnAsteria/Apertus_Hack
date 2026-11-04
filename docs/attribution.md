@@ -25,7 +25,7 @@ Hosting: Hugging Face Docker Space and Storage Bucket. Inference: CSCS/Keera gat
 
 ## Repository licence
 
-**Not chosen yet.** The repository has no `LICENSE` file, which means no reuse rights are granted. The team must pick one before the repository goes public (for example MIT or Apache 2.0).
+**MIT** (see [LICENSE](../LICENSE)), agreed by the team on 20 October 2026. It covers this repository's code and documentation only. The content of the crawled source pages stays with the institutions that publish them, and the models and libraries above keep their own licences.
 
 ## Repository audit before going public (2026-10-18)
 
